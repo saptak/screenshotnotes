@@ -6,8 +6,10 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Screenshot.timestamp, order: .reverse) private var screenshots: [Screenshot]
     @StateObject private var viewModel = ScreenshotListViewModel()
+    @EnvironmentObject private var photoLibraryService: PhotoLibraryService
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var showingImportSheet = false
+    @State private var showingSettings = false
     
     var body: some View {
         NavigationStack {
@@ -30,6 +32,17 @@ struct ContentView: View {
             .navigationTitle("Screenshot Notes")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        showingSettings = true
+                        let impact = UIImpactFeedbackGenerator(style: .light)
+                        impact.impactOccurred()
+                    }) {
+                        Image(systemName: "gearshape")
+                            .fontWeight(.semibold)
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         showingImportSheet = true
@@ -65,6 +78,9 @@ struct ContentView: View {
             }
             .onAppear {
                 viewModel.setModelContext(modelContext)
+            }
+            .sheet(isPresented: $showingSettings) {
+                SettingsView(photoLibraryService: photoLibraryService)
             }
         }
     }
@@ -123,12 +139,12 @@ struct ScreenshotListView: View {
     @State private var selectedScreenshot: Screenshot?
     
     private let columns = [
-        GridItem(.adaptive(minimum: 160), spacing: 12)
+        GridItem(.adaptive(minimum: 160), spacing: 16)
     ]
     
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 12) {
+            LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(screenshots, id: \.id) { screenshot in
                     ScreenshotThumbnailView(
                         screenshot: screenshot,
@@ -144,12 +160,13 @@ struct ScreenshotListView: View {
                         }
                     )
                     .transition(.asymmetric(
-                        insertion: .scale.combined(with: .opacity),
-                        removal: .scale.combined(with: .opacity)
+                        insertion: .scale(scale: 0.8).combined(with: .opacity).combined(with: .offset(y: 20)),
+                        removal: .scale(scale: 0.8).combined(with: .opacity).combined(with: .offset(y: -20))
                     ))
                 }
             }
-            .padding()
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
         }
         .fullScreenCover(item: $selectedScreenshot) { screenshot in
             ScreenshotDetailView(screenshot: screenshot)
@@ -166,7 +183,7 @@ struct ScreenshotThumbnailView: View {
     @State private var showingDeleteConfirmation = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             ZStack {
                 if let uiImage = UIImage(data: screenshot.imageData) {
                     Image(uiImage: uiImage)
@@ -176,29 +193,32 @@ struct ScreenshotThumbnailView: View {
                         .clipped()
                 } else {
                     Rectangle()
-                        .fill(Color.gray.opacity(0.2))
+                        .fill(Color.gray.opacity(0.15))
                         .frame(height: 140)
                         .overlay {
-                            VStack(spacing: 4) {
+                            VStack(spacing: 6) {
                                 Image(systemName: "exclamationmark.triangle")
                                     .font(.title3)
+                                    .foregroundColor(.orange)
                                 Text("Unable to load")
                                     .font(.caption2)
+                                    .foregroundColor(.secondary)
                             }
-                            .foregroundColor(.secondary)
                         }
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
             )
-            .scaleEffect(isPressed ? 0.95 : 1.0)
-            .opacity(isPressed ? 0.8 : 1.0)
+            .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 2)
+            .scaleEffect(isPressed ? 0.96 : 1.0)
+            .opacity(isPressed ? 0.85 : 1.0)
             
             Text(screenshot.timestamp.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption2)
+                .fontWeight(.medium)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

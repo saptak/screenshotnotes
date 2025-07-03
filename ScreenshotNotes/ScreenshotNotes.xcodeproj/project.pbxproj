@@ -400,6 +400,8 @@
 				DEVELOPMENT_TEAM = 8GQ5EFFMV3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Screenshot Notes needs access to save processed screenshots to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Screenshot Notes needs access to your photo library to automatically import and organize your screenshots.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -428,6 +430,8 @@
 				DEVELOPMENT_TEAM = 8GQ5EFFMV3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Screenshot Notes needs access to save processed screenshots to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Screenshot Notes needs access to your photo library to automatically import and organize your screenshots.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
