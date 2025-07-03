@@ -8,7 +8,7 @@ protocol ImageStorageServiceProtocol {
     func deleteImageData(_ data: Data) async throws
 }
 
-class ImageStorageService: ImageStorageServiceProtocol {
+class ImageStorageService: ImageStorageServiceProtocol, @unchecked Sendable {
     private let fileManager = FileManager.default
     private let documentsDirectory: URL
     
@@ -19,26 +19,22 @@ class ImageStorageService: ImageStorageServiceProtocol {
     func saveImage(_ image: UIImage, filename: String) async throws -> Data {
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    // Optimize image for storage - resize if too large
-                    let processedImage = self.optimizeImageForStorage(image)
-                    
-                    // Compress with quality optimization
-                    guard let imageData = processedImage.jpegData(compressionQuality: 0.8) else {
-                        continuation.resume(throwing: ImageStorageError.compressionFailed)
-                        return
-                    }
-                    
-                    // Validate final size (max 5MB after optimization)
-                    if imageData.count > 5 * 1024 * 1024 {
-                        continuation.resume(throwing: ImageStorageError.imageTooLarge)
-                        return
-                    }
-                    
-                    continuation.resume(returning: imageData)
-                } catch {
-                    continuation.resume(throwing: error)
+                // Optimize image for storage - resize if too large
+                let processedImage = self.optimizeImageForStorage(image)
+                
+                // Compress with quality optimization
+                guard let imageData = processedImage.jpegData(compressionQuality: 0.8) else {
+                    continuation.resume(throwing: ImageStorageError.compressionFailed)
+                    return
                 }
+                
+                // Validate final size (max 5MB after optimization)
+                if imageData.count > 5 * 1024 * 1024 {
+                    continuation.resume(throwing: ImageStorageError.imageTooLarge)
+                    return
+                }
+                
+                continuation.resume(returning: imageData)
             }
         }
     }

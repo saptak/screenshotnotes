@@ -197,17 +197,9 @@ struct ScreenshotThumbnailView: View {
             .scaleEffect(isPressed ? 0.95 : 1.0)
             .opacity(isPressed ? 0.8 : 1.0)
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text(screenshot.filename)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-                    .foregroundColor(.primary)
-                
-                Text(screenshot.timestamp.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
+            Text(screenshot.timestamp.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption2)
+                .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())

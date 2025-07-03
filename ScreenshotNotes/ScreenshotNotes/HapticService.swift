@@ -35,6 +35,12 @@ class HapticService: HapticServiceProtocol {
         case .heavy:
             impactHeavy.impactOccurred()
             impactHeavy.prepare()
+        case .rigid:
+            impactHeavy.impactOccurred()
+            impactHeavy.prepare()
+        case .soft:
+            impactLight.impactOccurred()
+            impactLight.prepare()
         @unknown default:
             impactMedium.impactOccurred()
             impactMedium.prepare()
