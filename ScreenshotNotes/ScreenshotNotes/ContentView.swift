@@ -250,7 +250,7 @@ struct ImportProgressOverlay: View {
             
             VStack(spacing: 16) {
                 ProgressView(value: progress)
-                    .progressViewStyle(CircularProgressViewStyle(tint: .tint))
+                    .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
                     .scaleEffect(1.5)
                 
                 Text("Importing...")

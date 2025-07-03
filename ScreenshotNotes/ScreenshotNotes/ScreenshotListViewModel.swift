@@ -70,8 +70,8 @@ class ScreenshotListViewModel: ObservableObject {
     }
     
     private func generateFilename(from identifier: String?) -> String {
-        let timestamp = Date().formatted(.iso8601.year().month().day().hour().minute().second())
-        let suffix = identifier?.suffix(8) ?? String(UUID().uuidString.prefix(8))
+        let timestamp = Date().formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))
+        let suffix = String(identifier?.suffix(8) ?? UUID().uuidString.prefix(8))
         return "screenshot_\(timestamp)_\(suffix).jpg"
     }
     
@@ -95,7 +95,7 @@ class ScreenshotListViewModel: ObservableObject {
                     }
                 }
             } catch {
-                await handleDeletionError(error)
+                handleDeletionError(error)
             }
         }
     }
