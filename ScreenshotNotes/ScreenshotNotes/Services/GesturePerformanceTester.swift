@@ -246,8 +246,8 @@ final class GesturePerformanceTester: ObservableObject {
             "gestureLatencies": testResults.gestureLatencies.mapValues { latencies in
                 [
                     "average": latencies.reduce(0, +) / Double(latencies.count),
-                    "min": latencies.min() ?? 0,
-                    "max": latencies.max() ?? 0,
+                    "min": (latencies.min() ?? 0) as TimeInterval,
+                    "max": (latencies.max() ?? 0) as TimeInterval,
                     "count": latencies.count
                 ]
             },
@@ -320,14 +320,18 @@ final class GesturePerformanceTester: ObservableObject {
     private func startMetricsCollection() {
         // Start frame rate monitoring
         frameTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / configuration.targetFrameRate, repeats: true) { _ in
-            self.metrics.frameTimestamps.append(Date())
+            Task { @MainActor in
+                self.metrics.frameTimestamps.append(Date())
+            }
         }
         
         // Start memory monitoring
         memoryTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            let memoryUsage = self.getCurrentMemoryUsage()
-            self.metrics.memoryReadings.append(memoryUsage)
-            self.testResults.memoryUsage.append(memoryUsage)
+            Task { @MainActor in
+                let memoryUsage = await self.getCurrentMemoryUsage()
+                self.metrics.memoryReadings.append(memoryUsage)
+                self.testResults.memoryUsage.append(memoryUsage)
+            }
         }
     }
     
@@ -389,20 +393,24 @@ final class GesturePerformanceTester: ObservableObject {
         }
     }
     
-    private func getCurrentMemoryUsage() -> Double {
-        var info = mach_task_basic_info()
-        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
-        
-        let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
-                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+    private func getCurrentMemoryUsage() async -> Double {
+        return await withCheckedContinuation { continuation in
+            var info = mach_task_basic_info()
+            var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
+            
+            let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                    task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+                }
+            }
+            
+            if kerr == KERN_SUCCESS {
+                let result = Double(info.resident_size) / 1024 / 1024 // Convert to MB
+                continuation.resume(returning: result)
+            } else {
+                continuation.resume(returning: 0.0)
             }
         }
-        
-        if kerr == KERN_SUCCESS {
-            return Double(info.resident_size) / 1024 / 1024 // Convert to MB
-        }
-        return 0.0
     }
     
     private func resetMetrics() {
@@ -506,13 +514,23 @@ private struct GesturePerformanceResultsView: View {
                 }
             }
             .navigationTitle("Test Results")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
                 }
+                #else
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+                #endif
             }
         }
     }
