@@ -204,7 +204,7 @@ struct ScreenshotListView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: true) {
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(screenshots, id: \.id) { screenshot in
                         ScreenshotThumbnailView(
@@ -381,7 +381,15 @@ struct ScreenshotThumbnailView: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            .surfaceMaterial(cornerRadius: 14, stroke: StrokeConfiguration(color: .primary.opacity(0.08), lineWidth: 0.5))
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color(UIColor.systemBackground))
+                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.primary.opacity(0.15), lineWidth: 0.5)
+            )
             .scaleEffect(isPressed ? 0.96 : 1.0)
             .opacity(isPressed ? 0.85 : 1.0)
             
