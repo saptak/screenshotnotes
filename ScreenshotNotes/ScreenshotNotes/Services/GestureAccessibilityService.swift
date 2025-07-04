@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import UIKit
 
 /// Gesture accessibility service providing alternative interaction methods and accommodations
 /// Ensures all gesture-based functionality is accessible to users with diverse abilities
@@ -68,7 +69,7 @@ final class GestureAccessibilityService: ObservableObject {
     }
     
     // MARK: - Private Properties
-    private let configuration: AccessibilityConfiguration
+    let configuration: AccessibilityConfiguration
     private var accessibilityNotificationCancellables: Set<AnyCancellable> = []
     
     // MARK: - Initialization
@@ -146,20 +147,16 @@ final class GestureAccessibilityService: ObservableObject {
     func createSwipeAlternatives(
         swipeActions: [AdvancedSwipeGestureService.SwipeAction],
         itemDescription: String
-    ) -> [AccessibilityCustomAction] {
+    ) -> [() -> Void] {
         return swipeActions.map { action in
-            AccessibilityCustomAction(
-                name: "\(action.title) \(itemDescription)",
-                action: {
-                    // Provide audio feedback if enabled
-                    if configuration.enableAudioFeedback {
-                        announceAction(action.title)
-                    }
-                    
-                    action.action()
-                    return true
+            return { [self] in
+                // Provide audio feedback if enabled
+                if configuration.enableAudioFeedback {
+                    self.announceAction(action.title)
                 }
-            )
+                
+                action.action()
+            }
         }
     }
     
@@ -265,7 +262,7 @@ final class GestureAccessibilityService: ObservableObject {
         }
     }
     
-    private func announceAction(_ actionName: String) {
+    func announceAction(_ actionName: String) {
         guard configuration.enableAudioFeedback else { return }
         
         let announcement = "\(actionName) activated"
@@ -313,12 +310,17 @@ struct AccessibleSwipeGestureModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .accessibilityCustomActions(
-                accessibilityService.createSwipeAlternatives(
-                    swipeActions: swipeActions,
-                    itemDescription: itemDescription
-                )
-            )
+            .accessibilityActions {
+                ForEach(swipeActions.indices, id: \.self) { index in
+                    let action = swipeActions[index]
+                    Button(action.title) {
+                        if accessibilityService.configuration.enableAudioFeedback {
+                            accessibilityService.announceAction(action.title)
+                        }
+                        action.action()
+                    }
+                }
+            }
             .accessibilityLabel(itemDescription)
             .accessibilityHint("Available actions: \(swipeActions.map(\.title).joined(separator: ", "))")
     }

@@ -309,15 +309,45 @@ final class HapticFeedbackService: ObservableObject {
         case .successFeedback:
             return .successFeedback
         case .light:
-            return .light
+            return HapticConfiguration(
+                pattern: .light,
+                intensity: 0.5,
+                duration: 0.05,
+                delay: 0.0,
+                repeatCount: 1
+            )
         case .medium:
-            return .medium
+            return HapticConfiguration(
+                pattern: .medium,
+                intensity: 0.7,
+                duration: 0.1,
+                delay: 0.0,
+                repeatCount: 1
+            )
         case .heavy:
-            return .heavy
+            return HapticConfiguration(
+                pattern: .heavy,
+                intensity: 0.9,
+                duration: 0.15,
+                delay: 0.0,
+                repeatCount: 1
+            )
         case .success:
-            return .success
+            return HapticConfiguration(
+                pattern: .success,
+                intensity: 0.8,
+                duration: 0.12,
+                delay: 0.0,
+                repeatCount: 1
+            )
         case .error:
-            return .error
+            return HapticConfiguration(
+                pattern: .error,
+                intensity: 0.9,
+                duration: 0.2,
+                delay: 0.0,
+                repeatCount: 2
+            )
         }
     }
     

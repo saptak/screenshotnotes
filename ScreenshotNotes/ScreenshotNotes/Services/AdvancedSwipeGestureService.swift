@@ -214,17 +214,17 @@ final class AdvancedSwipeGestureService: ObservableObject {
     // MARK: - Private Methods
     
     private func determineSwipeDirection(translation: CGSize) -> SwipeDirection? {
-        let absX = abs(translation.x)
-        let absY = abs(translation.y)
+        let absX = abs(translation.width)
+        let absY = abs(translation.height)
         
         // Minimum threshold to register as swipe
         guard max(absX, absY) > 10 else { return nil }
         
         // Determine primary direction
         if absX > absY {
-            return translation.x > 0 ? .right : .left
+            return translation.width > 0 ? .right : .left
         } else {
-            return translation.y > 0 ? .down : .up
+            return translation.height > 0 ? .down : .up
         }
     }
     
@@ -234,13 +234,13 @@ final class AdvancedSwipeGestureService: ObservableObject {
         let distance: Double
         switch direction {
         case .left:
-            distance = max(0, -translation.x)
+            distance = max(0, Double(-translation.width))
         case .right:
-            distance = max(0, translation.x)
+            distance = max(0, Double(translation.width))
         case .up:
-            distance = max(0, -translation.y)
+            distance = max(0, Double(-translation.height))
         case .down:
-            distance = max(0, translation.y)
+            distance = max(0, Double(translation.height))
         }
         
         return min(distance / actionThreshold, 1.5)
@@ -328,9 +328,14 @@ struct SwipeGestureModifier: ViewModifier {
     }
     
     func body(content: Content) -> some View {
-        content
-            .offset(x: dragOffset.x * 0.3, y: dragOffset.y * 0.3)
-            .scaleEffect(1.0 - (abs(dragOffset.x) + abs(dragOffset.y)) * 0.0002)
+        let offsetX = dragOffset.width * 0.3
+        let offsetY = dragOffset.height * 0.3
+        let totalOffset = abs(dragOffset.width) + abs(dragOffset.height)
+        let scaleValue = 1.0 - totalOffset * 0.0002
+        
+        return content
+            .offset(x: offsetX, y: offsetY)
+            .scaleEffect(scaleValue)
             .background(
                 SwipeActionBackground(
                     revealedAction: swipeService.revealedAction,

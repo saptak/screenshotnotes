@@ -208,55 +208,54 @@ class ScreenshotListViewModel: ObservableObject {
         // Process screenshots sequentially to avoid memory issues
         for (index, asset) in assetsToImport.enumerated() {
             await withCheckedContinuation { continuation in
-                    imageManager.requestImage(
-                        for: asset,
-                        targetSize: PHImageManagerMaximumSize,
-                        contentMode: .aspectFit,
-                        options: requestOptions
-                    ) { [weak self] image, _ in
-                        guard let image = image, let self = self else {
-                            continuation.resume()
-                            return
-                        }
-                        
-                        Task {
-                            do {
-                                let imageData = try await self.imageStorageService.saveImage(
-                                    image,
-                                    filename: "screenshot_\(asset.localIdentifier)"
-                                )
-                                
-                                let screenshot = Screenshot(
-                                    imageData: imageData,
-                                    filename: "screenshot_\(Date().timeIntervalSince1970)",
-                                    timestamp: asset.creationDate ?? Date(),
-                                    assetIdentifier: asset.localIdentifier
-                                )
-                                
-                                // Process OCR in background
-                                Task {
-                                    do {
-                                        let extractedText = try await self.ocrService.extractText(from: image)
-                                        await MainActor.run {
-                                            screenshot.extractedText = extractedText
-                                            try? modelContext.save()
-                                        }
-                                    } catch {
-                                        print("OCR processing failed: \(error.localizedDescription)")
+                imageManager.requestImage(
+                    for: asset,
+                    targetSize: PHImageManagerMaximumSize,
+                    contentMode: .aspectFit,
+                    options: requestOptions
+                ) { [weak self] image, _ in
+                    guard let image = image, let self = self else {
+                        continuation.resume()
+                        return
+                    }
+                    
+                    Task {
+                        do {
+                            let imageData = try await self.imageStorageService.saveImage(
+                                image,
+                                filename: "screenshot_\(asset.localIdentifier)"
+                            )
+                            
+                            let screenshot = Screenshot(
+                                imageData: imageData,
+                                filename: "screenshot_\(Date().timeIntervalSince1970)",
+                                timestamp: asset.creationDate ?? Date(),
+                                assetIdentifier: asset.localIdentifier
+                            )
+                            
+                            // Process OCR in background
+                            Task {
+                                do {
+                                    let extractedText = try await self.ocrService.extractText(from: image)
+                                    await MainActor.run {
+                                        screenshot.extractedText = extractedText
+                                        try? modelContext.save()
                                     }
+                                } catch {
+                                    print("OCR processing failed: \(error.localizedDescription)")
                                 }
-                                
-                                await MainActor.run {
-                                    modelContext.insert(screenshot)
-                                    try? modelContext.save()
-                                    
-                                    self.importProgress = Double(index + 1) / totalAssets
-                                }
-                            } catch {
-                                print("❌ Failed to import screenshot: \(error)")
                             }
-                            continuation.resume()
+                            
+                            await MainActor.run {
+                                modelContext.insert(screenshot)
+                                try? modelContext.save()
+                                
+                                self.importProgress = Double(index + 1) / totalAssets
+                            }
+                        } catch {
+                            print("❌ Failed to import screenshot: \(error)")
                         }
+                        continuation.resume()
                     }
                 }
             }

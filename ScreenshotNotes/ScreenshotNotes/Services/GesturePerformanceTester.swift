@@ -75,7 +75,7 @@ final class GesturePerformanceTester: ObservableObject {
     }
     
     // MARK: - Test Phase
-    enum TestPhase {
+    enum TestPhase: Equatable {
         case idle
         case preparing
         case warmup
@@ -83,6 +83,18 @@ final class GesturePerformanceTester: ObservableObject {
         case analyzing
         case completed
         case failed(Error)
+        
+        static func == (lhs: TestPhase, rhs: TestPhase) -> Bool {
+            switch (lhs, rhs) {
+            case (.idle, .idle), (.preparing, .preparing), (.warmup, .warmup),
+                 (.testing, .testing), (.analyzing, .analyzing), (.completed, .completed):
+                return true
+            case (.failed(let lhsError), .failed(let rhsError)):
+                return lhsError.localizedDescription == rhsError.localizedDescription
+            default:
+                return false
+            }
+        }
     }
     
     // MARK: - Gesture Type
