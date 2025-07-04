@@ -74,7 +74,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .navigationTitle(isSearchActive ? "Search Results" : "Screenshot Notes")
+            .navigationTitle(isSearchActive ? "" : "Screenshot Notes")
             .navigationBarTitleDisplayMode(isSearchActive ? .inline : .large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -85,6 +85,44 @@ struct ContentView: View {
                     }) {
                         Image(systemName: "gearshape")
                             .fontWeight(.semibold)
+                    }
+                }
+                
+                ToolbarItem(placement: .principal) {
+                    if !screenshots.isEmpty {
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(.secondary)
+                                .font(.system(size: 14))
+                            
+                            TextField("Search...", text: $searchText)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 14))
+                                .onChange(of: searchText) { _, newValue in
+                                    withAnimation(.spring(response: 0.2, dampingFraction: 1.0)) {
+                                        isSearchActive = !newValue.isEmpty
+                                    }
+                                }
+                            
+                            if !searchText.isEmpty {
+                                Button(action: {
+                                    searchText = ""
+                                    isSearchActive = false
+                                    searchFilters = SearchFilters()
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                        .font(.system(size: 14))
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(UIColor.systemGray6))
+                        )
+                        .frame(maxWidth: 200)
                     }
                 }
                 
