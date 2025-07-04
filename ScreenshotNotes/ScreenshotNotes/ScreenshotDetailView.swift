@@ -4,6 +4,7 @@ struct ScreenshotDetailView: View {
     let screenshot: Screenshot
     let heroNamespace: Namespace.ID
     let allScreenshots: [Screenshot]
+    let onDelete: ((Screenshot) -> Void)?
     @Environment(\.dismiss) private var dismiss
     @State private var scale: CGFloat = 1.0
     @State private var offset: CGSize = .zero
@@ -34,10 +35,11 @@ struct ScreenshotDetailView: View {
         currentIndex < allScreenshots.count - 1
     }
     
-    init(screenshot: Screenshot, heroNamespace: Namespace.ID, allScreenshots: [Screenshot]) {
+    init(screenshot: Screenshot, heroNamespace: Namespace.ID, allScreenshots: [Screenshot], onDelete: ((Screenshot) -> Void)? = nil) {
         self.screenshot = screenshot
         self.heroNamespace = heroNamespace
         self.allScreenshots = allScreenshots
+        self.onDelete = onDelete
         self._currentScreenshot = State(initialValue: screenshot)
     }
     
@@ -358,22 +360,48 @@ struct ScreenshotDetailView: View {
     }
     
     private func shareImage() {
-        guard let image = UIImage(data: currentScreenshot.imageData) else { return }
+        guard let image = UIImage(data: currentScreenshot.imageData) else { 
+            addHapticFeedback(.error)
+            return 
+        }
         
         let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
         
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first {
-            window.rootViewController?.present(activityVC, animated: true)
+        // Configure for iPad
+        if let popoverController = activityVC.popoverPresentationController {
+            popoverController.sourceView = UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap { $0.windows }
+                .first { $0.isKeyWindow }
+            popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2, width: 0, height: 0)
+            popoverController.permittedArrowDirections = []
         }
         
-        addHapticFeedback(.medium)
+        // Find the topmost view controller
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first(where: { $0.isKeyWindow }),
+           let rootViewController = window.rootViewController {
+            
+            var topController = rootViewController
+            while let presentedViewController = topController.presentedViewController {
+                topController = presentedViewController
+            }
+            
+            topController.present(activityVC, animated: true) {
+                self.addHapticFeedback(.medium)
+            }
+        } else {
+            addHapticFeedback(.error)
+        }
     }
     
     private func copyImage() {
-        guard let image = UIImage(data: currentScreenshot.imageData) else { return }
+        guard let image = UIImage(data: currentScreenshot.imageData) else { 
+            addHapticFeedback(.error)
+            return 
+        }
         UIPasteboard.general.image = image
-        addHapticFeedback(.light)
+        addHapticFeedback(.success)
     }
     
     private func shareCurrentImage() {
@@ -381,15 +409,25 @@ struct ScreenshotDetailView: View {
     }
     
     private func deleteCurrentImage() {
-        // TODO: Implement deletion through proper data model
-        // For now, just dismiss with haptic feedback
         addHapticFeedback(.heavy)
+        
+        // Call the deletion callback if provided
+        if let onDelete = onDelete {
+            onDelete(currentScreenshot)
+        }
+        
+        // Always dismiss after deletion
         dismiss()
     }
     
     private func addHapticFeedback(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
         let impact = UIImpactFeedbackGenerator(style: style)
         impact.impactOccurred()
+    }
+    
+    private func addHapticFeedback(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+        let notification = UINotificationFeedbackGenerator()
+        notification.notificationOccurred(type)
     }
 }
 

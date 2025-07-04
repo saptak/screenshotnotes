@@ -213,7 +213,7 @@ struct EnhancedPullToRefresh: ViewModifier {
                     refreshService.resetProgress()
                 }
             }
-            .onChange(of: refreshService.refreshState) { state in
+            .onChange(of: refreshService.refreshState) { _, state in
                 if state == .triggered && !refreshService.isRefreshing {
                     refreshService.triggerRefresh(action)
                 }

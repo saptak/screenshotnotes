@@ -57,6 +57,9 @@ struct ContentView: View {
                             onScreenshotTap: { screenshot in
                                 // Present screenshot detail view
                                 // This will be handled by the SearchResultCard navigation
+                            },
+                            onDelete: { screenshotToDelete in
+                                viewModel.deleteScreenshot(screenshotToDelete)
                             }
                         )
                     } else {
@@ -261,7 +264,10 @@ struct ScreenshotListView: View {
             ScreenshotDetailView(
                 screenshot: screenshot,
                 heroNamespace: heroNamespace,
-                allScreenshots: screenshots
+                allScreenshots: screenshots,
+                onDelete: { screenshotToDelete in
+                    viewModel.deleteScreenshot(screenshotToDelete)
+                }
             )
         }
         .overlay {

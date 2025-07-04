@@ -147,6 +147,7 @@ struct SearchResultsView: View {
     let screenshots: [Screenshot]
     let searchText: String
     let onScreenshotTap: (Screenshot) -> Void
+    let onDelete: ((Screenshot) -> Void)?
     
     @State private var animateResults = false
     @State private var selectedScreenshot: Screenshot?
@@ -200,7 +201,8 @@ struct SearchResultsView: View {
             ScreenshotDetailView(
                 screenshot: screenshot,
                 heroNamespace: searchHeroNamespace,
-                allScreenshots: screenshots
+                allScreenshots: screenshots,
+                onDelete: onDelete
             )
         }
     }
