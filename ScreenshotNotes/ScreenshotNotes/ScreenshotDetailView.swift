@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ScreenshotDetailView: View {
     let screenshot: Screenshot
+    let heroNamespace: Namespace.ID
     @Environment(\.dismiss) private var dismiss
     @State private var scale: CGFloat = 1.0
     @State private var offset: CGSize = .zero
@@ -9,6 +10,8 @@ struct ScreenshotDetailView: View {
     @State private var lastOffset: CGSize = .zero
     @State private var showingControls = true
     @State private var controlsTimer: Timer?
+    
+    // Navigation support
     
     private let minScale: CGFloat = 0.5
     private let maxScale: CGFloat = 4.0
@@ -263,5 +266,16 @@ struct ScreenshotDetailView: View {
 }
 
 #Preview {
-    ScreenshotDetailView(screenshot: Screenshot(imageData: Data(), filename: "test_image.jpg"))
+    struct PreviewWrapper: View {
+        @Namespace private var heroNamespace
+        
+        var body: some View {
+            ScreenshotDetailView(
+                screenshot: Screenshot(imageData: Data(), filename: "test_image.jpg"),
+                heroNamespace: heroNamespace
+            )
+        }
+    }
+    
+    return PreviewWrapper()
 }

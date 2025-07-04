@@ -149,6 +149,11 @@ struct SearchResultsView: View {
     let onScreenshotTap: (Screenshot) -> Void
     
     @State private var animateResults = false
+    @State private var selectedScreenshot: Screenshot?
+    
+    // Hero Animation Support
+    @Namespace private var searchHeroNamespace
+    @StateObject private var heroService = HeroAnimationService.shared
     
     var body: some View {
         LazyVGrid(columns: [
@@ -158,7 +163,17 @@ struct SearchResultsView: View {
                 SearchResultCard(
                     screenshot: screenshot,
                     searchText: searchText,
-                    onTap: { onScreenshotTap(screenshot) }
+                    heroNamespace: searchHeroNamespace,
+                    onTap: {
+                        // Start hero animation for search-to-detail
+                        heroService.startTransition(
+                            .searchToDetail,
+                            from: "search_result_\(screenshot.id)",
+                            to: "search_detail_\(screenshot.id)"
+                        )
+                        selectedScreenshot = screenshot
+                        onScreenshotTap(screenshot)
+                    }
                 )
                 .scaleEffect(animateResults ? 1.0 : 0.8)
                 .opacity(animateResults ? 1.0 : 0.0)
@@ -181,16 +196,24 @@ struct SearchResultsView: View {
                 animateResults = true
             }
         }
+        .fullScreenCover(item: $selectedScreenshot) { screenshot in
+            ScreenshotDetailView(
+                screenshot: screenshot,
+                heroNamespace: searchHeroNamespace
+            )
+        }
     }
 }
 
 struct SearchResultCard: View {
     let screenshot: Screenshot
     let searchText: String
+    let heroNamespace: Namespace.ID
     let onTap: () -> Void
     
     @State private var isPressed = false
     @State private var image: UIImage?
+    @StateObject private var heroService = HeroAnimationService.shared
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -205,6 +228,11 @@ struct SearchResultCard: View {
                         .aspectRatio(contentMode: .fill)
                         .clipped()
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .heroSource(
+                            id: "search_result_\(screenshot.id)",
+                            in: heroNamespace,
+                            transitionType: .searchToDetail
+                        )
                 } else {
                     ProgressView()
                         .scaleEffect(0.8)

@@ -176,6 +176,9 @@ struct ScreenshotListView: View {
     @State private var selectedScreenshot: Screenshot?
     @State private var isRefreshing = false
     
+    // Navigation support
+    @Namespace private var heroNamespace
+    
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 16)
     ]
@@ -186,6 +189,7 @@ struct ScreenshotListView: View {
                 ForEach(screenshots, id: \.id) { screenshot in
                     ScreenshotThumbnailView(
                         screenshot: screenshot,
+                        heroNamespace: heroNamespace,
                         onTap: {
                             selectedScreenshot = screenshot
                             let impact = UIImpactFeedbackGenerator(style: .light)
@@ -210,7 +214,10 @@ struct ScreenshotListView: View {
             await refreshAllScreenshots()
         }
         .fullScreenCover(item: $selectedScreenshot) { screenshot in
-            ScreenshotDetailView(screenshot: screenshot)
+            ScreenshotDetailView(
+                screenshot: screenshot,
+                heroNamespace: heroNamespace
+            )
         }
     }
     
@@ -221,6 +228,7 @@ struct ScreenshotListView: View {
 
 struct ScreenshotThumbnailView: View {
     let screenshot: Screenshot
+    let heroNamespace: Namespace.ID
     let onTap: () -> Void
     let onDelete: () -> Void
     
