@@ -29,18 +29,18 @@ The user experience is paramount and will be guided by the following principles:
 
 ### Design System Specifications
 
-*   **Color Palette:** 
+*   **Color Palette:**
     *   Primary: Dynamic system colors adapting to light/dark mode
     *   Glass effects: 15-30% opacity backgrounds with blur
     *   Accent: System blue for interactive elements
-*   **Typography:** 
+*   **Typography:**
     *   Primary: SF Pro Display for headings
     *   Body: SF Pro Text for content
     *   Monospace: SF Mono for OCR text display
 *   **Spacing:** 8pt grid system (8, 16, 24, 32, 48, 64)
 *   **Corner Radius:** 12pt for cards, 8pt for buttons, 20pt for sheets
 *   **Shadows:** Subtle depth with 2-4pt blur radius
-*   **Animations:** 
+*   **Animations:**
     *   Spring animations (dampingFraction: 0.8, response: 0.6)
     *   Gesture-driven interactions with rubber-band effects
     *   Fade and scale transitions for modal presentations
@@ -69,6 +69,7 @@ The user experience is paramount and will be guided by the following principles:
 *   **Mind Map Editing:** Users can manually create, edit, or remove the links between screenshots in the mind map to refine the organization.
 *   **Manual Import:** Users can explicitly import any image from their Photos library, not just screenshots.
 *   **Deletion:** Users can easily delete single or multiple screenshots from the app's library.
+*   **Copying:** Users should be able to copy out information (e.g. coupon codes, URLs, information in QR codes, etc.).
 
 ## 5. Technical Requirements & Considerations
 
@@ -82,7 +83,7 @@ The user experience is paramount and will be guided by the following principles:
 
 ### Technical Constraints & Quality Standards
 
-*   **Memory Management:** 
+*   **Memory Management:**
     *   Maximum 150MB memory usage during active use
     *   Efficient image loading with progressive JPEG support
     *   Lazy loading for large screenshot collections

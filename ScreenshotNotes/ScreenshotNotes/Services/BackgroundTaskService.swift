@@ -31,7 +31,9 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
             try BGTaskScheduler.shared.submit(request)
             print("🔄 Background app refresh scheduled")
         } catch {
-            print("❌ Failed to schedule background app refresh: \(error)")
+            // Background tasks might not be available in simulator or may fail for various reasons
+            // This is not critical for core functionality since automatic import works via PHPhotoLibraryChangeObserver
+            print("⚠️ Background task scheduling unavailable (this is normal in simulator): \(error)")
         }
     }
     

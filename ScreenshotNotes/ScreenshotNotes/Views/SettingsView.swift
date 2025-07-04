@@ -29,9 +29,9 @@ struct SettingsView: View {
                             
                             Spacer()
                             
-                            Toggle("", isOn: $settingsService.automaticImportEnabled)
-                                .onChange(of: settingsService.automaticImportEnabled) { _, enabled in
-                                    photoLibraryService.setAutomaticImportEnabled(enabled)
+                            Toggle("", isOn: $photoLibraryService.automaticImportEnabled)
+                                .onChange(of: photoLibraryService.automaticImportEnabled) { _, enabled in
+                                    settingsService.automaticImportEnabled = enabled
                                 }
                         }
                         

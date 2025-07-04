@@ -18,6 +18,9 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     private let hapticService: HapticServiceProtocol
     private var isMonitoring = false
     
+    // Keep a reference to the fetch result for change observation
+    private var screenshotsFetchResult: PHFetchResult<PHAsset>?
+    
     @Published var authorizationStatus: PHAuthorizationStatus = .notDetermined
     @Published var automaticImportEnabled = true
     
@@ -27,8 +30,8 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
         self.hapticService = hapticService
         super.init()
         
-        // Load user preference
-        automaticImportEnabled = UserDefaults.standard.bool(forKey: "automaticImportEnabled")
+        // Load user preference - defaults to true for first launch
+        automaticImportEnabled = UserDefaults.standard.object(forKey: "automaticImportEnabled") as? Bool ?? true
         
         // Check current authorization status
         authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
@@ -39,19 +42,37 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     }
     
     func startMonitoring() {
-        guard !isMonitoring else { return }
-        guard automaticImportEnabled else { return }
-        guard authorizationStatus == .authorized else { return }
+        guard !isMonitoring else { 
+            print("📸 Already monitoring, skipping")
+            return 
+        }
+        guard automaticImportEnabled else { 
+            print("📸 Automatic import disabled, not starting monitoring")
+            return 
+        }
+        guard authorizationStatus == .authorized else { 
+            print("📸 Photo library not authorized (status: \(authorizationStatus)), not starting monitoring")
+            return 
+        }
+        
+        // Create the initial fetch result for screenshots before registering for changes
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.predicate = NSPredicate(format: "mediaSubtype & %d != 0", PHAssetMediaSubtype.photoScreenshot.rawValue)
+        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        
+        screenshotsFetchResult = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+        print("📸 Initial fetch found \(screenshotsFetchResult?.count ?? 0) screenshots")
         
         PHPhotoLibrary.shared().register(self)
         isMonitoring = true
-        print("📸 Photo library monitoring started")
+        print("📸 Photo library monitoring started successfully")
     }
     
     func stopMonitoring() {
         guard isMonitoring else { return }
         
         PHPhotoLibrary.shared().unregisterChangeObserver(self)
+        screenshotsFetchResult = nil
         isMonitoring = false
         print("📸 Photo library monitoring stopped")
     }
@@ -99,12 +120,15 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     }
     
     func setAutomaticImportEnabled(_ enabled: Bool) {
+        print("📸 Setting automatic import to: \(enabled)")
         automaticImportEnabled = enabled
         UserDefaults.standard.set(enabled, forKey: "automaticImportEnabled")
         
         if enabled && authorizationStatus == .authorized {
+            print("📸 Starting monitoring due to enabled setting")
             startMonitoring()
         } else {
+            print("📸 Stopping monitoring - enabled: \(enabled), authorized: \(authorizationStatus == .authorized)")
             stopMonitoring()
         }
     }
@@ -187,27 +211,44 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
 extension PhotoLibraryService: @preconcurrency PHPhotoLibraryChangeObserver {
     func photoLibraryDidChange(_ changeInstance: PHChange) {
         Task { @MainActor in
-            guard automaticImportEnabled else { return }
+            print("📸 Photo library changed - checking for screenshots")
             
-            // Create a fetch request for screenshots
-            let fetchOptions = PHFetchOptions()
-            fetchOptions.predicate = NSPredicate(format: "mediaSubtype & %d != 0", PHAssetMediaSubtype.photoScreenshot.rawValue)
-            fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-            fetchOptions.fetchLimit = 50 // Limit to recent screenshots
+            guard automaticImportEnabled else { 
+                print("📸 Automatic import disabled, ignoring change")
+                return 
+            }
             
-            let screenshotAssets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+            guard let currentFetchResult = screenshotsFetchResult else {
+                print("📸 No stored fetch result available - monitoring not properly initialized")
+                return
+            }
             
-            // Check if there are changes to screenshot assets
-            if let changeDetails = changeInstance.changeDetails(for: screenshotAssets) {
+            print("📸 Current fetch result has \(currentFetchResult.count) screenshots")
+            
+            // Check if there are changes to our stored screenshot fetch result
+            if let changeDetails = changeInstance.changeDetails(for: currentFetchResult) {
+                print("📸 Change details available - hasIncrementalChanges: \(changeDetails.hasIncrementalChanges)")
+                
+                // Update our stored fetch result
+                screenshotsFetchResult = changeDetails.fetchResultAfterChanges
+                
                 if changeDetails.hasIncrementalChanges {
                     // Process only newly inserted screenshots
                     let newScreenshots = changeDetails.insertedObjects
+                    let removedScreenshots = changeDetails.removedObjects
+                    let changedScreenshots = changeDetails.changedObjects
+                    
+                    print("📸 New: \(newScreenshots.count), Removed: \(removedScreenshots.count), Changed: \(changedScreenshots.count)")
                     
                     if !newScreenshots.isEmpty {
-                        print("📸 Detected \(newScreenshots.count) new screenshot(s)")
+                        print("📸 Processing \(newScreenshots.count) new screenshot(s)")
                         await importScreenshots(newScreenshots)
                     }
+                } else {
+                    print("📸 No incremental changes detected")
                 }
+            } else {
+                print("📸 No change details available for stored screenshot collection")
             }
         }
     }

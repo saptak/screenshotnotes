@@ -2,11 +2,11 @@
 
 A beautiful and intelligent iOS application that revolutionizes how you manage and interact with your screenshots. Built with SwiftUI and SwiftData, featuring automatic screenshot detection, intelligent organization, and on-device processing.
 
-## 🚀 Current Status: Sprint 2 Complete
+## 🚀 Current Status: Sprint 3 Complete
 
-**Automatic Screenshot Detection Engine Delivered** ✅
+**OCR & Intelligence Engine Delivered** ✅
 
-The app now automatically detects new screenshots in your photo library and imports them seamlessly into your organized collection.
+The app now features complete OCR text extraction, intelligent search, and advanced filtering capabilities, transforming screenshots into a searchable knowledge base.
 
 ## ✨ Features
 
@@ -27,11 +27,13 @@ The app now automatically detects new screenshots in your photo library and impo
 - **Refined UI**: Improved grid spacing, visual hierarchy, and thumbnail design
 - **Privacy First**: Proper permissions handling with guided access flow
 
-### 🔮 Coming Next - Sprint 3: OCR & Intelligence
-- On-device text extraction using Vision Framework
-- Full-text search across all screenshots
-- Intelligent content categorization
-- Object and scene recognition
+### 🧠 Sprint 3 - OCR & Intelligence ✅
+- **On-device OCR**: Vision Framework text extraction with high accuracy
+- **Real-time Search**: <100ms response time with intelligent caching and highlighting
+- **Advanced Filters**: Date range, content type, and relevance-based sorting
+- **Pull-to-Refresh**: Bulk import all existing screenshots with automatic OCR
+- **Background Processing**: Automatic text extraction for existing screenshots
+- **Smart Search**: Text highlighting, relevance scoring, and cached results
 
 ## 🏗️ Architecture
 
@@ -47,11 +49,16 @@ The app now automatically detects new screenshots in your photo library and impo
 - **SettingsService**: User preferences and configuration management
 - **HapticService**: Contextual tactile feedback
 - **BackgroundTaskService**: Background processing coordination
+- **OCRService**: Vision Framework text extraction with error handling
+- **SearchService**: Real-time search with caching and relevance scoring
+- **BackgroundOCRProcessor**: Batch OCR processing for existing screenshots
 
 ### Data Layer
 - **SwiftData**: Modern Core Data replacement for persistence
 - **Asset Tracking**: Unique identifier-based duplicate prevention
 - **Optimized Storage**: Efficient image compression and caching
+- **OCR Integration**: Extracted text stored with each screenshot
+- **Search Indexing**: Performance-optimized text searching with caching
 
 ## 🎨 Design System
 
@@ -67,25 +74,30 @@ The app now automatically detects new screenshots in your photo library and impo
 - **Detail View**: Full-screen with gesture-driven interactions
 - **Settings Interface**: Sectioned lists with inline controls
 - **Permission Flow**: Guided multi-step permission management
+- **Search Interface**: Glass UX with real-time filtering and highlighting
+- **Search Results**: Relevance-scored cards with text highlighting
 
 ## 🛠️ Technical Specifications
 
 ### Platform Requirements
 - **iOS**: 17.0+ (targeting latest major version)
 - **Architecture**: MVVM with protocol-based services
-- **Frameworks**: SwiftUI, SwiftData, Photos, BackgroundTasks, Vision (upcoming)
+- **Frameworks**: SwiftUI, SwiftData, Photos, BackgroundTasks, Vision
 
 ### Performance Standards
 - **Memory Usage**: <150MB during active use
 - **App Launch**: <2 seconds cold start, <0.5 seconds warm start
 - **Animation Rate**: 60fps minimum, 120fps target on ProMotion displays
 - **Background Processing**: Efficient 30-second task windows
+- **OCR Processing**: <3 seconds per screenshot on device
+- **Search Response**: <100ms with intelligent caching
 
 ### Privacy & Security
-- **On-device Processing**: All AI and image processing happens locally
+- **On-device Processing**: All AI, OCR, and image processing happens locally
 - **Permission Transparency**: Clear usage descriptions for photo library access
 - **Data Protection**: No cloud storage, all data remains on device
 - **Battery Optimization**: Intelligent background task scheduling
+- **Text Privacy**: All OCR text extraction performed on-device with Vision Framework
 
 ## 📁 Project Structure
 
@@ -93,20 +105,26 @@ The app now automatically detects new screenshots in your photo library and impo
 ScreenshotNotes/
 ├── ScreenshotNotes/
 │   ├── Models/
-│   │   └── Screenshot.swift              # SwiftData model with comprehensive schema
+│   │   └── Screenshot.swift              # SwiftData model with OCR text storage
 │   ├── Views/
-│   │   ├── ContentView.swift             # Main app interface with grid layout
+│   │   ├── ContentView.swift             # Main app interface with search integration
 │   │   ├── ScreenshotDetailView.swift    # Full-screen image viewer
 │   │   ├── SettingsView.swift            # User preferences interface
-│   │   └── PermissionsView.swift         # Guided permission flow
+│   │   ├── PermissionsView.swift         # Guided permission flow
+│   │   ├── SearchView.swift              # Glass UX search interface
+│   │   └── SearchFiltersView.swift       # Advanced filtering options
 │   ├── ViewModels/
-│   │   └── ScreenshotListViewModel.swift # Main business logic coordinator
+│   │   └── ScreenshotListViewModel.swift # Business logic with OCR integration
 │   ├── Services/
 │   │   ├── PhotoLibraryService.swift     # Automatic detection engine
 │   │   ├── ImageStorageService.swift     # Image processing and optimization
 │   │   ├── SettingsService.swift         # User preferences management
 │   │   ├── HapticService.swift          # Tactile feedback coordination
-│   │   └── BackgroundTaskService.swift  # Background processing
+│   │   ├── BackgroundTaskService.swift  # Background processing
+│   │   ├── OCRService.swift              # Vision Framework text extraction
+│   │   ├── SearchService.swift           # Real-time search with caching
+│   │   ├── SearchCache.swift             # Performance optimization
+│   │   └── BackgroundOCRProcessor.swift  # Batch OCR processing
 │   ├── Assets.xcassets/
 │   │   └── AppIcon.appiconset/          # Custom brain-themed icon
 │   └── ScreenshotNotesApp.swift         # App entry point and initialization
@@ -139,13 +157,26 @@ ScreenshotNotes/
 ### Automatic Screenshot Detection
 1. Enable "Automatic Import" in Settings
 2. Grant photo library access when prompted
-3. Take screenshots - they'll automatically appear in your collection
+3. Take screenshots - they'll automatically appear in your collection with OCR processing
 4. Configure deletion of originals if desired (with prominent warning)
+
+### Bulk Import Existing Screenshots
+1. **Pull down** on the main screenshot list to refresh
+2. All existing screenshots will be imported with automatic OCR processing
+3. Progress tracking shows scanning and import status
+4. Duplicate detection prevents re-importing the same screenshots
+
+### Smart Search & Discovery
+1. **Search appears** automatically when screenshots are available
+2. **Type to search** through all extracted text content
+3. **Real-time results** with <100ms response time
+4. **Text highlighting** shows matching content in results
+5. **Advanced filters** by date, content type, and relevance
 
 ### Manual Import
 1. Tap the + button in the navigation bar
 2. Select up to 10 screenshots from your photo library
-3. Watch them import with progress indication and haptic feedback
+3. Watch them import with progress indication and automatic OCR
 4. Enjoy optimized storage and smooth animations
 
 ### Viewing & Managing
@@ -161,9 +192,10 @@ Each sprint delivers a functional, polished experience:
 - **Sprint 0**: Foundation and project setup ✅
 - **Sprint 1**: Manual import MVP with core functionality ✅
 - **Sprint 2**: Automation engine with background detection ✅
-- **Sprint 3**: OCR and intelligent search (upcoming)
+- **Sprint 3**: OCR and intelligent search ✅
 - **Sprint 4**: Glass aesthetic and advanced animations (planned)
 - **Sprint 5**: Mind map and contextual linking (planned)
+- **Sprint 6**: Object recognition and user annotations (planned)
 
 ### Quality Standards
 - **Functional**: All features work without crashes

@@ -2,6 +2,8 @@ import Foundation
 import SwiftUI
 import SwiftData
 import PhotosUI
+import UIKit
+import Photos
 
 @MainActor
 class ScreenshotListViewModel: ObservableObject {
@@ -11,10 +13,13 @@ class ScreenshotListViewModel: ObservableObject {
     @Published var importProgress: Double = 0.0
     
     private let imageStorageService: ImageStorageServiceProtocol
+    private let ocrService: OCRServiceProtocol
     private var modelContext: ModelContext?
     
-    init(imageStorageService: ImageStorageServiceProtocol = ImageStorageService()) {
+    init(imageStorageService: ImageStorageServiceProtocol = ImageStorageService(),
+         ocrService: OCRServiceProtocol = OCRService()) {
         self.imageStorageService = imageStorageService
+        self.ocrService = ocrService
     }
     
     func setModelContext(_ context: ModelContext) {
@@ -58,6 +63,20 @@ class ScreenshotListViewModel: ObservableObject {
         let imageData = try await imageStorageService.saveImage(image, filename: filename)
         
         let screenshot = Screenshot(imageData: imageData, filename: filename)
+        
+        // Process OCR in background
+        Task {
+            do {
+                let extractedText = try await ocrService.extractText(from: image)
+                await MainActor.run {
+                    screenshot.extractedText = extractedText
+                    try? modelContext.save()
+                }
+            } catch {
+                // OCR failure is not critical for import
+                print("OCR processing failed: \(error.localizedDescription)")
+            }
+        }
         
         modelContext.insert(screenshot)
         
@@ -129,6 +148,132 @@ class ScreenshotListViewModel: ObservableObject {
     func dismissError() {
         showingError = false
         errorMessage = nil
+    }
+    
+    func importAllExistingScreenshots() async {
+        guard !isImporting else { return }
+        guard let modelContext = modelContext else { return }
+        
+        // Request photo library permission if needed
+        let authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        guard authorizationStatus == .authorized || authorizationStatus == .limited else {
+            await handleImportError(ImportError.loadFailed)
+            return
+        }
+        
+        isImporting = true
+        importProgress = 0.0
+        
+        // Fetch all screenshots from photo library
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.predicate = NSPredicate(format: "mediaSubtype & %d != 0", PHAssetMediaSubtype.photoScreenshot.rawValue)
+        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        
+        let screenshotAssets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+        
+        // Filter out already imported screenshots
+        var assetsToImport: [PHAsset] = []
+        screenshotAssets.enumerateObjects { asset, _, _ in
+            // Check if already imported using asset identifier
+            let assetId = asset.localIdentifier
+            let existingScreenshots = try? modelContext.fetch(
+                FetchDescriptor<Screenshot>(
+                    predicate: #Predicate<Screenshot> { screenshot in
+                        screenshot.assetIdentifier == assetId
+                    }
+                )
+            )
+            
+            if existingScreenshots?.isEmpty != false {
+                assetsToImport.append(asset)
+            }
+        }
+        
+        guard !assetsToImport.isEmpty else {
+            isImporting = false
+            importProgress = 0.0
+            return
+        }
+        
+        print("📸 Importing \(assetsToImport.count) existing screenshots")
+        
+        let totalAssets = Double(assetsToImport.count)
+        let imageManager = PHImageManager.default()
+        let requestOptions = PHImageRequestOptions()
+        requestOptions.isSynchronous = false
+        requestOptions.deliveryMode = .highQualityFormat
+        requestOptions.resizeMode = .exact
+        requestOptions.isNetworkAccessAllowed = true
+        
+        // Process screenshots sequentially to avoid memory issues
+        for (index, asset) in assetsToImport.enumerated() {
+            do {
+                await withCheckedContinuation { continuation in
+                    imageManager.requestImage(
+                        for: asset,
+                        targetSize: PHImageManagerMaximumSize,
+                        contentMode: .aspectFit,
+                        options: requestOptions
+                    ) { [weak self] image, _ in
+                        guard let image = image, let self = self else {
+                            continuation.resume()
+                            return
+                        }
+                        
+                        Task {
+                            do {
+                                let imageData = try await self.imageStorageService.saveImage(
+                                    image,
+                                    filename: "screenshot_\(asset.localIdentifier)"
+                                )
+                                
+                                let screenshot = Screenshot(
+                                    imageData: imageData,
+                                    filename: "screenshot_\(Date().timeIntervalSince1970)",
+                                    timestamp: asset.creationDate ?? Date(),
+                                    assetIdentifier: asset.localIdentifier
+                                )
+                                
+                                // Process OCR in background
+                                Task {
+                                    do {
+                                        let extractedText = try await self.ocrService.extractText(from: image)
+                                        await MainActor.run {
+                                            screenshot.extractedText = extractedText
+                                            try? modelContext.save()
+                                        }
+                                    } catch {
+                                        print("OCR processing failed: \(error.localizedDescription)")
+                                    }
+                                }
+                                
+                                await MainActor.run {
+                                    modelContext.insert(screenshot)
+                                    try? modelContext.save()
+                                    
+                                    self.importProgress = Double(index + 1) / totalAssets
+                                }
+                            } catch {
+                                print("❌ Failed to import screenshot: \(error)")
+                            }
+                            continuation.resume()
+                        }
+                    }
+                }
+            } catch {
+                await handleImportError(error)
+                break
+            }
+        }
+        
+        isImporting = false
+        importProgress = 0.0
+        
+        // Add haptic feedback for completion
+        let impact = UIImpactFeedbackGenerator(style: .medium)
+        impact.impactOccurred()
+        
+        print("📸 Completed importing \(assetsToImport.count) existing screenshots")
     }
 }
 

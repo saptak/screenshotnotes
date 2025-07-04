@@ -396,10 +396,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1.1;
 				DEVELOPMENT_TEAM = 8GQ5EFFMV3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = com.screenshotnotes.refresh;
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Screenshot Notes needs access to save processed screenshots to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Screenshot Notes needs access to your photo library to automatically import and organize your screenshots.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -426,10 +427,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1.1;
 				DEVELOPMENT_TEAM = 8GQ5EFFMV3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = com.screenshotnotes.refresh;
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Screenshot Notes needs access to save processed screenshots to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Screenshot Notes needs access to your photo library to automatically import and organize your screenshots.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

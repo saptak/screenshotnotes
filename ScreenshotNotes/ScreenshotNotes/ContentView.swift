@@ -6,31 +6,67 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Screenshot.timestamp, order: .reverse) private var screenshots: [Screenshot]
     @StateObject private var viewModel = ScreenshotListViewModel()
+    @StateObject private var searchService = SearchService()
     @EnvironmentObject private var photoLibraryService: PhotoLibraryService
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var showingImportSheet = false
     @State private var showingSettings = false
+    @State private var searchText = ""
+    @State private var isSearchActive = false
+    @State private var searchFilters = SearchFilters()
+    
+    private var filteredScreenshots: [Screenshot] {
+        (searchService as AdvancedSearchServiceProtocol).searchScreenshots(
+            query: searchText,
+            in: screenshots,
+            filters: searchFilters
+        )
+    }
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                if screenshots.isEmpty && !viewModel.isImporting {
-                    EmptyStateView(onImportTapped: {
-                        showingImportSheet = true
-                    })
-                } else {
-                    ScreenshotListView(
-                        screenshots: screenshots,
-                        viewModel: viewModel
+            VStack(spacing: 0) {
+                if !screenshots.isEmpty {
+                    SearchView(
+                        searchText: $searchText,
+                        isSearchActive: $isSearchActive,
+                        searchFilters: $searchFilters,
+                        onClear: {
+                            searchText = ""
+                            isSearchActive = false
+                            searchFilters = SearchFilters()
+                        }
                     )
                 }
                 
-                if viewModel.isImporting {
-                    ImportProgressOverlay(progress: viewModel.importProgress)
+                ZStack {
+                    if screenshots.isEmpty && !viewModel.isImporting {
+                        EmptyStateView(onImportTapped: {
+                            showingImportSheet = true
+                        })
+                    } else if isSearchActive {
+                        SearchResultsView(
+                            screenshots: filteredScreenshots,
+                            searchText: searchText,
+                            onScreenshotTap: { screenshot in
+                                // Present screenshot detail view
+                                // This will be handled by the SearchResultCard navigation
+                            }
+                        )
+                    } else {
+                        ScreenshotListView(
+                            screenshots: screenshots,
+                            viewModel: viewModel
+                        )
+                    }
+                    
+                    if viewModel.isImporting {
+                        ImportProgressOverlay(progress: viewModel.importProgress)
+                    }
                 }
             }
-            .navigationTitle("Screenshot Notes")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle(isSearchActive ? "Search Results" : "Screenshot Notes")
+            .navigationBarTitleDisplayMode(isSearchActive ? .inline : .large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
@@ -53,6 +89,7 @@ struct ContentView: View {
                             .fontWeight(.semibold)
                     }
                     .disabled(viewModel.isImporting)
+                    .opacity(isSearchActive ? 0.5 : 1.0)
                 }
             }
             .photosPicker(
@@ -137,6 +174,7 @@ struct ScreenshotListView: View {
     let screenshots: [Screenshot]
     let viewModel: ScreenshotListViewModel
     @State private var selectedScreenshot: Screenshot?
+    @State private var isRefreshing = false
     
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 16)
@@ -168,9 +206,16 @@ struct ScreenshotListView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
         }
+        .refreshable {
+            await refreshAllScreenshots()
+        }
         .fullScreenCover(item: $selectedScreenshot) { screenshot in
             ScreenshotDetailView(screenshot: screenshot)
         }
+    }
+    
+    private func refreshAllScreenshots() async {
+        await viewModel.importAllExistingScreenshots()
     }
 }
 
@@ -265,13 +310,19 @@ struct ImportProgressOverlay: View {
                     .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
                     .scaleEffect(1.5)
                 
-                Text("Importing...")
+                Text(progress > 0 ? "Importing..." : "Scanning Photo Library...")
                     .font(.headline)
                     .foregroundColor(.primary)
                 
-                Text("\(Int(progress * 100))% complete")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                if progress > 0 {
+                    Text("\(Int(progress * 100))% complete")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("Finding screenshots to import")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
             .padding(24)
             .background(
