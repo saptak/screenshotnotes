@@ -179,50 +179,115 @@ struct ScreenshotListView: View {
     // Navigation support
     @Namespace private var heroNamespace
     
+    // Contextual menu support
+    @StateObject private var menuService = ContextualMenuService.shared
+    @StateObject private var hapticService = HapticFeedbackService.shared
+    @State private var currentContextScreenshot: Screenshot?
+    
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 16)
     ]
     
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 16) {
-                ForEach(screenshots, id: \.id) { screenshot in
-                    ScreenshotThumbnailView(
-                        screenshot: screenshot,
-                        heroNamespace: heroNamespace,
-                        onTap: {
-                            selectedScreenshot = screenshot
-                            let impact = UIImpactFeedbackGenerator(style: .light)
-                            impact.impactOccurred()
-                        },
-                        onDelete: {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                viewModel.deleteScreenshot(screenshot)
+        ZStack(alignment: .bottom) {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(screenshots, id: \.id) { screenshot in
+                        ScreenshotThumbnailView(
+                            screenshot: screenshot,
+                            heroNamespace: heroNamespace,
+                            onTap: {
+                                if menuService.batchSelection.isActive {
+                                    menuService.toggleSelection(for: screenshot)
+                                } else {
+                                    selectedScreenshot = screenshot
+                                    hapticService.triggerHaptic(.menuSelection)
+                                }
+                            },
+                            onLongPress: { position in
+                                if !menuService.batchSelection.isActive {
+                                    showContextualMenu(for: screenshot, at: position)
+                                }
+                            },
+                            onDelete: {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    viewModel.deleteScreenshot(screenshot)
+                                }
+                            }
+                        )
+                        .overlay(alignment: .topTrailing) {
+                            if menuService.batchSelection.isActive {
+                                SelectionCheckbox(
+                                    isSelected: menuService.batchSelection.selectedItems.contains(screenshot.id)
+                                )
+                                .padding(8)
                             }
                         }
-                    )
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.8).combined(with: .opacity).combined(with: .offset(y: 20)),
-                        removal: .scale(scale: 0.8).combined(with: .opacity).combined(with: .offset(y: -20))
-                    ))
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.8).combined(with: .opacity).combined(with: .offset(y: 20)),
+                            removal: .scale(scale: 0.8).combined(with: .opacity).combined(with: .offset(y: -20))
+                        ))
+                    }
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .padding(.bottom, menuService.batchSelection.isActive ? 80 : 0)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-        }
-        .refreshable {
-            await refreshAllScreenshots()
+            .refreshable {
+                await refreshAllScreenshots()
+            }
+            
+            // Batch selection toolbar
+            BatchSelectionToolbar(screenshots: screenshots)
         }
         .fullScreenCover(item: $selectedScreenshot) { screenshot in
             ScreenshotDetailView(
                 screenshot: screenshot,
-                heroNamespace: heroNamespace
+                heroNamespace: heroNamespace,
+                allScreenshots: screenshots
             )
+        }
+        .overlay {
+            ContextualMenuOverlay(contextScreenshot: currentContextScreenshot)
+        }
+        .toolbar {
+            if menuService.batchSelection.isActive {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Select All") {
+                        menuService.selectAll(screenshots)
+                    }
+                    .disabled(menuService.batchSelection.count == screenshots.count)
+                }
+            }
         }
     }
     
     private func refreshAllScreenshots() async {
         await viewModel.importAllExistingScreenshots()
+    }
+    
+    private func showContextualMenu(for screenshot: Screenshot, at position: CGPoint) {
+        currentContextScreenshot = screenshot
+        hapticService.triggerHaptic(.longPressTriggered)
+        
+        // Create menu actions based on screenshot context
+        let menuActions: [ContextualMenuService.MenuAction] = [
+            .share,
+            .copy,
+            .favorite,
+            .tag,
+            .delete
+        ]
+        
+        let configuration = ContextualMenuService.MenuConfiguration(
+            actions: menuActions,
+            enableHaptics: true,
+            animationDuration: 0.3,
+            menuAppearanceDelay: 0.1,
+            dismissAfterAction: true
+        )
+        
+        menuService.showMenu(configuration: configuration, at: position, for: screenshot)
     }
 }
 
@@ -230,10 +295,12 @@ struct ScreenshotThumbnailView: View {
     let screenshot: Screenshot
     let heroNamespace: Namespace.ID
     let onTap: () -> Void
+    let onLongPress: (CGPoint) -> Void
     let onDelete: () -> Void
     
     @State private var isPressed = false
     @State private var showingDeleteConfirmation = false
+    @State private var longPressLocation: CGPoint = .zero
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -275,11 +342,17 @@ struct ScreenshotThumbnailView: View {
         .onTapGesture {
             onTap()
         }
-        .onLongPressGesture(minimumDuration: 0.5) {
-            showingDeleteConfirmation = true
-            let impact = UIImpactFeedbackGenerator(style: .medium)
-            impact.impactOccurred()
-        }
+        .gesture(
+            LongPressGesture(minimumDuration: 0.5)
+                .onEnded { _ in
+                    onLongPress(longPressLocation)
+                }
+                .simultaneously(with: DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        longPressLocation = value.location
+                    }
+                )
+        )
         .onPressGesture(
             onPressChanged: { pressed in
                 withAnimation(.easeInOut(duration: 0.1)) {
@@ -356,6 +429,47 @@ struct PressGesture: ViewModifier {
 extension View {
     func onPressGesture(onPressChanged: @escaping (Bool) -> Void) -> some View {
         modifier(PressGesture(onPressChanged: onPressChanged))
+    }
+}
+
+// MARK: - Selection Checkbox Component
+
+struct SelectionCheckbox: View {
+    let isSelected: Bool
+    @State private var animationScale: CGFloat = 1.0
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(.background)
+                .frame(width: 24, height: 24)
+                .shadow(radius: 2, y: 1)
+            
+            if isSelected {
+                Circle()
+                    .fill(.tint)
+                    .frame(width: 20, height: 20)
+                    .overlay {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    .scaleEffect(animationScale)
+                    .onAppear {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                            animationScale = 1.0
+                        }
+                    }
+                    .onDisappear {
+                        animationScale = 0.8
+                    }
+            } else {
+                Circle()
+                    .stroke(.secondary, lineWidth: 2)
+                    .frame(width: 20, height: 20)
+            }
+        }
+        .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isSelected)
     }
 }
 

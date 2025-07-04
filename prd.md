@@ -1,10 +1,10 @@
 # Product Requirements Document: Screenshot Notes
 
-**Version:** 1.1
+**Version:** 1.4
 
-**Date:** 2025-07-03
+**Date:** 2025-07-04
 
-**Status:** Sprint 2 Complete - Automatic Screenshot Detection Delivered
+**Status:** Sprint 4 Sub-Sprint 4.3 Complete - Contextual Menu System & Swipe Navigation Enhanced
 
 ---
 
@@ -65,15 +65,19 @@ The user experience is paramount and will be guided by the following principles:
 *   **Visual Navigation:** Users can explore their screenshot library through the interconnected mind map, discovering relationships between notes.
 
 ### 4.4. User Interaction & Organization
-*   **Manual Context:** Users can add their own notes, text annotations, and tags to any screenshot.
-*   **Mind Map Editing:** Users can manually create, edit, or remove the links between screenshots in the mind map to refine the organization.
-*   **Manual Import:** Users can explicitly import any image from their Photos library, not just screenshots.
-*   **Deletion:** Users can easily delete single or multiple screenshots from the app's library.
-*   **Copying:** Users should be able to copy out information (e.g. coupon codes, URLs, information in QR codes, etc.).
+*   **Contextual Menu System:** Long-press contextual menus with haptic feedback providing quick actions (share, copy, delete, tag, favorite, export, duplicate)
+*   **Batch Operations:** Multi-select capabilities with batch selection toolbar for bulk operations
+*   **Swipe Navigation:** Full screen gesture recognition (swipe down to dismiss, left/right to navigate, up for actions)
+*   **Manual Context:** Users can add their own notes, text annotations, and tags to any screenshot
+*   **Mind Map Editing:** Users can manually create, edit, or remove the links between screenshots in the mind map to refine the organization
+*   **Manual Import:** Users can explicitly import any image from their Photos library, not just screenshots
+*   **Deletion:** Users can easily delete single or multiple screenshots from the app's library
+*   **Copying:** Users should be able to copy out information (e.g. coupon codes, URLs, information in QR codes, etc.)
+*   **Accessibility:** Full VoiceOver support and assistive technology compatibility
 
 ## 5. Technical Requirements & Considerations
 
-*   **Platform:** iOS 17.0+, targeting the latest major version.
+*   **Platform:** iOS 18.0+, targeting the latest major version.
 *   **Primary APIs:**
     *   **Vision Framework:** For all on-device OCR and image analysis tasks.
     *   **Photos Framework:** For observing and fetching screenshots from the user's library.
@@ -91,7 +95,9 @@ The user experience is paramount and will be guided by the following principles:
     *   App launch: <2 seconds cold start, <0.5 seconds warm start
     *   OCR processing: <3 seconds per screenshot
     *   Search results: <100ms response time
-    *   Animation frame rate: 60fps minimum, 120fps target
+    *   Animation frame rate: 60fps minimum, 120fps target on ProMotion displays
+    *   Contextual menu response: <50ms
+    *   Haptic feedback latency: <100ms
 *   **Battery Optimization:**
     *   Background processing limited to 30 seconds per session
     *   Batch OCR processing during device charging
@@ -105,12 +111,14 @@ The user experience is paramount and will be guided by the following principles:
     *   Dynamic Type support for text scaling
     *   High contrast mode compatibility
     *   Voice Control gesture alternatives
+    *   WCAG AA compliance for all UI components
+    *   Alternative interaction methods for assistive technologies
 
 ## 6. Implementation Status
 
 ### Sprint 0 - Foundation Complete ✅
 *   **Git Repository**: Private GitHub repository established
-*   **Xcode Project**: iOS 17+ project with SwiftUI and SwiftData configured
+*   **Xcode Project**: iOS 18+ project with SwiftUI and SwiftData configured
 *   **Architecture**: MVVM structure with organized folder hierarchy
 *   **Data Model**: Screenshot entity with SwiftData schema
 *   **Basic UI**: ContentView with empty state and list view components
@@ -140,8 +148,26 @@ The user experience is paramount and will be guided by the following principles:
 *   **Performance Optimizations**: Memory-efficient sequential processing with batch optimization
 *   **Privacy Integration**: Proper Info.plist declarations for photo library access permissions
 
-### Next Sprint: Sprint 3 - OCR & Intelligence
-Ready to implement on-device OCR, text extraction, and search functionality.
+### Sprint 3 - OCR & Intelligence Complete ✅
+*   **Vision Framework OCR**: High-accuracy text extraction using VNRecognizeTextRequest
+*   **Real-time Search**: <100ms response time with intelligent caching and text highlighting
+*   **Advanced Search Filters**: Date range, content type, and relevance-based sorting
+*   **Background OCR Processing**: Automatic text extraction for existing screenshots with progress tracking
+*   **Search Performance**: Optimized with SearchCache implementation and debounced queries
+*   **Glass UX Search Interface**: Beautiful translucent materials with smooth animations
+*   **Bulk Import**: Pull-to-refresh functionality for importing all existing screenshots
+*   **Search Results**: Relevance-scored cards with text highlighting and smooth animations
+
+### Sprint 4 - Enhanced Glass Aesthetic & Advanced UI Patterns (Sub-Sprint 4.3 Complete) ✅
+*   **Sub-Sprint 4.1 - Material Design System**: Comprehensive design system with 8 depth tokens and WCAG AA accessibility compliance
+*   **Sub-Sprint 4.2 - Hero Animation System**: Complete hero animation infrastructure with 120fps ProMotion optimization (temporarily disabled)
+*   **Sub-Sprint 4.3 - Contextual Menu System**: Long-press contextual menus with haptic feedback and batch operations
+*   **Enhanced - Swipe Navigation**: Full screen gesture recognition for screenshot browsing
+*   **Performance Testing**: Comprehensive testing frameworks for all animation and interaction systems
+*   **Accessibility Integration**: Full VoiceOver support and assistive technology compatibility
+
+### Next: Sprint 4 Sub-Sprint 4.4 - Advanced Gestures
+Ready to implement pull-to-refresh, additional swipe actions, and enhanced multi-touch interactions.
 
 ## 7. Out of Scope (for Version 1.0)
 

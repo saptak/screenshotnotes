@@ -3,6 +3,7 @@ import SwiftUI
 struct ScreenshotDetailView: View {
     let screenshot: Screenshot
     let heroNamespace: Namespace.ID
+    let allScreenshots: [Screenshot]
     @Environment(\.dismiss) private var dismiss
     @State private var scale: CGFloat = 1.0
     @State private var offset: CGSize = .zero
@@ -10,11 +11,35 @@ struct ScreenshotDetailView: View {
     @State private var lastOffset: CGSize = .zero
     @State private var showingControls = true
     @State private var controlsTimer: Timer?
+    @State private var currentScreenshot: Screenshot
+    @State private var showingActionSheet = false
     
     // Navigation support
     
     private let minScale: CGFloat = 0.5
     private let maxScale: CGFloat = 4.0
+    
+    // Swipe thresholds
+    private let swipeThreshold: CGFloat = 50
+    
+    private var currentIndex: Int {
+        allScreenshots.firstIndex(where: { $0.id == currentScreenshot.id }) ?? 0
+    }
+    
+    private var canNavigatePrevious: Bool {
+        currentIndex > 0
+    }
+    
+    private var canNavigateNext: Bool {
+        currentIndex < allScreenshots.count - 1
+    }
+    
+    init(screenshot: Screenshot, heroNamespace: Namespace.ID, allScreenshots: [Screenshot]) {
+        self.screenshot = screenshot
+        self.heroNamespace = heroNamespace
+        self.allScreenshots = allScreenshots
+        self._currentScreenshot = State(initialValue: screenshot)
+    }
     
     var body: some View {
         ZStack {
@@ -22,13 +47,13 @@ struct ScreenshotDetailView: View {
                 .ignoresSafeArea()
             
             GeometryReader { geometry in
-                if let image = UIImage(data: screenshot.imageData) {
+                if let image = UIImage(data: currentScreenshot.imageData) {
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .scaleEffect(scale)
                         .offset(offset)
-                        .gesture(combinedGesture)
+                        .gesture(allGestures)
                         .onTapGesture(count: 2) {
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                                 if scale > 1.0 {
@@ -74,7 +99,7 @@ struct ScreenshotDetailView: View {
                         
                         Spacer()
                         
-                        Text(screenshot.filename)
+                        Text(currentScreenshot.filename)
                             .font(.headline)
                             .foregroundColor(.white)
                             .lineLimit(1)
@@ -109,9 +134,35 @@ struct ScreenshotDetailView: View {
                 // Bottom info overlay
                 if showingControls {
                     VStack(spacing: 8) {
-                        Text(screenshot.timestamp.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.8))
+                        HStack {
+                            if canNavigatePrevious {
+                                Button("◀") {
+                                    navigateToPrevious()
+                                }
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                            }
+                            
+                            VStack(spacing: 4) {
+                                Text(currentScreenshot.timestamp.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.8))
+                                
+                                Text("\(currentIndex + 1) of \(allScreenshots.count)")
+                                    .font(.caption2)
+                                    .foregroundColor(.white.opacity(0.6))
+                            }
+                            
+                            if canNavigateNext {
+                                Button("▶") {
+                                    navigateToNext()
+                                }
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                            }
+                        }
                         
                         if scale != 1.0 {
                             HStack {
@@ -147,13 +198,81 @@ struct ScreenshotDetailView: View {
         .onDisappear {
             controlsTimer?.invalidate()
         }
+        .confirmationDialog("Choose Action", isPresented: $showingActionSheet, titleVisibility: .visible) {
+            Button("Share") {
+                shareCurrentImage()
+            }
+            
+            Button("Delete", role: .destructive) {
+                deleteCurrentImage()
+            }
+            
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("What would you like to do with this screenshot?")
+        }
     }
     
-    private var combinedGesture: some Gesture {
+    private var allGestures: some Gesture {
         SimultaneousGesture(
             magnificationGesture,
-            dragGesture
+            combinedDragGesture
         )
+    }
+    
+    private var combinedDragGesture: some Gesture {
+        DragGesture()
+            .onChanged { value in
+                if scale > 1.0 {
+                    // When zoomed in, use pan gesture
+                    offset = CGSize(
+                        width: lastOffset.width + value.translation.width,
+                        height: lastOffset.height + value.translation.height
+                    )
+                }
+                scheduleControlsTimer()
+            }
+            .onEnded { value in
+                if scale > 1.0 {
+                    // When zoomed in, handle pan end
+                    lastOffset = offset
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        constrainOffset()
+                    }
+                    addHapticFeedback(.light)
+                } else {
+                    // When not zoomed, handle swipe gestures
+                    let horizontalAmount = value.translation.width
+                    let verticalAmount = value.translation.height
+                    
+                    // Determine primary direction
+                    if abs(horizontalAmount) > abs(verticalAmount) {
+                        // Horizontal swipe
+                        if abs(horizontalAmount) > swipeThreshold {
+                            if horizontalAmount > 0 && canNavigatePrevious {
+                                // Swipe right - go to previous
+                                navigateToPrevious()
+                            } else if horizontalAmount < 0 && canNavigateNext {
+                                // Swipe left - go to next
+                                navigateToNext()
+                            }
+                        }
+                    } else {
+                        // Vertical swipe
+                        if abs(verticalAmount) > swipeThreshold {
+                            if verticalAmount > 0 {
+                                // Swipe down - dismiss
+                                dismiss()
+                                addHapticFeedback(.medium)
+                            } else {
+                                // Swipe up - show actions
+                                showingActionSheet = true
+                                addHapticFeedback(.light)
+                            }
+                        }
+                    }
+                }
+            }
     }
     
     private var magnificationGesture: some Gesture {
@@ -180,28 +299,6 @@ struct ScreenshotDetailView: View {
             }
     }
     
-    private var dragGesture: some Gesture {
-        DragGesture()
-            .onChanged { value in
-                if scale > 1.0 {
-                    offset = CGSize(
-                        width: lastOffset.width + value.translation.width,
-                        height: lastOffset.height + value.translation.height
-                    )
-                }
-                scheduleControlsTimer()
-            }
-            .onEnded { value in
-                lastOffset = offset
-                
-                // Constrain offset to keep image visible
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    constrainOffset()
-                }
-                
-                addHapticFeedback(.light)
-            }
-    }
     
     private func resetZoom() {
         scale = 1.0
@@ -240,8 +337,28 @@ struct ScreenshotDetailView: View {
         }
     }
     
+    private func navigateToPrevious() {
+        guard canNavigatePrevious else { return }
+        
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentScreenshot = allScreenshots[currentIndex - 1]
+            resetZoom()
+        }
+        addHapticFeedback(.light)
+    }
+    
+    private func navigateToNext() {
+        guard canNavigateNext else { return }
+        
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentScreenshot = allScreenshots[currentIndex + 1]
+            resetZoom()
+        }
+        addHapticFeedback(.light)
+    }
+    
     private func shareImage() {
-        guard let image = UIImage(data: screenshot.imageData) else { return }
+        guard let image = UIImage(data: currentScreenshot.imageData) else { return }
         
         let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
         
@@ -254,9 +371,20 @@ struct ScreenshotDetailView: View {
     }
     
     private func copyImage() {
-        guard let image = UIImage(data: screenshot.imageData) else { return }
+        guard let image = UIImage(data: currentScreenshot.imageData) else { return }
         UIPasteboard.general.image = image
         addHapticFeedback(.light)
+    }
+    
+    private func shareCurrentImage() {
+        shareImage()
+    }
+    
+    private func deleteCurrentImage() {
+        // TODO: Implement deletion through proper data model
+        // For now, just dismiss with haptic feedback
+        addHapticFeedback(.heavy)
+        dismiss()
     }
     
     private func addHapticFeedback(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
@@ -272,7 +400,12 @@ struct ScreenshotDetailView: View {
         var body: some View {
             ScreenshotDetailView(
                 screenshot: Screenshot(imageData: Data(), filename: "test_image.jpg"),
-                heroNamespace: heroNamespace
+                heroNamespace: heroNamespace,
+                allScreenshots: [
+                    Screenshot(imageData: Data(), filename: "test_image_1.jpg"),
+                    Screenshot(imageData: Data(), filename: "test_image_2.jpg"),
+                    Screenshot(imageData: Data(), filename: "test_image_3.jpg")
+                ]
             )
         }
     }

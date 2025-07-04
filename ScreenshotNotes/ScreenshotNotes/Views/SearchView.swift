@@ -199,7 +199,8 @@ struct SearchResultsView: View {
         .fullScreenCover(item: $selectedScreenshot) { screenshot in
             ScreenshotDetailView(
                 screenshot: screenshot,
-                heroNamespace: searchHeroNamespace
+                heroNamespace: searchHeroNamespace,
+                allScreenshots: screenshots
             )
         }
     }
