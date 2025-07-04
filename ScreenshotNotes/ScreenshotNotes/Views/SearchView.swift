@@ -98,11 +98,7 @@ struct SearchView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .stroke(.quaternary, lineWidth: 0.5)
-            }
+            .overlayMaterial(cornerRadius: 12, stroke: .subtle)
             .scaleEffect(isSearchFieldFocused ? 1.02 : 1.0)
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isSearchFieldFocused)
             
@@ -135,7 +131,7 @@ struct SearchView: View {
         .padding(.top, 8)
         .background {
             Rectangle()
-                .fill(.regularMaterial)
+                .materialBackground(depth: .navigation)
                 .ignoresSafeArea()
         }
         .onTapGesture {
@@ -236,16 +232,13 @@ struct SearchResultCard: View {
                     .foregroundStyle(.tertiary)
             }
         }
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .shadow(
-                    color: .black.opacity(0.1),
-                    radius: isPressed ? 2 : 8,
-                    x: 0,
-                    y: isPressed ? 1 : 4
-                )
-        }
+        .surfaceMaterial(cornerRadius: 16, stroke: nil)
+        .shadow(
+            color: .black.opacity(isPressed ? 0.15 : 0.08),
+            radius: isPressed ? 2 : 6,
+            x: 0,
+            y: isPressed ? 1 : 3
+        )
         .scaleEffect(isPressed ? 0.95 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
         .onTapGesture {

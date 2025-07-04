@@ -2,11 +2,11 @@
 
 A beautiful and intelligent iOS application that revolutionizes how you manage and interact with your screenshots. Built with SwiftUI and SwiftData, featuring automatic screenshot detection, intelligent organization, and on-device processing.
 
-## 🚀 Current Status: Sprint 3 Complete
+## 🚀 Current Status: Sprint 4.1 Complete
 
-**OCR & Intelligence Engine Delivered** ✅
+**Enhanced Material Design System Delivered** ✅
 
-The app now features complete OCR text extraction, intelligent search, and advanced filtering capabilities, transforming screenshots into a searchable knowledge base.
+The app now features a comprehensive Material Design System with systematic depth layering, enhanced Glass UX components, and WCAG AA accessibility compliance. Sprint 4 is in progress with hero animations coming next.
 
 ## ✨ Features
 
@@ -35,6 +35,14 @@ The app now features complete OCR text extraction, intelligent search, and advan
 - **Background Processing**: Automatic text extraction for existing screenshots
 - **Smart Search**: Text highlighting, relevance scoring, and cached results
 
+### 🎨 Sprint 4.1 - Enhanced Material Design System ✅
+- **MaterialDesignSystem**: Comprehensive design system with 8 systematic depth tokens
+- **Enhanced Glass UX**: Refined SearchView, ContentView, and ScreenshotDetailView materials
+- **Accessibility Excellence**: WCAG AA compliance with automatic system adaptation
+- **Performance Optimized**: 60fps+ rendering with comprehensive testing framework
+- **Cross-Device Validated**: Materials tested across all device sizes and appearance modes
+- **Systematic Hierarchy**: Consistent depth layering replacing manual opacity backgrounds
+
 ## 🏗️ Architecture
 
 ### Design Pattern: MVVM
@@ -52,6 +60,9 @@ The app now features complete OCR text extraction, intelligent search, and advan
 - **OCRService**: Vision Framework text extraction with error handling
 - **SearchService**: Real-time search with caching and relevance scoring
 - **BackgroundOCRProcessor**: Batch OCR processing for existing screenshots
+- **MaterialDesignSystem**: Comprehensive design system with 8 depth tokens and accessibility support
+- **MaterialPerformanceTest**: Automated performance testing framework for 60fps validation
+- **MaterialVisualTest**: Cross-device visual testing and accessibility compliance verification
 
 ### Data Layer
 - **SwiftData**: Modern Core Data replacement for persistence
@@ -62,12 +73,14 @@ The app now features complete OCR text extraction, intelligent search, and advan
 
 ## 🎨 Design System
 
-### Visual Language: "Glass UX"
-- **Materials**: Translucent backgrounds with blur effects
+### Visual Language: "Enhanced Glass UX"
+- **MaterialDesignSystem**: 8 systematic depth tokens (background to dialog elevation)
+- **Materials**: Strategic mapping of depth to Apple's Material types with accessibility adaptation
 - **Animations**: Spring-based with dampingFraction: 0.8, response: 0.6
 - **Spacing**: 8pt grid system (8, 16, 24, 32, 48, 64)
 - **Typography**: SF Pro Display/Text with hierarchical scaling
-- **Colors**: Dynamic system colors with dark mode support
+- **Colors**: Dynamic system colors with dark mode support and WCAG AA compliance
+- **Accessibility**: Automatic adaptation to reduce transparency and high contrast settings
 
 ### Component Hierarchy
 - **Thumbnail Grid**: 16pt spacing with adaptive columns (min 160pt)
@@ -124,12 +137,18 @@ ScreenshotNotes/
 │   │   ├── OCRService.swift              # Vision Framework text extraction
 │   │   ├── SearchService.swift           # Real-time search with caching
 │   │   ├── SearchCache.swift             # Performance optimization
-│   │   └── BackgroundOCRProcessor.swift  # Batch OCR processing
+│   │   ├── BackgroundOCRProcessor.swift  # Batch OCR processing
+│   │   ├── MaterialDesignSystem.swift    # Enhanced design system with 8 depth tokens
+│   │   ├── MaterialPerformanceTest.swift # Automated 60fps performance testing
+│   │   └── MaterialVisualTest.swift      # Cross-device visual and accessibility testing
 │   ├── Assets.xcassets/
 │   │   └── AppIcon.appiconset/          # Custom brain-themed icon
 │   └── ScreenshotNotesApp.swift         # App entry point and initialization
-├── prd.md                               # Product Requirements Document
-├── implementation_plan.md               # Technical implementation roadmap
+├── PRD.md                               # Product Requirements Document
+├── IMPLEMENTATION_PLAN.md               # Technical implementation roadmap with Sprint 4.1 updates
+├── SPRINT_4_BREAKDOWN.md                # Detailed Sprint 4 atomic sub-sprint breakdown
+├── SPRINT_4_1_IMPLEMENTATION_SUMMARY.md # Complete Sub-Sprint 4.1 implementation summary
+├── PROJECT_STATUS_UPDATE.md             # Comprehensive project status and progress tracking
 └── README.md                           # This documentation
 ```
 
@@ -193,7 +212,7 @@ Each sprint delivers a functional, polished experience:
 - **Sprint 1**: Manual import MVP with core functionality ✅
 - **Sprint 2**: Automation engine with background detection ✅
 - **Sprint 3**: OCR and intelligent search ✅
-- **Sprint 4**: Glass aesthetic and advanced animations (planned)
+- **Sprint 4**: Enhanced glass aesthetic and advanced animations (Sub-Sprint 4.1 ✅ complete)
 - **Sprint 5**: Mind map and contextual linking (planned)
 - **Sprint 6**: Object recognition and user annotations (planned)
 

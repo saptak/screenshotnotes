@@ -253,11 +253,7 @@ struct ScreenshotThumbnailView: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
-            )
-            .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 2)
+            .surfaceMaterial(cornerRadius: 14, stroke: StrokeConfiguration(color: .primary.opacity(0.08), lineWidth: 0.5))
             .scaleEffect(isPressed ? 0.96 : 1.0)
             .opacity(isPressed ? 0.85 : 1.0)
             
@@ -325,10 +321,7 @@ struct ImportProgressOverlay: View {
                 }
             }
             .padding(24)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.regularMaterial)
-            )
+            .modalMaterial(cornerRadius: 16)
         }
         .transition(.opacity)
     }

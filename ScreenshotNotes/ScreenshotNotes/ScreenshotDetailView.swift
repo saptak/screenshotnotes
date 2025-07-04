@@ -65,7 +65,7 @@ struct ScreenshotDetailView: View {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.title2)
                                 .foregroundColor(.white)
-                                .background(Color.black.opacity(0.3))
+                                .overlayMaterial(cornerRadius: 20)
                                 .clipShape(Circle())
                         }
                         
@@ -75,12 +75,9 @@ struct ScreenshotDetailView: View {
                             .font(.headline)
                             .foregroundColor(.white)
                             .lineLimit(1)
-                            .background(
-                                Color.black.opacity(0.3)
-                                    .padding(.horizontal, -12)
-                                    .padding(.vertical, -6)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            )
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .overlayMaterial(cornerRadius: 8)
                         
                         Spacer()
                         
@@ -96,7 +93,7 @@ struct ScreenshotDetailView: View {
                             Image(systemName: "ellipsis.circle.fill")
                                 .font(.title2)
                                 .foregroundColor(.white)
-                                .background(Color.black.opacity(0.3))
+                                .overlayMaterial(cornerRadius: 20)
                                 .clipShape(Circle())
                         }
                     }
@@ -124,7 +121,7 @@ struct ScreenshotDetailView: View {
                                 .font(.caption)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(Color.black.opacity(0.4))
+                                .overlayMaterial(cornerRadius: 6)
                                 .foregroundColor(.white)
                                 .clipShape(RoundedRectangle(cornerRadius: 6))
                                 
