@@ -294,14 +294,14 @@ final class ContextualMenuPerformanceTester: ObservableObject {
         var menuAppearanceTimes: [TimeInterval] = []
         var menuDismissalTimes: [TimeInterval] = []
         var hapticLatencies: [TimeInterval] = []
-        var droppedFrames = 0
-        var memoryLeaks = 0
+        let droppedFrames = 0
+        let memoryLeaks = 0
         
         // Configure haptic feedback for test
         let originalHapticSetting = hapticService.isHapticEnabled
         hapticService.setHapticEnabled(config.hapticFeedbackEnabled)
         
-        for iteration in 0..<config.iterations {
+        for _ in 0..<config.iterations {
             // Measure response time (long press to menu appearance)
             let responseStartTime = CACurrentMediaTime()
             

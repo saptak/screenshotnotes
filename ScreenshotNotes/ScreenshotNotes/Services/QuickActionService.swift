@@ -68,7 +68,6 @@ final class QuickActionService: ObservableObject {
         // Prepare haptic feedback
         hapticService.prepareHapticGenerators()
         
-        do {
             // Execute the specific action
             switch action {
             case .share:
@@ -113,18 +112,6 @@ final class QuickActionService: ObservableObject {
             try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
             await updateActionStatus(.idle)
             
-        } catch {
-            // Record failed action
-            let duration = Date().timeIntervalSince(startTime)
-            recordAction(action, screenshots: screenshots, duration: duration, success: false, error: error)
-            
-            await updateActionStatus(.failed(error))
-            hapticService.triggerHaptic(.errorFeedback)
-            
-            // Auto-reset after delay
-            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
-            await updateActionStatus(.idle)
-        }
     }
     
     // MARK: - Specific Action Implementations

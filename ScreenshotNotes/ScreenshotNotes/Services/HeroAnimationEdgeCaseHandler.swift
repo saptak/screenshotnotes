@@ -343,7 +343,7 @@ final class HeroAnimationEdgeCaseHandler: ObservableObject {
     private func recoverFromEdgeCase(_ edgeCase: EdgeCaseType) {
         isRecovering = true
         
-        withAnimation(.easeOut(duration: 0.2)) {
+        _ = withAnimation(.easeOut(duration: 0.2)) {
             activeEdgeCases.remove(edgeCase)
         }
         
@@ -380,7 +380,9 @@ final class HeroAnimationEdgeCaseHandler: ObservableObject {
             object: nil,
             queue: .main
         ) { _ in
-            self.recordEdgeCase(.backgroundTransition)
+            Task { @MainActor in
+                self.recordEdgeCase(.backgroundTransition)
+            }
         }
         
         NotificationCenter.default.addObserver(
@@ -388,8 +390,10 @@ final class HeroAnimationEdgeCaseHandler: ObservableObject {
             object: nil,
             queue: .main
         ) { _ in
-            if self.activeEdgeCases.contains(.backgroundTransition) {
-                self.recoverFromEdgeCase(.backgroundTransition)
+            Task { @MainActor in
+                if self.activeEdgeCases.contains(.backgroundTransition) {
+                    self.recoverFromEdgeCase(.backgroundTransition)
+                }
             }
         }
         
@@ -399,11 +403,15 @@ final class HeroAnimationEdgeCaseHandler: ObservableObject {
             object: nil,
             queue: .main
         ) { _ in
-            self.recordEdgeCase(.deviceRotation)
-            
-            // Auto-recover after orientation settles
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.recoverFromEdgeCase(.deviceRotation)
+            Task { @MainActor in
+                self.recordEdgeCase(.deviceRotation)
+                
+                // Auto-recover after orientation settles
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    Task { @MainActor in
+                        self.recoverFromEdgeCase(.deviceRotation)
+                    }
+                }
             }
         }
         

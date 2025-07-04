@@ -3,6 +3,7 @@ import Photos
 import SwiftData
 import UIKit
 
+@MainActor
 protocol PhotoLibraryServiceProtocol {
     func startMonitoring()
     func stopMonitoring()

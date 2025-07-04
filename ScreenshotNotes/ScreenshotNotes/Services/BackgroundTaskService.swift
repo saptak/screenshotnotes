@@ -45,13 +45,8 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         
         // Create a background task to process any pending screenshots
         let backgroundTask = Task {
-            do {
-                await processBackgroundScreenshots()
-                task.setTaskCompleted(success: true)
-            } catch {
-                print("❌ Background task failed: \(error)")
-                task.setTaskCompleted(success: false)
-            }
+            await processBackgroundScreenshots()
+            task.setTaskCompleted(success: true)
         }
         
         // Handle task expiration

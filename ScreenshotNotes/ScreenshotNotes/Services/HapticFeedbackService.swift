@@ -28,6 +28,13 @@ final class HapticFeedbackService: ObservableObject {
         case errorFeedback = "error_feedback"
         case successFeedback = "success_feedback"
         
+        // Basic impact patterns for gesture services
+        case light = "light"
+        case medium = "medium"
+        case heavy = "heavy"
+        case success = "success"
+        case error = "error"
+        
         var description: String {
             switch self {
             case .menuAppear:
@@ -60,6 +67,16 @@ final class HapticFeedbackService: ObservableObject {
                 return "Error or invalid action"
             case .successFeedback:
                 return "Successful action completion"
+            case .light:
+                return "Light impact feedback"
+            case .medium:
+                return "Medium impact feedback"
+            case .heavy:
+                return "Heavy impact feedback"
+            case .success:
+                return "Success notification"
+            case .error:
+                return "Error notification"
             }
         }
     }
@@ -291,6 +308,16 @@ final class HapticFeedbackService: ObservableObject {
             return .errorFeedback
         case .successFeedback:
             return .successFeedback
+        case .light:
+            return .light
+        case .medium:
+            return .medium
+        case .heavy:
+            return .heavy
+        case .success:
+            return .success
+        case .error:
+            return .error
         }
     }
     
@@ -313,8 +340,20 @@ final class HapticFeedbackService: ObservableObject {
         case .successFeedback:
             await triggerNotificationFeedback(.success)
             
-        case .errorFeedback:
+        case .errorFeedback, .error:
             await triggerNotificationFeedback(.error)
+            
+        case .light:
+            await triggerImpactFeedback(.light, intensity: adjustedIntensity)
+            
+        case .medium:
+            await triggerImpactFeedback(.medium, intensity: adjustedIntensity)
+            
+        case .heavy:
+            await triggerImpactFeedback(.heavy, intensity: adjustedIntensity)
+            
+        case .success:
+            await triggerNotificationFeedback(.success)
         }
         
         // Handle repeat patterns

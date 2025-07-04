@@ -96,6 +96,7 @@ final class ContextualMenuAccessibilityService: ObservableObject {
             }
         }
         
+        @MainActor
         var isAvailable: Bool {
             switch self {
             case .forceTouch:
@@ -229,7 +230,9 @@ final class ContextualMenuAccessibilityService: ObservableObject {
             object: nil,
             queue: .main
         ) { _ in
-            self.updateVoiceOverState()
+            Task { @MainActor in
+                self.updateVoiceOverState()
+            }
         }
         
         // Setup custom VoiceOver actions for menus

@@ -466,7 +466,7 @@ final class HeroAnimationPerformanceTester: ObservableObject {
             result.thermalMetrics.meetsTarget
         }.count
         
-        let averageGradeValue = testResults.map { $0.overallGrade.rawValue }.joined(separator: ", ")
+        _ = testResults.map { $0.overallGrade.rawValue }.joined(separator: ", ")
         let averageGrade: DetailedPerformanceMetrics.PerformanceGrade = {
             let excellentCount = testResults.filter { $0.overallGrade == .excellent }.count
             let goodCount = testResults.filter { $0.overallGrade == .good }.count

@@ -207,8 +207,7 @@ class ScreenshotListViewModel: ObservableObject {
         
         // Process screenshots sequentially to avoid memory issues
         for (index, asset) in assetsToImport.enumerated() {
-            do {
-                await withCheckedContinuation { continuation in
+            await withCheckedContinuation { continuation in
                     imageManager.requestImage(
                         for: asset,
                         targetSize: PHImageManagerMaximumSize,
@@ -260,9 +259,6 @@ class ScreenshotListViewModel: ObservableObject {
                         }
                     }
                 }
-            } catch {
-                await handleImportError(error)
-                break
             }
         }
         

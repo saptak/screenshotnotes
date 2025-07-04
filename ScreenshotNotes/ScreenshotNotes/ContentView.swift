@@ -8,6 +8,12 @@ struct ContentView: View {
     @StateObject private var viewModel = ScreenshotListViewModel()
     @StateObject private var searchService = SearchService()
     @EnvironmentObject private var photoLibraryService: PhotoLibraryService
+    
+    // Enhanced gesture services for Sprint 4.4
+    @StateObject private var enhancedPullToRefreshService = EnhancedPullToRefreshService(hapticService: HapticFeedbackService.shared)
+    @StateObject private var advancedSwipeGestureService = AdvancedSwipeGestureService(hapticService: HapticFeedbackService.shared)
+    @StateObject private var multiTouchGestureService = MultiTouchGestureService(hapticService: HapticFeedbackService.shared)
+    @StateObject private var gestureAccessibilityService = GestureAccessibilityService()
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var showingImportSheet = false
     @State private var showingSettings = false
@@ -184,6 +190,11 @@ struct ScreenshotListView: View {
     @StateObject private var hapticService = HapticFeedbackService.shared
     @State private var currentContextScreenshot: Screenshot?
     
+    // Enhanced gesture services for Sprint 4.4
+    @StateObject private var enhancedPullToRefreshService = EnhancedPullToRefreshService(hapticService: HapticFeedbackService.shared)
+    @StateObject private var advancedSwipeGestureService = AdvancedSwipeGestureService(hapticService: HapticFeedbackService.shared)
+    @StateObject private var multiTouchGestureService = MultiTouchGestureService(hapticService: HapticFeedbackService.shared)
+    
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 16)
     ]
@@ -236,6 +247,12 @@ struct ScreenshotListView: View {
             .refreshable {
                 await refreshAllScreenshots()
             }
+            .enhancedPullToRefresh(
+                action: {
+                    await refreshAllScreenshots()
+                },
+                hapticService: hapticService
+            )
             
             // Batch selection toolbar
             BatchSelectionToolbar(screenshots: screenshots)
@@ -301,7 +318,37 @@ struct ScreenshotThumbnailView: View {
     @State private var isPressed = false
     @State private var showingDeleteConfirmation = false
     @State private var longPressLocation: CGPoint = .zero
+    @State private var isFavorited = false
     
+    // Enhanced gesture services
+    @StateObject private var swipeGestureService = AdvancedSwipeGestureService(hapticService: HapticFeedbackService.shared)
+    @StateObject private var multiTouchService = MultiTouchGestureService(hapticService: HapticFeedbackService.shared)
+    
+    // Create swipe actions for this thumbnail
+    private var swipeActions: [AdvancedSwipeGestureService.SwipeAction] {
+        swipeGestureService.createScreenshotActions(
+            isFavorite: isFavorited,
+            onShare: {
+                shareScreenshot()
+            },
+            onCopy: {
+                copyScreenshot()
+            },
+            onFavorite: {
+                toggleFavorite()
+            },
+            onTag: {
+                showTagView()
+            },
+            onDelete: {
+                showingDeleteConfirmation = true
+            },
+            onArchive: {
+                archiveScreenshot()
+            }
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ZStack {
@@ -360,6 +407,16 @@ struct ScreenshotThumbnailView: View {
                 }
             }
         )
+        .advancedSwipeGesture(
+            actions: swipeActions,
+            hapticService: HapticFeedbackService.shared
+        )
+        .multiTouchGestures(gestureService: multiTouchService)
+        .accessibleSwipeGesture(
+            itemDescription: "Screenshot from \(screenshot.timestamp.formatted(date: .abbreviated, time: .shortened))",
+            swipeActions: swipeActions
+        )
+        .accessibilityRespectingAnimation()
         .confirmationDialog(
             "Delete Screenshot",
             isPresented: $showingDeleteConfirmation
@@ -371,6 +428,51 @@ struct ScreenshotThumbnailView: View {
         } message: {
             Text("This action cannot be undone.")
         }
+    }
+    
+    // MARK: - Swipe Action Methods
+    
+    private func shareScreenshot() {
+        guard let uiImage = UIImage(data: screenshot.imageData) else { return }
+        
+        let activityController = UIActivityViewController(
+            activityItems: [uiImage],
+            applicationActivities: nil
+        )
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(activityController, animated: true)
+        }
+    }
+    
+    private func copyScreenshot() {
+        guard let uiImage = UIImage(data: screenshot.imageData) else { return }
+        UIPasteboard.general.image = uiImage
+        
+        // Show subtle feedback
+        HapticFeedbackService.shared.triggerHaptic(.success, intensity: 0.6)
+    }
+    
+    private func toggleFavorite() {
+        isFavorited.toggle()
+        
+        // In a real implementation, this would update the screenshot model
+        // For now, just provide haptic feedback
+        let pattern: HapticFeedbackService.HapticPattern = isFavorited ? .success : .light
+        HapticFeedbackService.shared.triggerHaptic(pattern, intensity: 0.7)
+    }
+    
+    private func showTagView() {
+        // In a real implementation, this would show a tag selection interface
+        // For now, just provide haptic feedback
+        HapticFeedbackService.shared.triggerHaptic(.medium, intensity: 0.5)
+    }
+    
+    private func archiveScreenshot() {
+        // In a real implementation, this would archive the screenshot
+        // For now, just provide haptic feedback
+        HapticFeedbackService.shared.triggerHaptic(.medium, intensity: 0.6)
     }
 }
 
