@@ -451,11 +451,16 @@ struct MenuActionButton: View {
         }
         .buttonStyle(.plain)
         .scaleEffect(isPressed ? 0.98 : 1.0)
-        .onPressGesture { pressed in
-            withAnimation(.easeInOut(duration: 0.1)) {
-                isPressed = pressed
+        .onLongPressGesture(
+            minimumDuration: 0.0,
+            maximumDistance: .infinity,
+            perform: { },
+            onPressingChanged: { pressing in
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    isPressed = pressing
+                }
             }
-        }
+        )
     }
 }
 

@@ -16,7 +16,7 @@ protocol PhotoLibraryServiceProtocol {
 class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObject {
     private var modelContext: ModelContext?
     private let imageStorageService: ImageStorageServiceProtocol
-    private let hapticService: HapticServiceProtocol
+    private let hapticService: HapticFeedbackService
     private var isMonitoring = false
     
     // Keep a reference to the fetch result for change observation
@@ -26,9 +26,9 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     @Published var automaticImportEnabled = true
     
     init(imageStorageService: ImageStorageServiceProtocol = ImageStorageService(),
-         hapticService: HapticServiceProtocol = HapticService.shared) {
+         hapticService: HapticFeedbackService? = nil) {
         self.imageStorageService = imageStorageService
-        self.hapticService = hapticService
+        self.hapticService = hapticService ?? HapticFeedbackService.shared
         super.init()
         
         // Load user preference - defaults to true for first launch
@@ -191,13 +191,13 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
                                 try? modelContext.save()
                                 
                                 // Provide haptic feedback for successful import
-                                self.hapticService.notification(.success)
+                                self.hapticService.triggerHaptic(.successFeedback)
                                 print("📸 Auto-imported screenshot: \(asset.localIdentifier)")
                             }
                         } catch {
                             print("❌ Failed to auto-import screenshot: \(error)")
                             await MainActor.run {
-                                self.hapticService.notification(.error)
+                                self.hapticService.triggerHaptic(.errorFeedback)
                             }
                         }
                         continuation.resume()

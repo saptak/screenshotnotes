@@ -577,11 +577,16 @@ struct AccessibleMenuActionButton: View {
         .accessibilityAction {
             executeAction()
         }
-        .onPressGesture { pressed in
-            withAnimation(.easeInOut(duration: accessibilityService.isReduceMotionEnabled ? 0 : 0.1)) {
-                isPressed = pressed
+        .onLongPressGesture(
+            minimumDuration: 0.0,
+            maximumDistance: .infinity,
+            perform: { },
+            onPressingChanged: { pressing in
+                withAnimation(.easeInOut(duration: accessibilityService.isReduceMotionEnabled ? 0 : 0.1)) {
+                    isPressed = pressing
+                }
             }
-        }
+        )
     }
     
     private func executeAction() {

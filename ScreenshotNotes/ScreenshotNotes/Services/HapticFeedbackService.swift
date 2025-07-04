@@ -404,6 +404,10 @@ final class HapticFeedbackService: ObservableObject {
                 impactMedium.impactOccurred(intensity: intensity)
             case .heavy:
                 impactHeavy.impactOccurred(intensity: intensity)
+            case .soft:
+                impactLight.impactOccurred(intensity: intensity * 0.7)
+            case .rigid:
+                impactHeavy.impactOccurred(intensity: intensity)
             @unknown default:
                 impactMedium.impactOccurred(intensity: intensity)
             }

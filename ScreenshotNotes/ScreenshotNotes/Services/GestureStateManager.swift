@@ -114,8 +114,8 @@ final class GestureStateManager: ObservableObject {
     }
     
     // MARK: - Initialization
-    init(hapticService: HapticFeedbackService) {
-        self.hapticService = hapticService
+    init(hapticService: HapticFeedbackService? = nil) {
+        self.hapticService = hapticService ?? HapticFeedbackService.shared
         setupGestureTransitions()
     }
     
