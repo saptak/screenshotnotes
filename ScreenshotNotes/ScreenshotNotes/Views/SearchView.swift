@@ -98,7 +98,14 @@ struct SearchView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .overlayMaterial(cornerRadius: 12, stroke: .subtle)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(UIColor.systemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
+                    )
+            )
             .scaleEffect(isSearchFieldFocused ? 1.02 : 1.0)
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isSearchFieldFocused)
             
@@ -129,6 +136,7 @@ struct SearchView: View {
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
+        .frame(minHeight: 44)
         .background {
             Rectangle()
                 .materialBackground(depth: .navigation)
