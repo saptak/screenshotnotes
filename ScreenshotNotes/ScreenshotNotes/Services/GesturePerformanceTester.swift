@@ -3,6 +3,9 @@ import Combine
 
 /// Gesture performance testing framework for validating gesture responsiveness and accuracy
 /// Provides comprehensive metrics and benchmarking capabilities
+/// 
+/// Note: Uses async getCurrentMemoryUsage() for Swift 6 concurrency compliance
+/// Shares statistical calculation patterns with other performance testers
 @MainActor
 final class GesturePerformanceTester: ObservableObject {
     

@@ -660,8 +660,8 @@ struct HeroAnimationPerformanceTestView: View {
                         .font(.subheadline)
                         .fontWeight(.semibold)
                     
-                    ForEach(summary.recommendedSettings, id: \.self) { recommendation in
-                        Text("• \(recommendation)")
+                    ForEach(0..<summary.recommendedSettings.count, id: \.self) { index in
+                        Text("• \(summary.recommendedSettings[index])")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }

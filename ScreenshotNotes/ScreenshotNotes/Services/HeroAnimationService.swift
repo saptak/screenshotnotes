@@ -228,10 +228,15 @@ final class HeroAnimationService: ObservableObject {
         }
     }
     
+    /// Detects if device likely supports ProMotion (120fps)
+    private func isProMotionDevice() -> Bool {
+        return ProcessInfo.processInfo.processorCount >= 8
+    }
+    
     private func calculateFrameRate() -> Double {
         // In production, this would use actual CADisplayLink or similar
         // For now, simulate based on device capabilities
-        if ProcessInfo.processInfo.processorCount >= 8 {
+        if isProMotionDevice() {
             return Double.random(in: 115...120) // ProMotion device
         } else {
             return Double.random(in: 58...60) // Standard device

@@ -3,6 +3,11 @@ import Foundation
 
 /// Comprehensive performance testing framework for contextual menu system
 /// Validates response times, animation performance, and haptic feedback efficiency
+/// 
+/// Note: This file shares utility implementations with other performance testers:
+/// - getCurrentMemoryUsage(): Memory monitoring using mach_task_basic_info
+/// - calculateVariance(): Statistical variance calculation for performance metrics
+/// - Performance grading system: Standardized across all performance testers
 @MainActor
 final class ContextualMenuPerformanceTester: ObservableObject {
     
@@ -453,6 +458,8 @@ final class ContextualMenuPerformanceTester: ObservableObject {
         return squaredDifferences.reduce(0, +) / Double(values.count - 1)
     }
     
+    /// Gets current memory usage in megabytes
+    /// Note: This implementation is shared across performance testers
     private func getCurrentMemoryUsage() -> Double {
         var info = mach_task_basic_info()
         var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
