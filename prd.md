@@ -262,8 +262,12 @@ The user experience is paramount and will be guided by the following principles:
 *   "Hey Siri, find screenshots from last Tuesday with phone numbers"
 *   "Hey Siri, search Screenshot Vault for restaurant menus"
 
-### Future: Sprint 6 - Intelligent Mind Map
-AI-powered contextual mind map with semantic relationship discovery and intelligent content linking based on conversational AI insights.
+### Future Roadmap:
+*   **Sprint 6:** Intelligent Mind Map - AI-powered contextual mind map with semantic relationship discovery
+*   **Sprint 7:** Advanced Intelligence & Contextual Understanding - Multi-modal AI analysis with collaborative features
+*   **Sprint 8:** Production Excellence & Advanced Features - Enterprise-grade quality with ecosystem integration
+*   **Sprint 9:** Ecosystem Integration & Advanced Workflows - Cross-platform sync and professional automation
+*   **Sprint 10:** Comprehensive Optimization & Final Polish - 120fps ProMotion, accessibility compliance, and production readiness
 
 ## 7. Out of Scope (for Version 1.0)
 
