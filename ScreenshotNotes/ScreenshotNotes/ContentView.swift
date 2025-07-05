@@ -8,7 +8,6 @@ struct ContentView: View {
     @Query(sort: \Screenshot.timestamp, order: .reverse) private var screenshots: [Screenshot]
     @StateObject private var photoLibraryService = PhotoLibraryService()
     @StateObject private var queryParser = QueryParserService()
-    @StateObject private var backgroundVisionProcessor = BackgroundVisionProcessor()
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var showingImportSheet = false
     @State private var showingSettings = false
@@ -18,9 +17,6 @@ struct ContentView: View {
     @State private var importProgress: Double = 0.0
     @State private var lastParsedQuery: SearchQuery?
     @State private var showingQueryAnalysis = false
-    @State private var searchRobustnessService = SearchRobustnessService()
-    @State private var enhancedSearchResult: EnhancedSearchResult?
-    @State private var showingSearchSuggestions = false
     
     private var filteredScreenshots: [Screenshot] {
         if searchText.isEmpty {
@@ -36,13 +32,6 @@ struct ContentView: View {
                         }
                     }
                     
-                    // Apply entity-based filtering first (Sub-Sprint 5.1.2 enhancement)
-                    if let entityResult = parsedQuery.entityExtractionResult, !entityResult.entities.isEmpty {
-                        if matchesEntityContext(screenshot: screenshot, entityResult: entityResult) {
-                            return true // Entity match found, return immediately
-                        }
-                    }
-                    
                     // Apply text-based filtering
                     let enhancedTerms = parsedQuery.searchTerms.filter { term in
                         !isTemporalTerm(term) // Exclude temporal terms from text search
@@ -52,11 +41,10 @@ struct ContentView: View {
                         return true // If only temporal terms, return true (temporal filter already applied)
                     }
                     
-                    // Filter out generic content type terms and intent words
+                    // For terms like "screenshots" that are generic references to the content type,
+                    // don't require them to match - the temporal filter is sufficient
                     let meaningfulTerms = enhancedTerms.filter { term in
-                        let genericTerms = ["screenshots", "screenshot", "images", "image", "photos", "photo", "pictures", "picture"]
-                        let intentTerms = ["find", "search", "show", "get", "lookup", "locate", "where", "look", "give", "tell", "display"]
-                        return !genericTerms.contains(term.lowercased()) && !intentTerms.contains(term.lowercased())
+                        !["screenshots", "screenshot", "images", "image", "photos", "photo", "pictures", "picture"].contains(term.lowercased())
                     }
                     
                     if meaningfulTerms.isEmpty {
@@ -69,15 +57,10 @@ struct ContentView: View {
                     }
                 }
             } else {
-                // Phase 5.1.4: Enhanced search robustness with progressive fallback
-                if let enhancedResult = enhancedSearchResult, enhancedResult.originalQuery == searchText {
-                    return enhancedResult.results
-                } else {
-                    // Fallback to traditional search if enhanced search hasn't completed yet
-                    return screenshots.filter { screenshot in
-                        screenshot.filename.localizedCaseInsensitiveContains(searchText) ||
-                        (screenshot.extractedText?.localizedCaseInsensitiveContains(searchText) ?? false)
-                    }
+                // Fallback to traditional search
+                return screenshots.filter { screenshot in
+                    screenshot.filename.localizedCaseInsensitiveContains(searchText) ||
+                    (screenshot.extractedText?.localizedCaseInsensitiveContains(searchText) ?? false)
                 }
             }
         }
@@ -116,31 +99,6 @@ struct ContentView: View {
                         removal: .opacity
                     ))
                 }
-                
-                // Search Suggestions (Phase 5.1.4)
-                if showingSearchSuggestions, let enhancedResult = enhancedSearchResult {
-                    VStack {
-                        HStack {
-                            SearchSuggestionsView(
-                                suggestions: enhancedResult.suggestions,
-                                metrics: enhancedResult.metrics,
-                                onSuggestionTapped: { suggestion in
-                                    // Extract the quoted text from suggestions like "Did you mean: \"receipt\"?"
-                                    let suggestionText = extractSuggestionText(from: suggestion)
-                                    searchText = suggestionText
-                                }
-                            )
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8)
-                            Spacer()
-                        }
-                        Spacer()
-                    }
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .top).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-                }
             }
             .navigationTitle("Screenshot Vault")
             .navigationBarTitleDisplayMode(.large)
@@ -157,21 +115,6 @@ struct ContentView: View {
                 }
                 
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    // Temporary: Entity Extraction Demo button for testing
-                    if #available(iOS 17.0, *) {
-                        NavigationLink(destination: EntityExtractionDemo()) {
-                            Image(systemName: "brain.head.profile")
-                                .foregroundColor(.blue)
-                        }
-                    }
-                    
-                    Button(action: {
-                        showingSettings = true
-                    }) {
-                        Image(systemName: "gearshape")
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
-                    }
                     Button(action: {
                         showingImportSheet = true
                     }) {
@@ -198,20 +141,9 @@ struct ContentView: View {
                             showingQueryAnalysis = parsedQuery.isActionable
                         }
                     }
-                    
-                    // Phase 5.1.4: Enhanced search robustness with progressive fallback
-                    Task {
-                        let enhancedResult = await searchRobustnessService.enhanceSearchQuery(newValue, screenshots: screenshots)
-                        await MainActor.run {
-                            enhancedSearchResult = enhancedResult
-                            showingSearchSuggestions = !enhancedResult.suggestions.isEmpty
-                        }
-                    }
                 } else {
                     lastParsedQuery = nil
                     showingQueryAnalysis = false
-                    enhancedSearchResult = nil
-                    showingSearchSuggestions = false
                 }
             }
             .photosPicker(
@@ -233,17 +165,6 @@ struct ContentView: View {
             }
             .onAppear {
                 photoLibraryService.setModelContext(modelContext)
-                
-                // Initialize enhanced vision processing
-                backgroundVisionProcessor.setModelContext(modelContext)
-                
-                // Start background vision processing for screenshots that need analysis
-                Task {
-                    await backgroundVisionProcessor.startProcessing()
-                }
-                
-                // Schedule periodic background processing
-                backgroundVisionProcessor.scheduleBackgroundVisionProcessing()
             }
         }
     }
@@ -268,81 +189,6 @@ struct ContentView: View {
         
         try? modelContext.save()
         isImporting = false
-    }
-    
-    // MARK: - Entity-Based Search Helpers (Sub-Sprint 5.1.2)
-    
-    private func matchesEntityContext(screenshot: Screenshot, entityResult: EntityExtractionResult) -> Bool {
-        let entities = entityResult.entities
-        
-        // Check visual entities (colors, objects) against filename, extracted text, and object tags
-        let visualEntities = entities.filter { entity in
-            entity.type == .color || entity.type == .object || entity.type == .documentType
-        }
-        
-        if !visualEntities.isEmpty {
-            for entity in visualEntities {
-                let normalizedValue = entity.normalizedValue.lowercased()
-                
-                // Check filename
-                if screenshot.filename.localizedCaseInsensitiveContains(normalizedValue) {
-                    return true
-                }
-                
-                // Check extracted text (OCR)
-                if let extractedText = screenshot.extractedText,
-                   extractedText.localizedCaseInsensitiveContains(normalizedValue) {
-                    return true
-                }
-                
-                // Check object tags (if available)
-                if let objectTags = screenshot.objectTags {
-                    for tag in objectTags {
-                        if tag.localizedCaseInsensitiveContains(normalizedValue) {
-                            return true
-                        }
-                    }
-                }
-                
-                // For clothing/object entities, also check if the filename suggests it's a shopping screenshot
-                if entity.type == .object && ["dress", "shirt", "pants", "jacket", "shoes"].contains(normalizedValue) {
-                    let filenameWords = screenshot.filename.lowercased().components(separatedBy: .whitespacesAndNewlines.union(.punctuationCharacters))
-                    let shoppingKeywords = ["shop", "store", "buy", "purchase", "cart", "wishlist", "fashion", "clothes", "clothing"]
-                    if !Set(filenameWords).intersection(Set(shoppingKeywords)).isEmpty {
-                        return true
-                    }
-                }
-            }
-        }
-        
-        // Check person/organization entities
-        let namedEntities = entities.filter { entity in
-            entity.type == .person || entity.type == .organization || entity.type == .place
-        }
-        
-        for entity in namedEntities {
-            let normalizedValue = entity.normalizedValue.lowercased()
-            
-            // Check filename and extracted text for named entities
-            if screenshot.filename.localizedCaseInsensitiveContains(normalizedValue) ||
-               (screenshot.extractedText?.localizedCaseInsensitiveContains(normalizedValue) ?? false) {
-                return true
-            }
-        }
-        
-        // Check structured data entities (phone, email, URL)
-        let structuredEntities = entities.filter { entity in
-            entity.type == .phoneNumber || entity.type == .email || entity.type == .url
-        }
-        
-        for entity in structuredEntities {
-            if let extractedText = screenshot.extractedText,
-               extractedText.contains(entity.text) {
-                return true
-            }
-        }
-        
-        return false
     }
     
     // MARK: - Temporal Query Helpers
@@ -402,24 +248,6 @@ struct ContentView: View {
             "recent", "lately"
         ]
         return temporalTerms.contains(term.lowercased())
-    }
-    
-    // MARK: - Phase 5.1.4: Search Robustness Helpers
-    
-    private func extractSuggestionText(from suggestion: String) -> String {
-        // Extract quoted text from suggestions like "Did you mean: \"receipt\"?"
-        let pattern = #""([^"]+)""#
-        if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
-            let range = NSRange(location: 0, length: suggestion.utf16.count)
-            if let match = regex.firstMatch(in: suggestion, options: [], range: range) {
-                if let swiftRange = Range(match.range(at: 1), in: suggestion) {
-                    return String(suggestion[swiftRange])
-                }
-            }
-        }
-        
-        // If no quoted text found, return the original suggestion
-        return suggestion
     }
 }
 
@@ -625,83 +453,6 @@ struct AIQueryIndicator: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.regularMaterial)
-                .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-        )
-    }
-}
-
-/// Search Suggestions View for Phase 5.1.4 Enhanced Search Robustness
-struct SearchSuggestionsView: View {
-    let suggestions: [String]
-    let metrics: SearchRobustnessService.PerformanceMetrics
-    let onSuggestionTapped: (String) -> Void
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass.circle.fill")
-                    .foregroundColor(.blue)
-                    .font(.caption)
-                
-                Text("Search Suggestions")
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                
-                if metrics.fallbackTier > 1 {
-                    Text("Tier \(metrics.fallbackTier)")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.secondary.opacity(0.1))
-                        )
-                }
-                
-                Spacer()
-                
-                if metrics.processingTime > 0 {
-                    Text("\(String(format: "%.0f", metrics.processingTime * 1000))ms")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-            }
-            
-            LazyVStack(alignment: .leading, spacing: 4) {
-                ForEach(suggestions.prefix(3), id: \.self) { suggestion in
-                    Button(action: {
-                        onSuggestionTapped(suggestion)
-                    }) {
-                        HStack {
-                            Text(suggestion)
-                                .font(.caption)
-                                .foregroundColor(.primary)
-                                .multilineTextAlignment(.leading)
-                            
-                            Spacer()
-                            
-                            Image(systemName: "arrow.up.left")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.secondary.opacity(0.05))
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(.regularMaterial)

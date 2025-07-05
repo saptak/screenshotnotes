@@ -13,6 +13,10 @@ public final class Screenshot {
     public var userTags: [String]?
     public var assetIdentifier: String?
     
+    // Phase 5.2.1: Enhanced Vision Processing
+    public var visualAttributesData: Data?
+    public var lastVisionAnalysis: Date?
+    
     public init(imageData: Data, filename: String, timestamp: Date? = nil, assetIdentifier: String? = nil) {
         self.id = UUID()
         self.imageData = imageData
@@ -23,5 +27,80 @@ public final class Screenshot {
         self.userNotes = nil
         self.userTags = nil
         self.assetIdentifier = assetIdentifier
+        self.visualAttributesData = nil
+        self.lastVisionAnalysis = nil
+    }
+}
+
+// MARK: - Visual Attributes Support
+
+extension Screenshot {
+    
+    /// Get visual attributes from stored data
+    public var visualAttributes: VisualAttributes? {
+        get {
+            guard let data = visualAttributesData else { return nil }
+            return try? JSONDecoder().decode(VisualAttributes.self, from: data)
+        }
+        set {
+            if let attributes = newValue {
+                visualAttributesData = try? JSONEncoder().encode(attributes)
+                lastVisionAnalysis = Date()
+            } else {
+                visualAttributesData = nil
+                lastVisionAnalysis = nil
+            }
+        }
+    }
+    
+    /// Check if vision analysis needs to be refreshed
+    public var needsVisionAnalysis: Bool {
+        guard let lastAnalysis = lastVisionAnalysis else { return true }
+        
+        // Consider analysis stale after 7 days
+        let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date.distantPast
+        return lastAnalysis < sevenDaysAgo
+    }
+    
+    /// Get semantic tags from both OCR and vision analysis
+    public var allSemanticTags: [String] {
+        var tags: [String] = []
+        
+        // Add existing object tags
+        if let objectTags = objectTags {
+            tags.append(contentsOf: objectTags)
+        }
+        
+        // Add user tags
+        if let userTags = userTags {
+            tags.append(contentsOf: userTags)
+        }
+        
+        // Add vision-based semantic tags
+        if let visualTags = visualAttributes?.semanticTags {
+            tags.append(contentsOf: visualTags)
+        }
+        
+        return Array(Set(tags)) // Remove duplicates
+    }
+    
+    /// Check if screenshot is likely a document based on vision analysis
+    public var isDocumentLikely: Bool {
+        return visualAttributes?.isDocument ?? false
+    }
+    
+    /// Check if screenshot contains significant text
+    public var hasSignificantText: Bool {
+        return visualAttributes?.hasSignificantText ?? ((extractedText?.count ?? 0) > 50)
+    }
+    
+    /// Get prominent visual objects
+    public var prominentObjects: [DetectedObject] {
+        return visualAttributes?.prominentObjects ?? []
+    }
+    
+    /// Get dominant colors for visual search
+    public var dominantColors: [DominantColor] {
+        return visualAttributes?.colorAnalysis.dominantColors ?? []
     }
 }

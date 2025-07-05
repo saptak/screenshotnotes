@@ -68,7 +68,12 @@ final class SearchService: ObservableObject, SearchServiceProtocol {
         let userTags = screenshot.userTags?.joined(separator: " ").lowercased() ?? ""
         let objectTags = screenshot.objectTags?.joined(separator: " ").lowercased() ?? ""
         
-        let allText = "\(searchableText) \(userTags) \(objectTags)"
+        // Phase 5.2.1: Enhanced Vision Processing - Add visual attributes to search
+        let visualTags = screenshot.allSemanticTags.joined(separator: " ").lowercased()
+        let colorNames = screenshot.dominantColors.map { $0.colorName.lowercased() }.joined(separator: " ")
+        let objectLabels = screenshot.prominentObjects.map { $0.label.lowercased() }.joined(separator: " ")
+        
+        let allText = "\(searchableText) \(userTags) \(objectTags) \(visualTags) \(colorNames) \(objectLabels)"
         
         return allText.contains(searchTerm)
     }
@@ -82,6 +87,11 @@ final class SearchService: ObservableObject, SearchServiceProtocol {
         let userTags = screenshot.userTags?.joined(separator: " ").lowercased() ?? ""
         let objectTags = screenshot.objectTags?.joined(separator: " ").lowercased() ?? ""
         
+        // Phase 5.2.1: Enhanced Vision Processing - Add visual scoring
+        let visualTags = screenshot.allSemanticTags.joined(separator: " ").lowercased()
+        let colorNames = screenshot.dominantColors.map { $0.colorName.lowercased() }.joined(separator: " ")
+        let objectLabels = screenshot.prominentObjects.map { $0.label.lowercased() }.joined(separator: " ")
+        
         for term in searchTerms {
             if filename.contains(term) {
                 score += 10
@@ -93,6 +103,19 @@ final class SearchService: ObservableObject, SearchServiceProtocol {
             
             if userNotes.contains(term) {
                 score += 6
+            }
+            
+            // Enhanced scoring for visual attributes
+            if objectLabels.contains(term) {
+                score += 7 // Higher score for object detection matches
+            }
+            
+            if colorNames.contains(term) {
+                score += 6 // High score for color matches
+            }
+            
+            if visualTags.contains(term) {
+                score += 5 // Good score for semantic tag matches
             }
             
             if objectTags.contains(term) {
