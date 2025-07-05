@@ -217,7 +217,44 @@ Each sprint must meet the following criteria before proceeding:
     *   **UX Focus:** ✅ Enhanced Glass UX with systematic material hierarchy, contextual menus, haptic feedback, swipe navigation, and advanced gesture coordination
     *   **Definition of Done:** ✅ Advanced glass aesthetic with contextual interactions, comprehensive gesture support, and full accessibility integration (Sub-Sprint 4.4 complete)
 
-*   **Sprint 5: The Connected Brain - Intelligent Mind Map**
+*   **Sprint 5: Conversational AI Search & Intelligence** ⏳ **NEXT**
+    *   **Goal:** Transform search into conversational AI-powered natural language understanding.
+    *   **Features:**
+        *   Natural language search with Apple Intelligence integration ("find screenshots with blue dress")
+        *   Voice search with Speech Framework for hands-free operation
+        *   Semantic content analysis with enhanced object and scene recognition
+        *   AI-powered query understanding with intent classification and entity extraction
+        *   Intelligent search suggestions and auto-completion based on content analysis
+    *   **Technical Specifications:**
+        *   **Apple Intelligence:** Core ML and Natural Language frameworks for on-device AI processing
+        *   **Speech Recognition:** Real-time voice-to-text with search query optimization
+        *   **Enhanced Vision:** Advanced object detection, color analysis, and scene classification
+        *   **Semantic Analysis:** AI-generated tags for visual attributes, content types, and business entities
+        *   **Query Processing:** Intent classification with entity extraction and temporal filtering
+        *   **Performance:** <200ms response time for conversational queries with on-device privacy
+        *   **Caching:** Intelligent semantic data caching with progressive enhancement
+        *   **Voice UI:** Conversational search interface with visual query understanding feedback
+    *   **Implementation Phases:**
+        *   **Week 1:** Foundation - Query parsing, semantic tagging, enhanced vision processing
+        *   **Week 2:** Natural Language Processing - Intent classification, entity extraction, semantic mapping
+        *   **Week 3:** Voice Integration - Speech recognition, conversational UI, query suggestions
+        *   **Week 4:** Optimization - Performance tuning, caching strategy, user testing
+    *   **Example Queries:**
+        *   "find screenshots with blue dress" → Visual object detection + color analysis
+        *   "show me receipts from Marriott" → Text recognition + business entity extraction
+        *   "find the link to website selling lens" → URL detection + e-commerce classification
+        *   "screenshots from last Tuesday with phone numbers" → Temporal + pattern recognition
+    *   **Files to Create:**
+        *   `Services/AI/ConversationalSearchService.swift` - Main AI search orchestrator
+        *   `Services/AI/QueryParserService.swift` - Natural language understanding
+        *   `Services/AI/SemanticTaggingService.swift` - Enhanced content analysis
+        *   `Services/AI/VoiceSearchService.swift` - Speech-to-text integration
+        *   `Views/ConversationalSearchView.swift` - Enhanced search interface with voice
+        *   `Models/SearchQuery.swift`, `Models/SemanticTag.swift` - AI data models
+    *   **UX Focus:** Intuitive conversational search that understands natural language with voice input support
+    *   **Definition of Done:** Natural language search with voice input, semantic understanding, and <200ms response time
+
+*   **Sprint 6: The Connected Brain - Intelligent Mind Map**
     *   **Goal:** Introduce AI-powered contextual mind map with semantic relationship discovery.
     *   **Features:**
         *   Implement advanced on-device analysis to find semantic links between screenshots
@@ -236,7 +273,7 @@ Each sprint must meet the following criteria before proceeding:
     *   **UX Focus:** Immersive 3D mind map with intuitive navigation, organic animations, and contextual insights.
     *   **Definition of Done:** AI-powered mind map with semantic relationship discovery and smooth 3D interactions
 
-*   **Sprint 6: Advanced Intelligence & Contextual Understanding**
+*   **Sprint 7: Advanced Intelligence & Contextual Understanding**
     *   **Goal:** Multi-modal AI analysis with user collaboration and smart insights.
     *   **Features:**
         *   Advanced Vision Framework integration for object, scene, and text recognition
@@ -255,7 +292,7 @@ Each sprint must meet the following criteria before proceeding:
     *   **UX Focus:** Intuitive multi-modal annotation with AI-powered insights and contextual suggestions.
     *   **Definition of Done:** Advanced AI analysis with collaborative annotation and intelligent content understanding
 
-*   **Sprint 7: Production Excellence & Advanced Features**
+*   **Sprint 8: Production Excellence & Advanced Features**
     *   **Goal:** Production-ready app with advanced features and enterprise-grade quality.
     *   **Features:**
         *   Advanced performance optimization with machine learning-based prediction
@@ -276,7 +313,7 @@ Each sprint must meet the following criteria before proceeding:
     *   **UX Focus:** Enterprise-grade quality with delightful advanced features and seamless ecosystem integration.
     *   **Definition of Done:** Production-ready app with advanced features, comprehensive testing, and iOS ecosystem integration
 
-*   **Sprint 8: Ecosystem Integration & Advanced Workflows**
+*   **Sprint 9: Ecosystem Integration & Advanced Workflows**
     *   **Goal:** Deep iOS ecosystem integration with professional workflow capabilities.
     *   **Features:**
         *   Watch app companion with quick capture and voice notes

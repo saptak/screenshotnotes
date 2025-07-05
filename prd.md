@@ -62,6 +62,16 @@ The user experience is paramount and will be guided by the following principles:
     *   Automatically or manually assigned tags.
     *   Recognized objects or scenes.
     *   Metadata (e.g., date, time, source application if identifiable).
+*   **Conversational AI Search:** Natural language search powered by Apple Intelligence, allowing users to:
+    *   Type or speak queries like "find screenshots with blue dress", "show me receipts from Marriott", "find the link to website selling lens"
+    *   Use contextual phrases like "find that restaurant menu from last week" or "show me screenshots about travel plans"
+    *   Search by visual descriptions: "screenshots with QR codes", "images with charts or graphs", "pictures of text messages"
+    *   Combine multiple criteria: "find recent screenshots with phone numbers from shopping apps"
+*   **Smart Query Interpretation:** AI-powered query understanding that:
+    *   Extracts semantic meaning from natural language queries
+    *   Maps conversational terms to visual and textual content
+    *   Handles synonyms, context, and implicit relationships
+    *   Provides intelligent query suggestions and auto-completion
 *   **Visual Navigation:** Users can explore their screenshot library through the interconnected mind map, discovering relationships between notes.
 
 ### 4.4. User Interaction & Organization
@@ -80,9 +90,12 @@ The user experience is paramount and will be guided by the following principles:
 *   **Platform:** iOS 18.0+, targeting the latest major version.
 *   **Primary APIs:**
     *   **Vision Framework:** For all on-device OCR and image analysis tasks.
+    *   **Apple Intelligence & Core ML:** For conversational AI search and semantic understanding using on-device language models.
+    *   **Natural Language Framework:** For query parsing, intent classification, and semantic analysis.
     *   **Photos Framework:** For observing and fetching screenshots from the user's library.
     *   **SwiftUI:** To build a modern, responsive, and fluid user interface that embodies the design principles.
     *   **SwiftData:** For robust, on-device storage (preferred over Core Data for new projects).
+    *   **Speech Framework:** For voice-to-text conversion enabling spoken search queries.
 *   **Performance:** All AI processing should happen on-device to ensure user privacy and app responsiveness. Background tasks must be efficient to minimize battery impact.
 
 ### Technical Constraints & Quality Standards
@@ -167,8 +180,42 @@ The user experience is paramount and will be guided by the following principles:
 *   **Performance Testing**: Comprehensive testing frameworks for all animation and interaction systems
 *   **Accessibility Integration**: Full VoiceOver support and assistive technology compatibility
 
-### Next: Sprint 5 - Intelligent Mind Map
-Ready to implement AI-powered contextual mind map with semantic relationship discovery and intelligent content linking.
+### Next: Sprint 5 - Conversational AI Search & Intelligence
+**Goal:** Implement natural language search capabilities using Apple Intelligence for intuitive, conversational screenshot discovery.
+
+**Sub-Sprint 5.1 - Natural Language Processing Foundation**
+*   **Apple Intelligence Integration:** Configure Core ML and Natural Language frameworks for on-device AI processing
+*   **Query Parser Service:** Build intelligent query parsing to extract intent, entities, and semantic meaning from conversational queries
+*   **Semantic Mapping:** Create mapping system between natural language terms and screenshot content (visual objects, OCR text, metadata)
+*   **Intent Classification:** Implement intent recognition for different query types (visual search, content search, temporal search, contextual search)
+
+**Sub-Sprint 5.2 - Enhanced Content Analysis**
+*   **Advanced Vision Processing:** Extend Vision framework usage for object detection, scene classification, and visual attribute recognition
+*   **Semantic Tagging:** Auto-generate semantic tags from visual content (colors, objects, text types, UI elements, document types)
+*   **Content Embeddings:** Create searchable embeddings for both visual and textual content using Apple Intelligence models
+*   **Context Enrichment:** Enhance screenshot metadata with AI-derived contextual information
+
+**Sub-Sprint 5.3 - Conversational Search Interface**
+*   **Voice Input Integration:** Implement Speech Framework for voice-to-text search queries with real-time transcription
+*   **Smart Search Bar:** Enhanced search interface with natural language hints, query suggestions, and auto-completion
+*   **Query Understanding UI:** Visual feedback showing how the AI interpreted the user's query
+*   **Search Results Enhancement:** Relevance scoring based on semantic similarity rather than just keyword matching
+
+**Sub-Sprint 5.4 - Performance & Optimization**
+*   **On-Device AI Optimization:** Ensure all AI processing remains on-device for privacy and performance
+*   **Caching Strategy:** Implement intelligent caching for processed semantic data and query results
+*   **Performance Benchmarks:** Target <200ms response time for conversational queries
+*   **Memory Management:** Optimize AI model loading and memory usage for smooth user experience
+
+**Example Queries to Support:**
+*   "find screenshots with blue dress" → Visual object detection + color analysis
+*   "show me receipts from Marriott" → Text recognition + entity extraction + business classification
+*   "find the link to website selling lens" → URL detection + e-commerce classification + product categorization
+*   "screenshots from last Tuesday with phone numbers" → Temporal filtering + pattern recognition
+*   "find that restaurant menu I saved" → Content type classification + temporal context
+
+### Future: Sprint 6 - Intelligent Mind Map
+AI-powered contextual mind map with semantic relationship discovery and intelligent content linking based on conversational AI insights.
 
 ## 7. Out of Scope (for Version 1.0)
 
