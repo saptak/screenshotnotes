@@ -1,14 +1,14 @@
-# ScreenshotNotes - App Store Marketing Content
+# Screenshot Vault - App Store Marketing Content
 
 ## App Name
-ScreenshotNotes
+Screenshot Vault
 
 ## Subtitle (30 characters max)
 Smart screenshot organization
 
 ## Description (4000 characters max)
 
-Transform your screenshot chaos into an organized, searchable library with ScreenshotNotes - the intelligent screenshot manager that actually understands your content.
+Transform your screenshot chaos into an organized, searchable library with Screenshot Vault - the intelligent screenshot manager that actually understands your content.
 
 **🔍 SMART OCR SEARCH**
 Never lose a screenshot again! Our advanced OCR technology extracts and indexes all text from your screenshots, making them instantly searchable. Find receipts, memes, code snippets, or any text-based content in seconds.
@@ -42,7 +42,7 @@ All OCR processing happens entirely on your device - your screenshots never leav
 **🎨 ACCESSIBILITY:**
 Fully compliant with WCAG AA standards, complete VoiceOver support, and designed for users of all abilities.
 
-Transform your screenshot workflow today with ScreenshotNotes - where intelligent organization meets beautiful design.
+Transform your screenshot workflow today with Screenshot Vault - where intelligent organization meets beautiful design.
 
 ## Keywords (100 characters max)
 screenshot,organize,search,OCR,photo,manager,productivity,text,smart,automatic
@@ -64,7 +64,7 @@ https://github.com/saptak/screenshotnotes
 https://github.com/saptak/screenshotnotes/blob/main/PRIVACY.md
 
 ## What's New in This Version (4000 characters max)
-🎉 Introducing ScreenshotNotes - your intelligent screenshot companion!
+🎉 Introducing Screenshot Vault - your intelligent screenshot companion!
 
 This is the initial release featuring:
 • Advanced OCR text extraction and search

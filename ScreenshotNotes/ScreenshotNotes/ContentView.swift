@@ -43,7 +43,7 @@ struct ContentView: View {
                     ImportProgressOverlay(progress: importProgress)
                 }
             }
-            .navigationTitle("Screenshot Notes")
+            .navigationTitle("Screenshot Vault")
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {

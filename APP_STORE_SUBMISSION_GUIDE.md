@@ -1,4 +1,4 @@
-# App Store Submission Checklist for ScreenshotNotes
+# App Store Submission Checklist for Screenshot Vault
 
 ## 🚨 **IMMEDIATE ACTION REQUIRED - START HERE** 🚨
 
@@ -18,13 +18,14 @@
 
 #### **ACTION 2: Configure Project for Release** ⏱️ 20 min
 **In Xcode RIGHT NOW:**
-1. Open your ScreenshotNotes project
-2. Select **ScreenshotNotes project** in navigator
-3. Select **ScreenshotNotes target**
+1. Open your Screenshot Vault project
+2. Select **ScreenshotNotes project** in navigator (keep existing project name)
+3. Select **ScreenshotNotes target** (keep existing target name)
 4. **General tab** - verify:
+   - **Display Name**: **Screenshot Vault** (CHANGE THIS!)
    - Version: **1.0**
    - Build: **1.2** (increment this!)
-   - Bundle Identifier: **com.screenshotnotes.app.ScreenshotNotes**
+   - Bundle Identifier: **com.screenshotnotes.app.ScreenshotNotes** (KEEP existing!)
 5. **Signing & Capabilities** - set:
    - Team: **Your Apple Developer Team**
    - ☑️ **Automatically manage signing**
@@ -49,17 +50,17 @@
 2. **My Apps** → **+** → **New App**
 3. **Fill out**:
    - Platform: **iOS**
-   - Name: **ScreenshotNotes**
+   - Name: **Screenshot Vault**
    - Primary Language: **English**
-   - Bundle ID: **com.screenshotnotes.app.ScreenshotNotes**
-   - SKU: **screenshotnotes-2025**
+   - Bundle ID: **com.screenshotvault.app.ScreenshotVault**
+   - SKU: **screenshotvault-2025**
 
 #### **ACTION 6: Complete App Information** ⏱️ 45 min
 **Copy-paste this content:**
 
 **App Description:**
 ```
-Transform your screenshots into organized, searchable knowledge with ScreenshotNotes.
+Transform your screenshots into organized, searchable knowledge with Screenshot Vault.
 
 KEY FEATURES:
 📸 Automatic Screenshot Import - Never lose important screenshots again
@@ -79,7 +80,7 @@ PRIVACY FIRST:
 • No data sent to external servers
 • Your screenshots stay private and secure
 
-Experience the future of screenshot management with ScreenshotNotes.
+Experience the future of screenshot management with Screenshot Vault.
 ```
 
 **Keywords (100 chars max):**
@@ -133,8 +134,8 @@ screenshot,OCR,search,organize,notes,productivity,text recognition,SwiftUI,autom
 ---
 
 ## Current Project Status:
-- **Bundle ID**: com.screenshotnotes.app.ScreenshotNotes
-- **Product Name**: ScreenshotNotes  
+- **Bundle ID**: com.screenshotvault.app.ScreenshotVault
+- **Product Name**: Screenshot Vault  
 - **Version**: 1.0 (Build 1.1)
 - **Platform**: iOS (SwiftUI + SwiftData)
 
@@ -178,7 +179,7 @@ screenshot,OCR,search,organize,notes,productivity,text recognition,SwiftUI,autom
 - [ ] Bundle ID registered
 
 ### ✅ 6. App Information
-- [ ] App name (ScreenshotNotes)
+- [ ] App name (Screenshot Vault)
 - [ ] App description (detailed, keyword-optimized)
 - [ ] App category (Productivity/Utilities)
 - [ ] Age rating questionnaire completed

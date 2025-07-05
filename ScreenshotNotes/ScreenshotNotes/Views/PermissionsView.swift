@@ -25,7 +25,7 @@ struct PermissionsView: View {
                             .font(.title2)
                             .fontWeight(.bold)
                         
-                        Text("To automatically import screenshots, Screenshot Notes needs access to your photo library.")
+                        Text("To automatically import screenshots, Screenshot Vault needs access to your photo library.")
                             .font(.body)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -188,13 +188,13 @@ struct PermissionsView: View {
     private var statusMessage: String {
         switch photoLibraryService.authorizationStatus {
         case .authorized:
-            return "Screenshot Notes can automatically import your screenshots"
+            return "Screenshot Vault can automatically import your screenshots"
         case .denied:
             return "You've denied photo library access. You can change this in Settings."
         case .restricted:
             return "Photo library access is restricted by device policies"
         case .limited:
-            return "Screenshot Notes has limited photo library access"
+            return "Screenshot Vault has limited photo library access"
         case .notDetermined:
             return "Tap 'Grant Access' to enable automatic screenshot import"
         @unknown default:

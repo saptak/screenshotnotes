@@ -62,7 +62,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Screenshot Detection")
                 } footer: {
-                    Text("When enabled, Screenshot Notes will automatically detect and import new screenshots from your photo library.")
+                    Text("When enabled, Screenshot Vault will automatically detect and import new screenshots from your photo library.")
                 }
                 
                 Section {
@@ -87,7 +87,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Storage Management")
                 } footer: {
-                    Text("⚠️ Warning: This will permanently delete screenshots from your Photos app. They will only exist in Screenshot Notes.")
+                    Text("⚠️ Warning: This will permanently delete screenshots from your Photos app. They will only exist in Screenshot Vault.")
                 }
                 
                 Section {

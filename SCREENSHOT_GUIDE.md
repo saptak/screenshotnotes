@@ -1,4 +1,4 @@
-# Screenshot Requirements for ScreenshotNotes App Store Submission
+# Screenshot Requirements for Screenshot Vault App Store Submission
 
 ## Required Screenshot Sizes
 
@@ -35,7 +35,7 @@
 2. **Take screenshots** using volume up + power button
 3. **Upload to computer** and resize if needed
 
-## Recommended Screenshots for ScreenshotNotes
+## Recommended Screenshots for Screenshot Vault
 
 ### Screenshot 1: Main Grid View
 - Show the thumbnail grid with multiple screenshots
