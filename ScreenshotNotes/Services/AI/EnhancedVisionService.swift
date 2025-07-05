@@ -104,39 +104,33 @@ public final class EnhancedVisionService: ObservableObject {
     
     /// Perform comprehensive analysis combining multiple Vision requests
     private func performComprehensiveAnalysis(cgImage: CGImage) async -> VisualAttributes? {
-        do {
-            // Run all analysis requests concurrently for performance
-            async let objectResults = performObjectDetection(cgImage: cgImage)
-            async let sceneResults = performSceneClassification(cgImage: cgImage)
-            async let compositionResults = performCompositionAnalysis(cgImage: cgImage)
-            async let colorResults = performColorAnalysis(cgImage: cgImage)
-            
-            // Await all results
-            let objects = await objectResults
-            let scene = await sceneResults
-            let composition = await compositionResults
-            let colors = await colorResults
-            
-            // Calculate overall confidence
-            let overallConfidence = calculateOverallConfidence(
-                objectConfidence: objects.isEmpty ? 0 : objects.map { $0.confidence }.reduce(0, +) / Double(objects.count),
-                sceneConfidence: scene.primaryConfidence,
-                compositionConfidence: composition.complexity,
-                colorConfidence: colors.dominantColors.isEmpty ? 0 : colors.dominantColors[0].prominence
-            )
-            
-            return VisualAttributes(
-                detectedObjects: objects,
-                sceneClassification: scene,
-                composition: composition,
-                colorAnalysis: colors,
-                overallConfidence: overallConfidence
-            )
-            
-        } catch {
-            print("EnhancedVisionService: Analysis failed: \(error)")
-            return nil
-        }
+        // Run all analysis requests concurrently for performance
+        async let objectResults = performObjectDetection(cgImage: cgImage)
+        async let sceneResults = performSceneClassification(cgImage: cgImage)
+        async let compositionResults = performCompositionAnalysis(cgImage: cgImage)
+        async let colorResults = performColorAnalysis(cgImage: cgImage)
+        
+        // Await all results
+        let objects = await objectResults
+        let scene = await sceneResults
+        let composition = await compositionResults
+        let colors = await colorResults
+        
+        // Calculate overall confidence
+        let overallConfidence = calculateOverallConfidence(
+            objectConfidence: objects.isEmpty ? 0 : objects.map { $0.confidence }.reduce(0, +) / Double(objects.count),
+            sceneConfidence: scene.primaryConfidence,
+            compositionConfidence: composition.complexity,
+            colorConfidence: colors.dominantColors.isEmpty ? 0 : colors.dominantColors[0].prominence
+        )
+        
+        return VisualAttributes(
+            detectedObjects: objects,
+            sceneClassification: scene,
+            composition: composition,
+            colorAnalysis: colors,
+            overallConfidence: overallConfidence
+        )
     }
 }
 

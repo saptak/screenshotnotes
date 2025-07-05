@@ -278,16 +278,8 @@ public final class BackgroundVisionProcessor: ObservableObject {
     ) -> [Screenshot] {
         guard let context = modelContext else { return [] }
         
-        var predicate: Predicate<Screenshot>
-        
-        if let sceneType = sceneType {
-            predicate = #Predicate<Screenshot> { screenshot in
-                screenshot.visualAttributesData != nil
-            }
-        } else {
-            predicate = #Predicate<Screenshot> { screenshot in
-                screenshot.visualAttributesData != nil
-            }
+        let predicate = #Predicate<Screenshot> { screenshot in
+            screenshot.visualAttributesData != nil
         }
         
         let descriptor = FetchDescriptor<Screenshot>(
