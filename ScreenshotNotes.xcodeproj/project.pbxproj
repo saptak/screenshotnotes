@@ -111,8 +111,6 @@
 				B3676A462E163C4500DB146A /* ScreenshotNotes */,
 			);
 			name = ScreenshotNotes;
-			packageProductDependencies = (
-			);
 			productName = ScreenshotNotes;
 			productReference = B3676A442E163C4500DB146A /* ScreenshotNotes.app */;
 			productType = "com.apple.product-type.application";
@@ -134,8 +132,6 @@
 				B3676A562E163C4700DB146A /* ScreenshotNotesTests */,
 			);
 			name = ScreenshotNotesTests;
-			packageProductDependencies = (
-			);
 			productName = ScreenshotNotesTests;
 			productReference = B3676A532E163C4700DB146A /* ScreenshotNotesTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -157,8 +153,6 @@
 				B3676A602E163C4700DB146A /* ScreenshotNotesUITests */,
 			);
 			name = ScreenshotNotesUITests;
-			packageProductDependencies = (
-			);
 			productName = ScreenshotNotesUITests;
 			productReference = B3676A5D2E163C4700DB146A /* ScreenshotNotesUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";

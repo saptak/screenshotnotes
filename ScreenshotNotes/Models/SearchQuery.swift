@@ -115,6 +115,14 @@ public struct SearchQuery {
     /// Processing performance metrics
     public let processingTimeMs: Double
     
+    // MARK: - Entity Extraction
+    
+    /// Extracted entities from the query
+    public let extractedEntities: [ExtractedEntity]
+    
+    /// Complete entity extraction result
+    public let entityExtractionResult: EntityExtractionResult?
+    
     // MARK: - Initialization
     
     public init(
@@ -126,6 +134,8 @@ public struct SearchQuery {
         searchTerms: [String],
         filteredStopWords: [String] = [],
         tokens: [String] = [],
+        extractedEntities: [ExtractedEntity] = [],
+        entityExtractionResult: EntityExtractionResult? = nil,
         hasTemporalContext: Bool = false,
         hasVisualAttributes: Bool = false,
         requiresExactMatch: Bool = false,
@@ -140,6 +150,8 @@ public struct SearchQuery {
         self.searchTerms = searchTerms
         self.filteredStopWords = filteredStopWords
         self.tokens = tokens
+        self.extractedEntities = extractedEntities
+        self.entityExtractionResult = entityExtractionResult
         self.hasTemporalContext = hasTemporalContext
         self.hasVisualAttributes = hasVisualAttributes
         self.requiresExactMatch = requiresExactMatch
@@ -171,6 +183,47 @@ public struct SearchQuery {
         let termWeight = searchTerms.isEmpty ? 0.1 : min(1.0, Double(searchTerms.count) / 5.0)
         
         return (intentWeight * 0.4) + (confidenceWeight * 0.4) + (termWeight * 0.2)
+    }
+    
+    // MARK: - Entity-Based Computed Properties
+    
+    /// Entities filtered by color type
+    public var colorEntities: [ExtractedEntity] {
+        return extractedEntities.filter { $0.type == .color }
+    }
+    
+    /// Entities filtered by object type
+    public var objectEntities: [ExtractedEntity] {
+        return extractedEntities.filter { $0.type == .object }
+    }
+    
+    /// Entities filtered by document type
+    public var documentTypeEntities: [ExtractedEntity] {
+        return extractedEntities.filter { $0.type == .documentType }
+    }
+    
+    /// High-confidence entities suitable for filtering
+    public var actionableEntities: [ExtractedEntity] {
+        return extractedEntities.filter { $0.confidence.rawValue >= EntityConfidence.medium.rawValue }
+    }
+    
+    /// Whether the query contains temporal entities
+    public var hasTemporalEntities: Bool {
+        return extractedEntities.contains { entity in
+            [.date, .time, .duration, .frequency].contains(entity.type)
+        }
+    }
+    
+    /// Whether the query contains visual entities (colors, objects, shapes, etc.)
+    public var hasVisualEntities: Bool {
+        return extractedEntities.contains { entity in
+            [.color, .object, .shape, .size, .texture].contains(entity.type)
+        }
+    }
+    
+    /// Whether the query has rich entity data for enhanced search
+    public var hasRichEntityData: Bool {
+        return actionableEntities.count >= 2 || hasVisualEntities || hasTemporalEntities
     }
     
     /// Debug description for development

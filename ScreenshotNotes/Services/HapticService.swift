@@ -35,6 +35,24 @@ class HapticService: HapticServiceProtocol {
         case .heavy:
             impactHeavy.impactOccurred()
             impactHeavy.prepare()
+        case .rigid:
+            if #available(iOS 13.0, *) {
+                let rigidGenerator = UIImpactFeedbackGenerator(style: .rigid)
+                rigidGenerator.impactOccurred()
+                rigidGenerator.prepare()
+            } else {
+                impactHeavy.impactOccurred()
+                impactHeavy.prepare()
+            }
+        case .soft:
+            if #available(iOS 13.0, *) {
+                let softGenerator = UIImpactFeedbackGenerator(style: .soft)
+                softGenerator.impactOccurred()
+                softGenerator.prepare()
+            } else {
+                impactLight.impactOccurred()
+                impactLight.prepare()
+            }
         @unknown default:
             impactMedium.impactOccurred()
             impactMedium.prepare()

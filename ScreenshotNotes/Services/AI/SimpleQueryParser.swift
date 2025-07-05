@@ -1,12 +1,13 @@
 import Foundation
 import NaturalLanguage
 
-/// Simple, working query parser for Sub-Sprint 5.1.1
-/// This integrates with the SearchQuery model in the Models directory
+/// Enhanced query parser for Sub-Sprint 5.1.2 with entity extraction
+/// Integrates SimpleQueryParser with EntityExtractionService
 public final class QueryParserService: ObservableObject {
     
     private let languageRecognizer = NLLanguageRecognizer()
     private let tokenizer = NLTokenizer(unit: .word)
+    private let entityExtractionService = EntityExtractionService()
     
     /// Visual attribute keywords for enhanced detection
     private let visualKeywords: Set<String> = [
@@ -31,7 +32,7 @@ public final class QueryParserService: ObservableObject {
         setupLanguageRecognizer()
     }
     
-    /// Parse a natural language query into structured SearchQuery
+    /// Parse a natural language query into structured SearchQuery with entity extraction
     public func parseQuery(_ query: String) async -> SearchQuery {
         let startTime = CFAbsoluteTimeGetCurrent()
         
@@ -49,12 +50,16 @@ public final class QueryParserService: ObservableObject {
         let tokens = tokenizeQuery(normalizedQuery)
         let searchTerms = filterStopWords(tokens)
         
-        // Intent classification
-        let (intent, confidence) = classifyIntent(normalizedQuery, searchTerms: searchTerms)
+        // Entity extraction (Sub-Sprint 5.1.2 enhancement)
+        let entityExtractionResult = await entityExtractionService.extractEntities(from: query)
+        let extractedEntities = entityExtractionResult.actionableEntities
         
-        // Context detection
-        let hasVisualAttributes = detectVisualAttributes(searchTerms)
-        let hasTemporalContext = detectTemporalContext(searchTerms)
+        // Enhanced context detection using entities
+        let hasVisualAttributes = detectVisualAttributes(searchTerms) || !entityExtractionResult.visualEntities.isEmpty
+        let hasTemporalContext = detectTemporalContext(searchTerms) || !entityExtractionResult.temporalEntities.isEmpty
+        
+        // Intent classification (enhanced with entity context)
+        let (intent, confidence) = classifyIntent(normalizedQuery, searchTerms: searchTerms, entities: extractedEntities)
         
         let processingTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
         
@@ -65,8 +70,13 @@ public final class QueryParserService: ObservableObject {
             confidence: confidence,
             language: language,
             searchTerms: searchTerms,
+            filteredStopWords: [], // Not tracked in current implementation
+            tokens: tokens,
+            extractedEntities: extractedEntities,
+            entityExtractionResult: entityExtractionResult,
             hasTemporalContext: hasTemporalContext,
             hasVisualAttributes: hasVisualAttributes,
+            requiresExactMatch: false, // Default value for now
             processingTimeMs: processingTime
         )
     }
@@ -100,7 +110,7 @@ public final class QueryParserService: ObservableObject {
         return tokens.filter { !stopWords.contains($0.lowercased()) }
     }
     
-    private func classifyIntent(_ query: String, searchTerms: [String]) -> (SearchIntent, QueryConfidence) {
+    private func classifyIntent(_ query: String, searchTerms: [String], entities: [ExtractedEntity]) -> (SearchIntent, QueryConfidence) {
         var bestIntent: SearchIntent = .unknown
         var bestScore: Double = 0.0
         
@@ -109,6 +119,17 @@ public final class QueryParserService: ObservableObject {
             if score > bestScore {
                 bestScore = score
                 bestIntent = intent
+            }
+        }
+        
+        // Entity-based intent enhancement
+        if !entities.isEmpty {
+            bestScore = min(1.0, bestScore + 0.2) // Boost confidence with entities
+            
+            // Specific entity-based intent adjustments
+            if entities.contains(where: { $0.type == EntityType.documentType }) {
+                bestIntent = bestIntent == .unknown ? .find : bestIntent
+                bestScore = max(bestScore, 0.7)
             }
         }
         
@@ -168,5 +189,27 @@ public final class QueryParserService: ObservableObject {
             searchTerms: [],
             processingTimeMs: 0.0
         )
+    }
+    
+    // MARK: - Public Entity Extraction Methods
+    
+    /// Extract entities from text using the entity extraction service
+    public func extractEntities(from text: String) async -> EntityExtractionResult {
+        return await entityExtractionService.extractEntities(from: text)
+    }
+    
+    /// Get supported languages for entity extraction
+    public func getSupportedLanguages() -> [NLLanguage] {
+        return entityExtractionService.getSupportedLanguages()
+    }
+    
+    /// Clear the entity extraction cache
+    public func clearEntityCache() {
+        entityExtractionService.clearCache()
+    }
+    
+    /// Get entity extraction cache statistics
+    public func getEntityCacheStatistics() -> (count: Int, maxSize: Int) {
+        return entityExtractionService.getCacheStatistics()
     }
 }
