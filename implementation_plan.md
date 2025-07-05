@@ -578,7 +578,7 @@ Each sprint must meet the following criteria before proceeding:
     *   **UX Focus:** Immersive 3D mind map with intuitive navigation, organic animations, and contextual insights.
     *   **Definition of Done:** AI-powered mind map with semantic relationship discovery and smooth 3D interactions
 
-*   **Sprint 7: Advanced Intelligence & Contextual Understanding**
+*   **Sprint 7: Advanced Intelligence & Contextual Understanding** 🤖
     *   **Goal:** Multi-modal AI analysis with user collaboration and smart insights.
     *   **Features:**
         *   Advanced Vision Framework integration for object, scene, and text recognition
@@ -586,6 +586,151 @@ Each sprint must meet the following criteria before proceeding:
         *   Collaborative annotation system with rich media notes and voice memos
         *   Intelligent suggestions based on usage patterns and content analysis
         *   Cross-reference detection between screenshots with actionable insights
+
+    *   **Sub-Sprint 7.1: Advanced Multi-Modal AI** (Week 1)
+        *   **Goal:** Enhance AI capabilities with advanced vision and scene understanding
+        *   **Atomic Units:**
+            *   **7.1.1: Advanced Vision Framework Integration**
+                *   **Deliverable:** Enhanced object and scene recognition using latest Vision APIs
+                *   **Tasks:**
+                    *   Integrate VNClassifyImageRequest for advanced scene classification
+                    *   Implement VNGenerateAttentionBasedSaliencyImageRequest for focus areas
+                    *   Add VNDetectFaceRectanglesRequest for people detection in screenshots
+                    *   Create VNRecognizeTextRequest with language-specific optimization
+                *   **Integration Test:** Process complex screenshot → detect scene:shopping, objects:[clothes, price], attention:[main product]
+                *   **Functional Test:** 90% accuracy on scene classification, 85% on object detection
+                *   **Files:** `Services/AI/AdvancedVisionService.swift`, `Models/SceneClassification.swift`
+
+            *   **7.1.2: Smart Categorization Engine**
+                *   **Deliverable:** Automatic screenshot categorization with confidence scoring
+                *   **Tasks:**
+                    *   Create hierarchical category system (receipts, social, web, documents, photos)
+                    *   Implement multi-signal categorization using vision + text + metadata
+                    *   Add category confidence scoring and uncertainty handling
+                    *   Build category learning from user feedback and corrections
+                *   **Integration Test:** Receipt screenshot automatically categorized as "Finance > Receipts > Hotel" with confidence >0.9
+                *   **Functional Test:** 88% categorization accuracy across 15 major categories
+                *   **Files:** `Services/AI/CategorizationService.swift`, `Models/Category.swift`
+
+            *   **7.1.3: Content Understanding & Entity Recognition**
+                *   **Deliverable:** Deep content analysis with business and personal entity extraction
+                *   **Tasks:**
+                    *   Implement business entity recognition (brands, products, services)
+                    *   Add personal entity detection (contacts, addresses, phone numbers)
+                    *   Create content type classification (form, receipt, article, social post)
+                    *   Build entity relationship mapping across screenshots
+                *   **Integration Test:** Business card screenshot → extract entities:[person, company, phone, email, address]
+                *   **Functional Test:** Entity extraction accuracy >85% for structured documents
+                *   **Files:** `Services/AI/EntityRecognitionService.swift`, `Models/ExtractedEntity.swift`
+
+    *   **Sub-Sprint 7.2: Collaborative Annotation System** (Week 2)
+        *   **Goal:** Rich annotation tools with voice notes and collaborative features
+        *   **Atomic Units:**
+            *   **7.2.1: Rich Media Annotation Interface**
+                *   **Deliverable:** Comprehensive annotation tools with drawing, text, and highlights
+                *   **Tasks:**
+                    *   Create PencilKit integration for Apple Pencil drawing annotations
+                    *   Implement text annotation with customizable styles and colors
+                    *   Add shape tools (arrows, circles, rectangles) with smart snapping
+                    *   Build annotation layers with show/hide and opacity controls
+                *   **Integration Test:** User draws arrow pointing to price on receipt → annotation saved with coordinates and style
+                *   **Functional Test:** Annotation tools work smoothly on all supported device sizes
+                *   **Files:** `Views/AnnotationView.swift`, `Services/AnnotationService.swift`, `Models/Annotation.swift`
+
+            *   **7.2.2: Voice Notes & Audio Transcription**
+                *   **Deliverable:** Voice note recording with automatic transcription
+                *   **Tasks:**
+                    *   Integrate AVFoundation for high-quality audio recording
+                    *   Implement Speech Framework for voice note transcription
+                    *   Add audio waveform visualization and playback controls
+                    *   Create voice note search and text-based filtering
+                *   **Integration Test:** Record voice note "This is the hotel receipt from Paris trip" → transcribed and searchable
+                *   **Functional Test:** Voice transcription accuracy >90% in quiet environment
+                *   **Files:** `Services/VoiceNoteService.swift`, `Views/VoiceNoteView.swift`, `Models/VoiceNote.swift`
+
+            *   **7.2.3: Collaborative Features & Sharing**
+                *   **Deliverable:** Screenshot sharing with collaborative annotation capabilities
+                *   **Tasks:**
+                    *   Implement CloudKit sharing for screenshot collections
+                    *   Add real-time collaborative annotation with conflict resolution
+                    *   Create permission management (view, comment, edit) for shared screenshots
+                    *   Build notification system for collaboration updates
+                *   **Integration Test:** Share screenshot with team → collaborators can add annotations simultaneously
+                *   **Functional Test:** Collaborative editing works without conflicts for 5+ concurrent users
+                *   **Files:** `Services/CollaborationService.swift`, `Services/CloudKitSharingService.swift`
+
+    *   **Sub-Sprint 7.3: Intelligent Insights & Suggestions** (Week 3)
+        *   **Goal:** AI-powered insights and smart suggestions based on usage patterns
+        *   **Atomic Units:**
+            *   **7.3.1: Usage Pattern Analysis**
+                *   **Deliverable:** System analyzing user behavior for personalized insights
+                *   **Tasks:**
+                    *   Track user interaction patterns (search queries, viewed screenshots, time spent)
+                    *   Implement privacy-preserving analytics with on-device processing
+                    *   Create behavior clustering for personalization without PII
+                    *   Build pattern recognition for workflow optimization suggestions
+                *   **Integration Test:** System recognizes user frequently searches receipts on weekends → suggests receipt workflow
+                *   **Functional Test:** Pattern recognition improves user efficiency by 25% in testing
+                *   **Files:** `Services/AI/UsageAnalyticsService.swift`, `Models/UsagePattern.swift`
+
+            *   **7.3.2: Smart Suggestions Engine**
+                *   **Deliverable:** Context-aware suggestions for related content and actions
+                *   **Tasks:**
+                    *   Implement content-based recommendation system
+                    *   Add contextual action suggestions (export, share, organize)
+                    *   Create temporal suggestions based on calendar and location
+                    *   Build suggestion ranking and relevance scoring
+                *   **Integration Test:** View receipt → suggests "Related receipts from this trip", "Export expense report"
+                *   **Functional Test:** 70% of suggestions rated as useful by users
+                *   **Files:** `Services/AI/SuggestionEngine.swift`, `Models/Suggestion.swift`
+
+            *   **7.3.3: Cross-Reference Detection & Insights**
+                *   **Deliverable:** Intelligent detection of relationships and insights across screenshots
+                *   **Tasks:**
+                    *   Implement cross-screenshot pattern detection (recurring expenses, contacts)
+                    *   Add duplicate detection with smart grouping suggestions
+                    *   Create insight generation for spending patterns, contact analysis
+                    *   Build actionable insight presentation with clear explanations
+                *   **Integration Test:** Multiple hotel receipts → insight "You've spent $1,200 on hotels this month, 40% above average"
+                *   **Functional Test:** Cross-reference accuracy >80% for clear patterns
+                *   **Files:** `Services/AI/CrossReferenceService.swift`, `Models/Insight.swift`
+
+    *   **Sub-Sprint 7.4: Performance & Intelligence Optimization** (Week 4)
+        *   **Goal:** Optimize AI performance and enhance intelligence quality
+        *   **Atomic Units:**
+            *   **7.4.1: AI Pipeline Performance Optimization**
+                *   **Deliverable:** Optimized AI processing with efficient resource management
+                *   **Tasks:**
+                    *   Implement parallel processing for multiple AI tasks
+                    *   Add intelligent task prioritization based on user context
+                    *   Create model caching and warm-up strategies
+                    *   Build memory-efficient batch processing for large datasets
+                *   **Integration Test:** Process 100 screenshots with full AI analysis in <30 seconds
+                *   **Functional Test:** AI processing uses <250MB memory peak, maintains app responsiveness
+                *   **Files:** `Services/AI/PerformanceOptimizer.swift`, `Services/AI/TaskScheduler.swift`
+
+            *   **7.4.2: Quality Assurance & Feedback Loop**
+                *   **Deliverable:** Quality monitoring and improvement system for AI predictions
+                *   **Tasks:**
+                    *   Implement confidence scoring for all AI predictions
+                    *   Add user feedback collection for AI accuracy improvement
+                    *   Create model performance monitoring and drift detection
+                    *   Build automated quality metrics and reporting
+                *   **Integration Test:** User corrects wrong category → system learns and improves future predictions
+                *   **Functional Test:** AI accuracy improves by 10% after 100 user corrections
+                *   **Files:** `Services/AI/QualityAssurance.swift`, `Services/AI/FeedbackLoop.swift`
+
+            *   **7.4.3: Privacy & Security Enhancement**
+                *   **Deliverable:** Enhanced privacy protection for AI processing and user data
+                *   **Tasks:**
+                    *   Implement differential privacy for usage analytics
+                    *   Add secure enclave storage for sensitive extracted data
+                    *   Create data anonymization for AI model training
+                    *   Build privacy dashboard showing data usage and controls
+                *   **Integration Test:** All AI processing runs on-device with no data transmission to external servers
+                *   **Functional Test:** Privacy audit confirms GDPR and CCPA compliance
+                *   **Files:** `Services/PrivacyService.swift`, `Views/PrivacyDashboard.swift`
+
     *   **Technical Specifications:**
         *   Vision Framework: VNClassifyImageRequest, VNGenerateAttentionBasedSaliencyImageRequest
         *   Core ML: Custom models for content classification and similarity detection
@@ -594,10 +739,19 @@ Each sprint must meet the following criteria before proceeding:
         *   AI Pipeline: Multi-modal analysis combining text, visual, and user context
         *   Search: Vector embeddings for semantic search with multi-modal understanding
         *   UI: Rich annotation interface with drawing tools, voice notes, and smart suggestions
-    *   **UX Focus:** Intuitive multi-modal annotation with AI-powered insights and contextual suggestions.
-    *   **Definition of Done:** Advanced AI analysis with collaborative annotation and intelligent content understanding
 
-*   **Sprint 8: Production Excellence & Advanced Features**
+    *   **Overall Sprint Definition of Done:**
+        *   ✅ Advanced vision processing with 90% scene classification accuracy
+        *   ✅ Smart categorization with 88% accuracy across 15 categories
+        *   ✅ Rich annotation tools with PencilKit and voice note integration
+        *   ✅ Voice transcription with 90% accuracy in normal conditions
+        *   ✅ Collaborative sharing with real-time annotation synchronization
+        *   ✅ Smart suggestions with 70% user satisfaction rating
+        *   ✅ Cross-reference detection with 80% accuracy for clear patterns
+        *   ✅ AI processing within 30 seconds for 100 screenshots
+        *   ✅ Privacy-compliant on-device processing with secure data handling
+
+*   **Sprint 8: Production Excellence & Advanced Features** 🚀
     *   **Goal:** Production-ready app with advanced features and enterprise-grade quality.
     *   **Features:**
         *   Advanced performance optimization with machine learning-based prediction
@@ -606,6 +760,151 @@ Each sprint must meet the following criteria before proceeding:
         *   Advanced sharing with privacy controls and collaborative features
         *   Widget support for Today View and Lock Screen integration
         *   Shortcuts app integration for automation workflows
+
+    *   **Sub-Sprint 8.1: Performance & Predictive Optimization** (Week 1)
+        *   **Goal:** ML-powered performance optimization and predictive user experience
+        *   **Atomic Units:**
+            *   **8.1.1: ML-Powered Predictive Loading**
+                *   **Deliverable:** Intelligent preloading system based on user behavior prediction
+                *   **Tasks:**
+                    *   Create user behavior tracking and pattern recognition ML model
+                    *   Implement predictive preloading for likely-to-be-accessed screenshots
+                    *   Add intelligent cache management with usage prediction
+                    *   Build adaptive performance based on device capabilities and battery level
+                *   **Integration Test:** System predicts and preloads screenshots user will view with 75% accuracy
+                *   **Functional Test:** Perceived load times reduced by 40% through predictive loading
+                *   **Files:** `Services/ML/PredictiveLoadingService.swift`, `Models/UserBehaviorModel.swift`
+
+            *   **8.1.2: Advanced Performance Monitoring**
+                *   **Deliverable:** Comprehensive performance monitoring with automated optimization
+                *   **Tasks:**
+                    *   Integrate Instruments SDK for automated performance tracking
+                    *   Implement real-time performance metrics collection (memory, CPU, battery)
+                    *   Add performance regression detection and alerting
+                    *   Create automated performance testing with device-specific benchmarks
+                *   **Integration Test:** Performance monitoring detects memory leak and triggers automatic cleanup
+                *   **Functional Test:** App maintains <200MB memory and >95% uptime across all target devices
+                *   **Files:** `Services/PerformanceMonitor.swift`, `Services/AutomatedTesting.swift`
+
+            *   **8.1.3: Intelligent Resource Management**
+                *   **Deliverable:** Smart resource allocation with background optimization
+                *   **Tasks:**
+                    *   Implement dynamic quality adjustment based on device performance
+                    *   Add intelligent background processing prioritization
+                    *   Create thermal management with graceful performance degradation
+                    *   Build smart storage management with automatic cleanup policies
+                *   **Integration Test:** App automatically reduces image quality when device overheats, restores when cool
+                *   **Functional Test:** Maintains 60fps scrolling performance across 5 generations of devices
+                *   **Files:** `Services/ResourceManager.swift`, `Services/ThermalManagement.swift`
+
+    *   **Sub-Sprint 8.2: Onboarding & User Experience** (Week 2)
+        *   **Goal:** World-class onboarding experience with interactive tutorials
+        *   **Atomic Units:**
+            *   **8.2.1: Interactive Tutorial System**
+                *   **Deliverable:** Comprehensive onboarding with hands-on feature discovery
+                *   **Tasks:**
+                    *   Create guided tutorial flow with progressive feature introduction
+                    *   Implement interactive overlays with contextual hints and animations
+                    *   Add skip/resume functionality with progress tracking
+                    *   Build adaptive tutorials based on user experience level
+                *   **Integration Test:** New user completes core feature tutorial in <5 minutes with 90% completion rate
+                *   **Functional Test:** Tutorial increases feature adoption by 60% compared to static onboarding
+                *   **Files:** `Views/OnboardingFlow.swift`, `Services/TutorialService.swift`
+
+            *   **8.2.2: AR Preview & Feature Demonstration**
+                *   **Deliverable:** Augmented reality preview for key features and workflows
+                *   **Tasks:**
+                    *   Integrate ARKit for immersive feature demonstration
+                    *   Create AR overlays showing mind map visualization preview
+                    *   Add virtual screenshot examples for tutorial purposes
+                    *   Build AR-based gesture training for advanced interactions
+                *   **Integration Test:** AR preview accurately demonstrates mind map in user's space
+                *   **Functional Test:** AR features work on 95% of ARKit-compatible devices
+                *   **Files:** `Views/AR/ARPreviewView.swift`, `Services/ARDemonstrationService.swift`
+
+            *   **8.2.3: Personalization & Accessibility Setup**
+                *   **Deliverable:** Customized onboarding with accessibility preference configuration
+                *   **Tasks:**
+                    *   Create personalization questionnaire for optimal feature setup
+                    *   Implement accessibility preference detection and configuration
+                    *   Add visual, motor, and cognitive accessibility customizations
+                    *   Build adaptive UI based on accessibility needs and preferences
+                *   **Integration Test:** Accessibility setup correctly configures VoiceOver, reduced motion, and high contrast
+                *   **Functional Test:** Personalized setup improves user satisfaction by 45% in first week
+                *   **Files:** `Views/PersonalizationView.swift`, `Services/AccessibilitySetupService.swift`
+
+    *   **Sub-Sprint 8.3: Export & Advanced Sharing** (Week 3)
+        *   **Goal:** Comprehensive export capabilities and advanced sharing features
+        *   **Atomic Units:**
+            *   **8.3.1: Multi-Format Export System**
+                *   **Deliverable:** Export capabilities for PDF, PowerPoint, JSON, and ZIP archives
+                *   **Tasks:**
+                    *   Implement PDF generation with searchable text and annotations
+                    *   Create PowerPoint export with automatic slide generation
+                    *   Add JSON export for data portability and backup
+                    *   Build ZIP archive export with organized folder structure
+                *   **Integration Test:** Export 50 screenshots with annotations → generates 5MB PDF with searchable text
+                *   **Functional Test:** All export formats maintain data integrity and visual fidelity
+                *   **Files:** `Services/ExportService.swift`, `Services/PDFGenerator.swift`, `Services/PowerPointExporter.swift`
+
+            *   **8.3.2: Advanced Privacy Controls & Sharing**
+                *   **Deliverable:** Granular privacy controls and secure sharing mechanisms
+                *   **Tasks:**
+                    *   Create privacy level classification (public, private, sensitive, confidential)
+                    *   Implement expiring share links with access control
+                    *   Add watermarking and tracking for shared content
+                    *   Build team collaboration with role-based permissions
+                *   **Integration Test:** Share sensitive receipt with colleague → access expires after 24 hours as configured
+                *   **Functional Test:** Privacy controls prevent unauthorized access 100% of the time
+                *   **Files:** `Services/PrivacyControlService.swift`, `Services/SecureSharingService.swift`
+
+            *   **8.3.3: Presentation Mode & Professional Features**
+                *   **Deliverable:** Professional presentation capabilities with remote control
+                *   **Tasks:**
+                    *   Create full-screen presentation mode with slide transitions
+                    *   Implement remote control via Apple Watch or companion device
+                    *   Add laser pointer simulation and annotation during presentation
+                    *   Build audience interaction features (QR codes for sharing)
+                *   **Integration Test:** Present mind map on external display with Watch remote control working smoothly
+                *   **Functional Test:** Presentation mode works flawlessly with AirPlay and external displays
+                *   **Files:** `Views/PresentationView.swift`, `Services/PresentationControlService.swift`
+
+    *   **Sub-Sprint 8.4: Widget & Ecosystem Integration** (Week 4)
+        *   **Goal:** Deep iOS ecosystem integration with widgets and automation
+        *   **Atomic Units:**
+            *   **8.4.1: WidgetKit Integration**
+                *   **Deliverable:** Today View and Lock Screen widgets with dynamic content
+                *   **Tasks:**
+                    *   Create Today View widget showing recent screenshots and insights
+                    *   Implement Lock Screen widgets for quick capture and statistics
+                    *   Add interactive widget functionality for iOS 17+
+                    *   Build widget timeline providers with intelligent content updates
+                *   **Integration Test:** Widget shows recent receipt on Lock Screen, tapping opens detail view
+                *   **Functional Test:** Widgets update correctly and maintain battery efficiency
+                *   **Files:** `Widgets/ScreenshotWidget.swift`, `Services/WidgetTimelineProvider.swift`
+
+            *   **8.4.2: Shortcuts App Integration**
+                *   **Deliverable:** Advanced App Intents for Shortcuts automation workflows
+                *   **Tasks:**
+                    *   Create comprehensive App Intents for all major features
+                    *   Implement parameter-based automation (export receipts from last month)
+                    *   Add workflow suggestions based on user patterns
+                    *   Build Shortcuts widget for common automated tasks
+                *   **Integration Test:** Shortcut "Monthly Receipt Export" automatically finds and exports all receipts from current month
+                *   **Functional Test:** Shortcuts integration enables 20+ useful automation workflows
+                *   **Files:** `Intents/AdvancedAppIntents.swift`, `Services/AutomationSuggestionService.swift`
+
+            *   **8.4.3: System Integration & Background Processing**
+                *   **Deliverable:** Seamless system integration with background intelligence
+                *   **Tasks:**
+                    *   Implement Focus mode integration with contextual content filtering
+                    *   Add Live Activities for long-running AI processing tasks
+                    *   Create Spotlight integration for system-wide screenshot search
+                    *   Build background app refresh with intelligent processing scheduling
+                *   **Integration Test:** Work Focus mode automatically filters to work-related screenshots only
+                *   **Functional Test:** System integration features work reliably without impacting device performance
+                *   **Files:** `Services/FocusModeService.swift`, `Services/LiveActivitiesService.swift`, `Services/SpotlightIntegration.swift`
+
     *   **Technical Specifications:**
         *   Performance: ML-powered predictive loading and intelligent caching
         *   Instruments: Comprehensive profiling with automated performance testing
@@ -615,10 +914,19 @@ Each sprint must meet the following criteria before proceeding:
         *   Testing: 95%+ code coverage with automated UI testing and performance benchmarks
         *   Security: Advanced data protection with biometric authentication and secure enclave
         *   Accessibility: WCAG AA compliance with custom accessibility features
-    *   **UX Focus:** Enterprise-grade quality with delightful advanced features and seamless ecosystem integration.
-    *   **Definition of Done:** Production-ready app with advanced features, comprehensive testing, and iOS ecosystem integration
 
-*   **Sprint 9: Ecosystem Integration & Advanced Workflows**
+    *   **Overall Sprint Definition of Done:**
+        *   ✅ ML-powered predictive loading reduces perceived load times by 40%
+        *   ✅ Performance monitoring maintains <200MB memory and >95% uptime
+        *   ✅ Interactive onboarding with 90% completion rate and 60% feature adoption increase
+        *   ✅ AR preview demonstrates features on 95% of ARKit-compatible devices
+        *   ✅ Multi-format export with data integrity and visual fidelity preservation
+        *   ✅ Advanced privacy controls prevent unauthorized access 100% of the time
+        *   ✅ Professional presentation mode with flawless AirPlay support
+        *   ✅ Widgets and Shortcuts enable 20+ useful automation workflows
+        *   ✅ 95%+ test coverage with comprehensive performance benchmarks
+
+*   **Sprint 9: Ecosystem Integration & Advanced Workflows** 🌐
     *   **Goal:** Deep iOS ecosystem integration with professional workflow capabilities.
     *   **Features:**
         *   Watch app companion with quick capture and voice notes
@@ -627,6 +935,151 @@ Each sprint must meet the following criteria before proceeding:
         *   Focus mode integration with contextual filtering
         *   Live Activities for long-running OCR processes
         *   Advanced automation with custom shortcuts and workflows
+
+    *   **Sub-Sprint 9.1: watchOS Companion App** (Week 1)
+        *   **Goal:** Native Apple Watch app for quick capture and voice annotations
+        *   **Atomic Units:**
+            *   **9.1.1: Watch App Foundation & Quick Capture**
+                *   **Deliverable:** Native watchOS app with camera and voice note capture
+                *   **Tasks:**
+                    *   Create watchOS app target with WatchKit framework
+                    *   Implement quick screenshot capture using Watch camera
+                    *   Add voice note recording with automatic transcription
+                    *   Build immediate sync with iPhone app via Watch Connectivity
+                *   **Integration Test:** Capture voice note on Watch → appears in iPhone app within 2 seconds
+                *   **Functional Test:** Watch app maintains >95% sync reliability across all scenarios
+                *   **Files:** `WatchApp/ContentView.swift`, `WatchApp/CaptureService.swift`, `Services/WatchConnectivityService.swift`
+
+            *   **9.1.2: Complications & Quick Actions**
+                *   **Deliverable:** Watch face complications and Digital Crown navigation
+                *   **Tasks:**
+                    *   Create watch face complications showing recent screenshot count
+                    *   Implement Digital Crown navigation for browsing screenshots
+                    *   Add quick action shortcuts for common tasks (voice note, tag, search)
+                    *   Build haptic feedback patterns for different interaction types
+                *   **Integration Test:** Complication shows "3 new" → tap opens Watch app with recent screenshots
+                *   **Functional Test:** Complications update correctly and respond within 500ms
+                *   **Files:** `WatchApp/Complications/`, `WatchApp/Services/HapticService.swift`
+
+            *   **9.1.3: Scribble & Accessibility Integration**
+                *   **Deliverable:** Full Scribble support and accessibility features for Watch
+                *   **Tasks:**
+                    *   Integrate Scribble for text input and search queries
+                    *   Add VoiceOver support for all Watch app interactions
+                    *   Create accessibility shortcuts and voice control commands
+                    *   Build large text and high contrast support
+                *   **Integration Test:** Scribble "find receipts" on Watch → shows relevant screenshots
+                *   **Functional Test:** Watch app passes accessibility audit with full VoiceOver support
+                *   **Files:** `WatchApp/AccessibilityService.swift`, `WatchApp/ScribbleIntegration.swift`
+
+    *   **Sub-Sprint 9.2: macOS Catalyst App** (Week 2)
+        *   **Goal:** Professional macOS app with desktop-optimized workflows
+        *   **Atomic Units:**
+            *   **9.2.1: Mac Catalyst Foundation & Window Management**
+                *   **Deliverable:** Native macOS app with multi-window support and toolbar integration
+                *   **Tasks:**
+                    *   Configure Mac Catalyst target with macOS-specific optimizations
+                    *   Implement multi-window support for viewing multiple screenshots
+                    *   Add native macOS toolbar with contextual actions
+                    *   Create macOS-style sidebar navigation and detail views
+                *   **Integration Test:** Open multiple screenshot windows → each operates independently with proper state management
+                *   **Functional Test:** Mac app feels native with proper window management and toolbar functionality
+                *   **Files:** `macOS/WindowController.swift`, `macOS/ToolbarConfiguration.swift`
+
+            *   **9.2.2: Drag & Drop Integration**
+                *   **Deliverable:** Comprehensive drag-and-drop support for Mac workflows
+                *   **Tasks:**
+                    *   Implement drag-and-drop from Finder for image import
+                    *   Add drag-and-drop export to other applications (email, documents)
+                    *   Create internal drag-and-drop for organization and tagging
+                    *   Build clipboard integration with automatic paste detection
+                *   **Integration Test:** Drag receipt image from Finder → automatically imports and analyzes
+                *   **Functional Test:** Drag-and-drop works seamlessly with 10+ common macOS applications
+                *   **Files:** `macOS/DragDropService.swift`, `macOS/ClipboardIntegration.swift`
+
+            *   **9.2.3: Keyboard Shortcuts & Menu Bar Integration**
+                *   **Deliverable:** Professional keyboard shortcuts and menu bar quick actions
+                *   **Tasks:**
+                    *   Create comprehensive keyboard shortcut system for all major actions
+                    *   Implement menu bar extra for quick screenshot access
+                    *   Add global hotkeys for screenshot capture and search
+                    *   Build command palette for keyboard-driven navigation
+                *   **Integration Test:** Press Cmd+Shift+S → opens search with focus, Cmd+N → captures new screenshot
+                *   **Functional Test:** All shortcuts work reliably and follow macOS conventions
+                *   **Files:** `macOS/KeyboardShortcuts.swift`, `macOS/MenuBarService.swift`
+
+    *   **Sub-Sprint 9.3: CloudKit Sync & Multi-Device Experience** (Week 3)
+        *   **Goal:** Seamless synchronization across all Apple devices
+        *   **Atomic Units:**
+            *   **9.3.1: CloudKit Schema & Sync Foundation**
+                *   **Deliverable:** Robust CloudKit synchronization with conflict resolution
+                *   **Tasks:**
+                    *   Design CloudKit schema for screenshots, annotations, and metadata
+                    *   Implement CKModifyRecordsOperation for efficient batch syncing
+                    *   Add conflict resolution with user-preference-based merging
+                    *   Create sync progress tracking and error handling
+                *   **Integration Test:** Edit screenshot on iPhone → changes appear on Mac within 10 seconds
+                *   **Functional Test:** Sync maintains 99.9% data integrity across 1000+ operations
+                *   **Files:** `Services/CloudKitSyncService.swift`, `Models/CloudKitSchema.swift`
+
+            *   **9.3.2: End-to-End Encryption & Privacy**
+                *   **Deliverable:** Private CloudKit sync with end-to-end encryption
+                *   **Tasks:**
+                    *   Implement CloudKit private database with user authentication
+                    *   Add client-side encryption for sensitive screenshot content
+                    *   Create privacy-preserving sync with minimal metadata exposure
+                    *   Build encryption key management and recovery workflows
+                *   **Integration Test:** Encrypted screenshot syncs between devices → only authorized user can decrypt
+                *   **Functional Test:** Encryption/decryption adds <100ms overhead, maintains data privacy
+                *   **Files:** `Services/EncryptionService.swift`, `Services/PrivateCloudKitService.swift`
+
+            *   **9.3.3: Offline Support & Intelligent Sync**
+                *   **Deliverable:** Robust offline functionality with intelligent sync prioritization
+                *   **Tasks:**
+                    *   Implement offline queue for operations during network outages
+                    *   Add intelligent sync prioritization based on user activity
+                    *   Create bandwidth-aware syncing with progressive quality
+                    *   Build sync optimization based on device type and connectivity
+                *   **Integration Test:** Work offline for 1 hour → all changes sync correctly when connection restored
+                *   **Functional Test:** Offline mode maintains full functionality, sync completes efficiently
+                *   **Files:** `Services/OfflineSyncService.swift`, `Services/BandwidthOptimizer.swift`
+
+    *   **Sub-Sprint 9.4: Advanced Automation & Workflow Integration** (Week 4)
+        *   **Goal:** Professional automation capabilities and workflow optimization
+        *   **Atomic Units:**
+            *   **9.4.1: Advanced Focus Mode Integration**
+                *   **Deliverable:** Context-aware filtering based on Focus modes and calendar
+                *   **Tasks:**
+                    *   Implement Focus filter for contextual screenshot display
+                    *   Add calendar integration for time-based context awareness
+                    *   Create location-based filtering using Core Location
+                    *   Build smart suggestions based on current context
+                *   **Integration Test:** Work Focus mode → only work-related screenshots visible, personal content filtered
+                *   **Functional Test:** Context filtering improves relevance by 80% in focused scenarios
+                *   **Files:** `Services/FocusIntegrationService.swift`, `Services/ContextualFilteringService.swift`
+
+            *   **9.4.2: Live Activities & Background Processing**
+                *   **Deliverable:** Live Activities for long-running operations with background intelligence
+                *   **Tasks:**
+                    *   Create Live Activities for OCR and AI processing progress
+                    *   Implement background app refresh with intelligent scheduling
+                    *   Add progress tracking for multi-screenshot batch operations
+                    *   Build Dynamic Island integration for quick progress access
+                *   **Integration Test:** Import 50 screenshots → Live Activity shows progress, completes in background
+                *   **Functional Test:** Background processing completes reliably without impacting foreground performance
+                *   **Files:** `Services/LiveActivitiesService.swift`, `Services/BackgroundProcessingService.swift`
+
+            *   **9.4.3: Professional Workflow Automation**
+                *   **Deliverable:** Advanced automation capabilities for professional use cases
+                *   **Tasks:**
+                    *   Create workflow templates for common professional scenarios
+                    *   Implement rule-based automation (auto-tag receipts, export reports)
+                    *   Add scheduled operations with customizable triggers
+                    *   Build workflow sharing and team collaboration features
+                *   **Integration Test:** Receipt workflow → auto-detect, categorize, and export monthly report without user intervention
+                *   **Functional Test:** Workflow automation reduces manual tasks by 70% for professional users
+                *   **Files:** `Services/WorkflowAutomationService.swift`, `Models/WorkflowTemplate.swift`
+
     *   **Technical Specifications:**
         *   WatchOS: Native watch app with complications and Scribble support
         *   macOS: Catalyst app with AppKit optimizations and menu bar integration
@@ -634,5 +1087,13 @@ Each sprint must meet the following criteria before proceeding:
         *   Focus: Focus filter implementation with contextual content filtering
         *   Live Activities: ActivityKit integration for real-time process updates
         *   Automation: Advanced App Intents with parameter configuration
-    *   **UX Focus:** Seamless cross-platform experience with professional workflow optimization.
-    *   **Definition of Done:** Complete ecosystem integration with multi-platform synchronization and professional features
+
+    *   **Overall Sprint Definition of Done:**
+        *   ✅ Native Watch app with >95% sync reliability and complication support
+        *   ✅ macOS app with seamless drag-and-drop and professional keyboard shortcuts
+        *   ✅ CloudKit sync maintaining 99.9% data integrity with end-to-end encryption
+        *   ✅ Focus mode integration improving content relevance by 80%
+        *   ✅ Live Activities providing real-time progress for background operations
+        *   ✅ Workflow automation reducing manual tasks by 70% for professional users
+        *   ✅ Cross-platform feature parity with device-optimized experiences
+        *   ✅ Comprehensive ecosystem integration following Apple Human Interface Guidelines
