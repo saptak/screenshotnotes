@@ -1,0 +1,13 @@
+CLAUDE.md
+
+# Xcode user interface state
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Build artifacts
+build/
+DerivedData/
+
+# macOS
+.DS_Store
