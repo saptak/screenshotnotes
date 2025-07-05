@@ -28,6 +28,7 @@ Transform Screenshot Vault's search capability from keyword-based to conversatio
 - **Natural Language** - For text processing and semantic analysis
 - **Vision** - Enhanced object detection and scene classification
 - **Speech** - Voice-to-text conversion
+- **App Intents** - Deep Siri integration for voice-activated search
 - **Create ML** - Custom model training if needed
 
 #### On-Device Privacy
@@ -191,6 +192,46 @@ class VoiceSearchService: ObservableObject {
 }
 ```
 
+#### 3.3 Siri App Intents Integration
+```swift
+import AppIntents
+
+struct SearchScreenshotsIntent: AppIntent {
+    static var title: LocalizedStringResource = "Search Screenshots"
+    static var description = IntentDescription("Search for screenshots using natural language")
+    
+    @Parameter(title: "Search Query")
+    var query: String
+    
+    func perform() async throws -> some IntentResult & ReturnsValue<[ScreenshotEntity]> {
+        let searchService = ConversationalSearchService()
+        let results = await searchService.search(query: query)
+        
+        let entities = results.map { screenshot in
+            ScreenshotEntity(
+                id: screenshot.id,
+                filename: screenshot.filename,
+                extractedText: screenshot.extractedText
+            )
+        }
+        
+        return .result(value: entities, dialog: "Found \(entities.count) screenshots matching '\(query)'")
+    }
+}
+
+struct ScreenshotEntity: AppEntity {
+    let id: String
+    let filename: String
+    let extractedText: String?
+    
+    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Screenshot")
+    
+    var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(title: "\(filename)")
+    }
+}
+```
+
 ### Phase 4: Performance & Optimization (Week 4)
 
 #### 4.1 Semantic Caching
@@ -284,6 +325,39 @@ class SemanticProcessingService {
    }
    ```
 
+## Siri Integration Examples
+
+### Siri Command: "Hey Siri, search Screenshot Vault for blue dress"
+
+1. **App Intent Activation:**
+   ```swift
+   SearchScreenshotsIntent(query: "blue dress").perform()
+   ```
+
+2. **Query Processing:**
+   - Same natural language processing as in-app search
+   - Intent classification and entity extraction
+   - Visual object detection + color analysis
+
+3. **Siri Response:**
+   ```
+   "Found 3 screenshots matching 'blue dress'"
+   [Shows preview cards with option to open full app]
+   ```
+
+### Siri Command: "Hey Siri, find receipts from Marriott in Screenshot Vault"
+
+1. **App Intent Processing:**
+   - Extract business entity: "Marriott"
+   - Classify document type: "receipt"
+   - Search OCR text content
+
+2. **Siri Response:**
+   ```
+   "Found 2 receipts from Marriott"
+   [Option to view details or open Screenshot Vault]
+   ```
+
 ---
 
 ## Performance Requirements
@@ -335,10 +409,74 @@ class SemanticProcessingService {
 
 ## Success Metrics
 
-- **Query Success Rate:** >90% of natural language queries return relevant results
-- **User Adoption:** >60% of searches use conversational format within 2 weeks
+### Technical Performance
+- **Query Success Rate:** >95% of natural language queries return relevant results
+- **Response Time:** <200ms for 95% of conversational queries
+- **Voice Recognition Accuracy:** >95% in quiet environments, >85% with background noise
+- **Semantic Understanding:** 95% intent classification accuracy with confidence >0.8
+- **Memory Efficiency:** <150MB peak memory usage during AI processing
+- **Cache Performance:** >80% hit rate for semantic data and common queries
+
+### User Experience
+- **Adoption Rate:** >60% of searches use conversational format within 2 weeks
 - **Voice Usage:** >30% of users try voice search within first month
-- **Performance:** Maintain <200ms search response time
+- **Siri Integration:** 10+ supported search phrases with reliable recognition
+- **Query Completion:** 90% of tutorial completions for conversational search features
 - **User Satisfaction:** >4.5/5 rating for search experience
 
-This implementation will transform Screenshot Vault from a simple screenshot manager into an intelligent, conversational knowledge assistant that understands and responds to natural human language.
+### AI Quality Metrics
+- **Entity Extraction:** 90% accuracy for business names, dates, colors, objects
+- **Object Detection:** 85% accuracy for visual content analysis
+- **Color Analysis:** 90% accuracy for color-based queries
+- **Content Classification:** 88% accuracy across 15 major categories
+- **Relationship Detection:** 80% accuracy for cross-screenshot connections
+
+### Siri Integration Success
+- **Voice Command Recognition:** 95% success rate for supported phrases
+- **App Intent Execution:** Reliable activation and parameter handling
+- **Result Presentation:** Clear Siri responses with actionable options
+- **Handoff to App:** Seamless transition from Siri to full app experience
+
+---
+
+## Atomic Implementation Roadmap
+
+This implementation follows the atomic breakdown from the main implementation plan:
+
+### Sub-Sprint 5.1: NLP Foundation (Week 1)
+**Atomic Units 5.1.1-5.1.3:** Core ML setup, entity extraction, semantic mapping
+
+### Sub-Sprint 5.2: Content Analysis (Week 2) 
+**Atomic Units 5.2.1-5.2.3:** Enhanced vision, color analysis, semantic tagging
+
+### Sub-Sprint 5.3: Conversational UI & Siri (Week 3)
+**Atomic Units 5.3.1-5.3.3:** Voice input, Siri App Intents, conversational interface
+
+### Sub-Sprint 5.4: Performance Optimization (Week 4)
+**Atomic Units 5.4.1-5.4.3:** AI optimization, semantic caching, memory management
+
+Each atomic unit includes specific deliverables, integration tests, and functional tests as detailed in the main implementation plan.
+
+---
+
+## Quality Assurance
+
+### Automated Testing
+- **Unit Tests:** 95%+ code coverage for all AI services
+- **Integration Tests:** End-to-end query processing validation
+- **Performance Tests:** Response time and memory usage benchmarks
+- **Regression Tests:** Ensure accuracy doesn't degrade over time
+
+### User Testing Protocol
+- **A/B Testing:** Compare conversational vs. keyword search effectiveness
+- **Usability Testing:** Natural language query patterns and success rates
+- **Accessibility Testing:** VoiceOver compatibility and voice control alternatives
+- **Cross-Device Testing:** Siri integration across iPhone, iPad, Apple Watch
+
+### Privacy & Security Validation
+- **On-Device Processing:** Verify no data transmission to external servers
+- **Data Encryption:** Validate secure storage of processed semantic data
+- **Privacy Audit:** Ensure GDPR and CCPA compliance
+- **Performance Impact:** Monitor battery and thermal impact
+
+This implementation will transform Screenshot Vault from a simple screenshot manager into an intelligent, conversational knowledge assistant that understands and responds to natural human language while maintaining the highest standards of privacy, performance, and user experience.

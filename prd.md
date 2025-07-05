@@ -67,6 +67,12 @@ The user experience is paramount and will be guided by the following principles:
     *   Use contextual phrases like "find that restaurant menu from last week" or "show me screenshots about travel plans"
     *   Search by visual descriptions: "screenshots with QR codes", "images with charts or graphs", "pictures of text messages"
     *   Combine multiple criteria: "find recent screenshots with phone numbers from shopping apps"
+*   **Siri Integration:** Hands-free search through Apple's virtual assistant with App Intents:
+    *   "Hey Siri, search Screenshot Vault for blue dress"
+    *   "Hey Siri, find receipts from Marriott in Screenshot Vault"
+    *   "Hey Siri, show me screenshots with website links"
+    *   "Hey Siri, find screenshots from last Tuesday with phone numbers"
+    *   Results displayed in Siri interface with option to open full app for detailed viewing
 *   **Smart Query Interpretation:** AI-powered query understanding that:
     *   Extracts semantic meaning from natural language queries
     *   Maps conversational terms to visual and textual content
@@ -92,6 +98,7 @@ The user experience is paramount and will be guided by the following principles:
     *   **Vision Framework:** For all on-device OCR and image analysis tasks.
     *   **Apple Intelligence & Core ML:** For conversational AI search and semantic understanding using on-device language models.
     *   **Natural Language Framework:** For query parsing, intent classification, and semantic analysis.
+    *   **App Intents Framework:** For Siri integration and voice-activated search capabilities.
     *   **Photos Framework:** For observing and fetching screenshots from the user's library.
     *   **SwiftUI:** To build a modern, responsive, and fluid user interface that embodies the design principles.
     *   **SwiftData:** For robust, on-device storage (preferred over Core Data for new projects).
@@ -183,36 +190,77 @@ The user experience is paramount and will be guided by the following principles:
 ### Next: Sprint 5 - Conversational AI Search & Intelligence
 **Goal:** Implement natural language search capabilities using Apple Intelligence for intuitive, conversational screenshot discovery.
 
-**Sub-Sprint 5.1 - Natural Language Processing Foundation**
-*   **Apple Intelligence Integration:** Configure Core ML and Natural Language frameworks for on-device AI processing
-*   **Query Parser Service:** Build intelligent query parsing to extract intent, entities, and semantic meaning from conversational queries
-*   **Semantic Mapping:** Create mapping system between natural language terms and screenshot content (visual objects, OCR text, metadata)
-*   **Intent Classification:** Implement intent recognition for different query types (visual search, content search, temporal search, contextual search)
+**Atomic Implementation Approach:** Sprint 5 is broken down into 4 sub-sprints with 12 atomic units, each designed for 1-3 day implementation cycles with clear deliverables, integration tests, and functional tests.
 
-**Sub-Sprint 5.2 - Enhanced Content Analysis**
-*   **Advanced Vision Processing:** Extend Vision framework usage for object detection, scene classification, and visual attribute recognition
-*   **Semantic Tagging:** Auto-generate semantic tags from visual content (colors, objects, text types, UI elements, document types)
-*   **Content Embeddings:** Create searchable embeddings for both visual and textual content using Apple Intelligence models
-*   **Context Enrichment:** Enhance screenshot metadata with AI-derived contextual information
+**Sub-Sprint 5.1 - Natural Language Processing Foundation** (Week 1)
+*Atomic Units: 5.1.1-5.1.3*
+*   **5.1.1 Core ML Setup & Query Parser Foundation:** Basic QueryParserService with tokenization and intent classification
+    *   Integration Test: Parse "find blue dress" → returns SearchIntent with visual attributes
+    *   Functional Test: Verify 95% accuracy on 20 sample natural language queries
+*   **5.1.2 Entity Extraction Engine:** Named entity recognition for colors, objects, dates, locations with 90% accuracy
+    *   Integration Test: "blue dress from last Tuesday" → extract color:blue, object:dress, time:lastTuesday
+    *   Functional Test: Achieve 90% entity extraction accuracy on test dataset
+*   **5.1.3 Semantic Mapping & Intent Classification:** Advanced intent classifier with semantic understanding and confidence scoring
+    *   Integration Test: "show me receipts" maps to SearchIntent(type: textual, category: receipt)
+    *   Functional Test: 95% intent classification accuracy with confidence >0.8
 
-**Sub-Sprint 5.3 - Conversational Search Interface**
-*   **Voice Input Integration:** Implement Speech Framework for voice-to-text search queries with real-time transcription
-*   **Smart Search Bar:** Enhanced search interface with natural language hints, query suggestions, and auto-completion
-*   **Query Understanding UI:** Visual feedback showing how the AI interpreted the user's query
-*   **Search Results Enhancement:** Relevance scoring based on semantic similarity rather than just keyword matching
+**Sub-Sprint 5.2 - Enhanced Content Analysis** (Week 2)
+*Atomic Units: 5.2.1-5.2.3*
+*   **5.2.1 Enhanced Vision Processing:** Advanced object detection and scene classification with 85% accuracy
+    *   Integration Test: Process receipt image → detect objects:[receipt, text], scene:document, colors:[white, black]
+    *   Functional Test: 85% object detection accuracy on diverse screenshot types
+*   **5.2.2 Color Analysis & Visual Embeddings:** Color extraction with K-means clustering and visual similarity embeddings
+    *   Integration Test: Blue dress image → colors:[navy, blue, white], embedding:vector[512]
+    *   Functional Test: Color queries match 90% of manually tagged images
+*   **5.2.3 Semantic Tagging & Content Understanding:** AI-generated semantic tags for enhanced searchability with business entity recognition
+    *   Integration Test: Receipt screenshot → tags:[receipt, marriott, hotel, expense, payment]
+    *   Functional Test: Semantic tags improve search relevance by 40% over keyword matching
 
-**Sub-Sprint 5.4 - Performance & Optimization**
-*   **On-Device AI Optimization:** Ensure all AI processing remains on-device for privacy and performance
-*   **Caching Strategy:** Implement intelligent caching for processed semantic data and query results
-*   **Performance Benchmarks:** Target <200ms response time for conversational queries
-*   **Memory Management:** Optimize AI model loading and memory usage for smooth user experience
+**Sub-Sprint 5.3 - Conversational Search Interface & Siri Integration** (Week 3)
+*Atomic Units: 5.3.1-5.3.3*
+*   **5.3.1 Speech Recognition & Voice Input:** Real-time voice-to-text with 95% transcription accuracy in quiet environments
+    *   Integration Test: Voice input "find blue dress" → parsed SearchQuery with correct intent
+    *   Functional Test: 95% transcription accuracy in quiet environment, 85% with background noise
+*   **5.3.2 Siri App Intents Foundation:** Custom SearchScreenshotsIntent with parameter validation and error handling
+    *   Integration Test: "Hey Siri, search Screenshot Vault for receipts" → launches intent successfully
+    *   Functional Test: Siri recognizes and executes 10 different search phrases correctly
+*   **5.3.3 Conversational Search UI & Siri Response Interface:** Enhanced search interface with voice feedback and Siri result presentation
+    *   Integration Test: Voice search shows live transcription and query understanding hints
+    *   Functional Test: Users complete voice searches 50% faster than typing
 
+**Sub-Sprint 5.4 - Performance & Optimization** (Week 4)
+*Atomic Units: 5.4.1-5.4.3*
+*   **5.4.1 On-Device AI Performance Optimization:** Optimized AI pipeline with <200ms query response time for 95% of queries
+    *   Integration Test: Complex query "blue dress receipts last week" processes in <200ms
+    *   Functional Test: 95% of queries respond within performance threshold
+*   **5.4.2 Intelligent Semantic Caching:** Smart caching system with >80% hit rate and <100MB memory usage
+    *   Integration Test: Repeated semantic queries use cached results and respond in <50ms
+    *   Functional Test: Cache hit rate >80% for common queries, memory usage <100MB
+*   **5.4.3 Memory Management & Background Processing:** Efficient memory usage with <150MB peak footprint during AI processing
+    *   Integration Test: App maintains <150MB memory footprint during intensive AI processing
+    *   Functional Test: Background processing doesn't impact main thread performance
+
+**Sprint 5 Success Criteria:**
+*   ✅ Natural language search with 95% query understanding accuracy
+*   ✅ Voice input with 95% transcription accuracy in normal conditions
+*   ✅ Siri integration with 10+ supported search phrases and reliable recognition
+*   ✅ Semantic content analysis with 85% object detection accuracy
+*   ✅ <200ms response time for 95% of conversational queries
+*   ✅ Intelligent caching with >80% hit rate for common searches
+*   ✅ Background AI processing with <150MB memory footprint
 **Example Queries to Support:**
 *   "find screenshots with blue dress" → Visual object detection + color analysis
-*   "show me receipts from Marriott" → Text recognition + entity extraction + business classification
-*   "find the link to website selling lens" → URL detection + e-commerce classification + product categorization
+*   "show me receipts from Marriott" → Text recognition + business entity extraction
+*   "find the link to website selling lens" → URL detection + e-commerce classification
 *   "screenshots from last Tuesday with phone numbers" → Temporal filtering + pattern recognition
 *   "find that restaurant menu I saved" → Content type classification + temporal context
+
+**Siri Integration Examples:**
+*   "Hey Siri, search Screenshot Vault for blue dress"
+*   "Hey Siri, find receipts from Marriott in Screenshot Vault"  
+*   "Hey Siri, show me screenshots with website links"
+*   "Hey Siri, find screenshots from last Tuesday with phone numbers"
+*   "Hey Siri, search Screenshot Vault for restaurant menus"
 
 ### Future: Sprint 6 - Intelligent Mind Map
 AI-powered contextual mind map with semantic relationship discovery and intelligent content linking based on conversational AI insights.
