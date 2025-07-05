@@ -32,6 +32,13 @@ struct ContentView: View {
                         }
                     }
                     
+                    // Apply entity-based filtering first (Sub-Sprint 5.1.2 enhancement)
+                    if let entityResult = parsedQuery.entityExtractionResult, !entityResult.entities.isEmpty {
+                        if matchesEntityContext(screenshot: screenshot, entityResult: entityResult) {
+                            return true // Entity match found, return immediately
+                        }
+                    }
+                    
                     // Apply text-based filtering
                     let enhancedTerms = parsedQuery.searchTerms.filter { term in
                         !isTemporalTerm(term) // Exclude temporal terms from text search
@@ -41,10 +48,11 @@ struct ContentView: View {
                         return true // If only temporal terms, return true (temporal filter already applied)
                     }
                     
-                    // For terms like "screenshots" that are generic references to the content type,
-                    // don't require them to match - the temporal filter is sufficient
+                    // Filter out generic content type terms and intent words
                     let meaningfulTerms = enhancedTerms.filter { term in
-                        !["screenshots", "screenshot", "images", "image", "photos", "photo", "pictures", "picture"].contains(term.lowercased())
+                        let genericTerms = ["screenshots", "screenshot", "images", "image", "photos", "photo", "pictures", "picture"]
+                        let intentTerms = ["find", "search", "show", "get", "lookup", "locate", "where", "look", "give", "tell", "display"]
+                        return !genericTerms.contains(term.lowercased()) && !intentTerms.contains(term.lowercased())
                     }
                     
                     if meaningfulTerms.isEmpty {
@@ -115,6 +123,21 @@ struct ContentView: View {
                 }
                 
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    // Temporary: Entity Extraction Demo button for testing
+                    if #available(iOS 17.0, *) {
+                        NavigationLink(destination: EntityExtractionDemo()) {
+                            Image(systemName: "brain.head.profile")
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    
+                    Button(action: {
+                        showingSettings = true
+                    }) {
+                        Image(systemName: "gearshape")
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                    }
                     Button(action: {
                         showingImportSheet = true
                     }) {
@@ -189,6 +212,81 @@ struct ContentView: View {
         
         try? modelContext.save()
         isImporting = false
+    }
+    
+    // MARK: - Entity-Based Search Helpers (Sub-Sprint 5.1.2)
+    
+    private func matchesEntityContext(screenshot: Screenshot, entityResult: EntityExtractionResult) -> Bool {
+        let entities = entityResult.entities
+        
+        // Check visual entities (colors, objects) against filename, extracted text, and object tags
+        let visualEntities = entities.filter { entity in
+            entity.type == .color || entity.type == .object || entity.type == .documentType
+        }
+        
+        if !visualEntities.isEmpty {
+            for entity in visualEntities {
+                let normalizedValue = entity.normalizedValue.lowercased()
+                
+                // Check filename
+                if screenshot.filename.localizedCaseInsensitiveContains(normalizedValue) {
+                    return true
+                }
+                
+                // Check extracted text (OCR)
+                if let extractedText = screenshot.extractedText,
+                   extractedText.localizedCaseInsensitiveContains(normalizedValue) {
+                    return true
+                }
+                
+                // Check object tags (if available)
+                if let objectTags = screenshot.objectTags {
+                    for tag in objectTags {
+                        if tag.localizedCaseInsensitiveContains(normalizedValue) {
+                            return true
+                        }
+                    }
+                }
+                
+                // For clothing/object entities, also check if the filename suggests it's a shopping screenshot
+                if entity.type == .object && ["dress", "shirt", "pants", "jacket", "shoes"].contains(normalizedValue) {
+                    let filenameWords = screenshot.filename.lowercased().components(separatedBy: .whitespacesAndNewlines.union(.punctuationCharacters))
+                    let shoppingKeywords = ["shop", "store", "buy", "purchase", "cart", "wishlist", "fashion", "clothes", "clothing"]
+                    if !Set(filenameWords).intersection(Set(shoppingKeywords)).isEmpty {
+                        return true
+                    }
+                }
+            }
+        }
+        
+        // Check person/organization entities
+        let namedEntities = entities.filter { entity in
+            entity.type == .person || entity.type == .organization || entity.type == .place
+        }
+        
+        for entity in namedEntities {
+            let normalizedValue = entity.normalizedValue.lowercased()
+            
+            // Check filename and extracted text for named entities
+            if screenshot.filename.localizedCaseInsensitiveContains(normalizedValue) ||
+               (screenshot.extractedText?.localizedCaseInsensitiveContains(normalizedValue) ?? false) {
+                return true
+            }
+        }
+        
+        // Check structured data entities (phone, email, URL)
+        let structuredEntities = entities.filter { entity in
+            entity.type == .phoneNumber || entity.type == .email || entity.type == .url
+        }
+        
+        for entity in structuredEntities {
+            if let extractedText = screenshot.extractedText,
+               extractedText.contains(entity.text) {
+                return true
+            }
+        }
+        
+        return false
     }
     
     // MARK: - Temporal Query Helpers

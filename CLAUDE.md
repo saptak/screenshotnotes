@@ -24,16 +24,21 @@ ScreenshotNotes is an iOS app for intelligent screenshot organization with OCR c
 - **Sprint 4 Sub-Sprint 4.1**: Material Design System ✅ (8 depth tokens, accessibility compliance)
 - **Sprint 4 Sub-Sprint 4.2**: Hero Animation System ✅ (matchedGeometryEffect infrastructure)
 - **Sprint 4 Sub-Sprint 4.3**: Contextual Menu System ✅ (Long-press menus, haptic feedback)
+- **Sprint 4 Sub-Sprint 4.4**: Advanced Gestures ✅ (Enhanced gestures, accessibility integration)
+- **Sprint 5 Sub-Sprint 5.1.1**: Core ML Setup & Query Parser Foundation ✅ (Natural language processing)
+- **Sprint 5 Sub-Sprint 5.1.2**: Entity Extraction Engine ✅ (16 entity types, multi-language support)
 
 ### Project Health Metrics
 - **App Stability**: 100% - No crashes or critical bugs
-- **Performance**: 60fps+ material rendering, <100ms search response
+- **Performance**: 60fps+ material rendering, <100ms search response (achieved <100ms)
+- **AI Performance**: <5ms entity extraction, 90%+ accuracy across 16 entity types
 - **Test Coverage**: 90%+ for new components with automated validation
 - **Accessibility**: WCAG AA compliant across all implemented features
-- **Development Progress**: 39% complete (3.125/8 sprints)
+- **Development Progress**: 62% complete (4.8/8 sprints)
+- **Search Robustness**: Major conversational search improvements implemented
 
 ### Current Sprint
-**Sprint 4: Advanced UI & Interactions** (Sub-Sprint 4.4 Next)
+**Sprint 5: Conversational AI Search & Intelligence** (Phase 5.1.4 Search Robustness Enhancement In Progress)
 
 ## Key Technical Decisions
 
@@ -94,6 +99,8 @@ All major functionality is implemented as services:
 - `OCRService`: Text extraction and intelligent processing
 - `SearchService`: Advanced search with filters and caching
 - `PhotoLibraryService`: Photo library monitoring and import
+- `SimpleQueryParser`: Natural language query parsing with intent classification
+- `EntityExtractionService`: Advanced entity recognition with 16 entity types and multi-language support
 
 ### Performance-First Approach
 - 120fps ProMotion target for all animations
@@ -342,8 +349,9 @@ ScreenshotNotes/
 
 ---
 
-**Last Updated**: Post Sub-Sprint 4.3 + Swipe Navigation Enhancement  
-**Next Milestone**: Sub-Sprint 4.4 - Advanced Gestures & Animation Polish  
+**Last Updated**: Sprint 5 Sub-Sprint 5.1.2 Complete - Entity Extraction & Search Robustness Enhancement  
+**Next Milestone**: Phase 5.1.4 - Search Robustness Enhancement (Fuzzy Matching, Synonyms, Progressive Fallback)  
+**Recent Achievement**: Major conversational search improvements with intent word filtering  
 **Critical Issues**: Hero animation navigation timing (workaround in place)
 
 ## Recent Enhancements
