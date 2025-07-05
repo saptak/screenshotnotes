@@ -222,39 +222,189 @@ Each sprint must meet the following criteria before proceeding:
     *   **Features:**
         *   Natural language search with Apple Intelligence integration ("find screenshots with blue dress")
         *   Voice search with Speech Framework for hands-free operation
+        *   Siri integration with App Intents for voice-activated search ("Hey Siri, search Screenshot Vault for receipts")
         *   Semantic content analysis with enhanced object and scene recognition
         *   AI-powered query understanding with intent classification and entity extraction
         *   Intelligent search suggestions and auto-completion based on content analysis
     *   **Technical Specifications:**
         *   **Apple Intelligence:** Core ML and Natural Language frameworks for on-device AI processing
         *   **Speech Recognition:** Real-time voice-to-text with search query optimization
+        *   **App Intents:** Deep Siri integration for voice-activated search with custom intents and responses
         *   **Enhanced Vision:** Advanced object detection, color analysis, and scene classification
         *   **Semantic Analysis:** AI-generated tags for visual attributes, content types, and business entities
         *   **Query Processing:** Intent classification with entity extraction and temporal filtering
         *   **Performance:** <200ms response time for conversational queries with on-device privacy
         *   **Caching:** Intelligent semantic data caching with progressive enhancement
         *   **Voice UI:** Conversational search interface with visual query understanding feedback
-    *   **Implementation Phases:**
-        *   **Week 1:** Foundation - Query parsing, semantic tagging, enhanced vision processing
-        *   **Week 2:** Natural Language Processing - Intent classification, entity extraction, semantic mapping
-        *   **Week 3:** Voice Integration - Speech recognition, conversational UI, query suggestions
-        *   **Week 4:** Optimization - Performance tuning, caching strategy, user testing
+        *   **Siri Integration:** Custom App Intents with parameter handling and result presentation
+
+    *   **Sub-Sprint 5.1: NLP Foundation** (Week 1)
+        *   **Goal:** Establish natural language processing and query understanding infrastructure
+        *   **Atomic Units:**
+            *   **5.1.1: Core ML Setup & Query Parser Foundation**
+                *   **Deliverable:** Basic QueryParserService with tokenization and intent classification
+                *   **Tasks:**
+                    *   Create `Services/AI/QueryParserService.swift` with NLLanguageRecognizer
+                    *   Implement basic tokenization and part-of-speech tagging
+                    *   Set up Core ML container for on-device processing
+                    *   Add basic intent classification (search, filter, find, show)
+                *   **Integration Test:** Parse "find blue dress" → returns SearchIntent with visual attributes
+                *   **Functional Test:** Verify 95% accuracy on 20 sample natural language queries
+                *   **Files:** `Services/AI/QueryParserService.swift`, `Models/SearchQuery.swift`
+
+            *   **5.1.2: Entity Extraction Engine**
+                *   **Deliverable:** Named entity recognition for colors, objects, dates, locations
+                *   **Tasks:**
+                    *   Implement NLTagger for entity recognition (person, place, organization)
+                    *   Add custom entity extractors (colors, temporal expressions, phone numbers)
+                    *   Create EntityType enum and extraction confidence scoring
+                    *   Handle multi-language entity detection
+                *   **Integration Test:** "blue dress from last Tuesday" → extract color:blue, object:dress, time:lastTuesday
+                *   **Functional Test:** Achieve 90% entity extraction accuracy on test dataset
+                *   **Files:** `Models/EntityExtraction.swift`, `Services/AI/EntityExtractionService.swift`
+
+            *   **5.1.3: Semantic Mapping & Intent Classification**
+                *   **Deliverable:** Advanced intent classifier with semantic understanding
+                *   **Tasks:**
+                    *   Build intent classification model (search, filter, temporal, visual, textual)
+                    *   Implement semantic similarity matching for query understanding
+                    *   Create confidence scoring for intent predictions
+                    *   Add query normalization and synonym handling
+                *   **Integration Test:** "show me receipts" maps to SearchIntent(type: textual, category: receipt)
+                *   **Functional Test:** 95% intent classification accuracy with confidence >0.8
+                *   **Files:** `Models/SearchIntent.swift`, `Services/AI/IntentClassificationService.swift`
+
+    *   **Sub-Sprint 5.2: Content Analysis & Semantic Tagging** (Week 2)
+        *   **Goal:** Enhanced visual and textual content analysis for semantic search
+        *   **Atomic Units:**
+            *   **5.2.1: Enhanced Vision Processing**
+                *   **Deliverable:** Advanced object detection and scene classification
+                *   **Tasks:**
+                    *   Upgrade VisionKit integration with VNClassifyImageRequest
+                    *   Implement object detection with bounding boxes and confidence scores
+                    *   Add scene classification (indoor, outdoor, document, receipt, etc.)
+                    *   Create visual attribute detection (dominant colors, lighting, composition)
+                *   **Integration Test:** Process receipt image → detect objects:[receipt, text], scene:document, colors:[white, black]
+                *   **Functional Test:** 85% object detection accuracy on diverse screenshot types
+                *   **Files:** `Services/AI/EnhancedVisionService.swift`, `Models/VisualAttributes.swift`
+
+            *   **5.2.2: Color Analysis & Visual Embeddings**
+                *   **Deliverable:** Color extraction and visual similarity embeddings
+                *   **Tasks:**
+                    *   Implement dominant color extraction with K-means clustering
+                    *   Create color palette generation and color name mapping
+                    *   Generate visual embeddings for image similarity search
+                    *   Add brightness, contrast, and saturation analysis
+                *   **Integration Test:** Blue dress image → colors:[navy, blue, white], embedding:vector[512]
+                *   **Functional Test:** Color queries match 90% of manually tagged images
+                *   **Files:** `Services/AI/ColorAnalysisService.swift`, `Models/ColorPalette.swift`
+
+            *   **5.2.3: Semantic Tagging & Content Understanding**
+                *   **Deliverable:** AI-generated semantic tags for enhanced searchability
+                *   **Tasks:**
+                    *   Create semantic tag generation combining vision + OCR results
+                    *   Implement business entity recognition (brands, store names, products)
+                    *   Add content type classification (receipt, screenshot, photo, document)
+                    *   Build confidence-based tag weighting system
+                *   **Integration Test:** Receipt screenshot → tags:[receipt, marriott, hotel, expense, payment]
+                *   **Functional Test:** Semantic tags improve search relevance by 40% over keyword matching
+                *   **Files:** `Services/AI/SemanticTaggingService.swift`, `Models/SemanticTag.swift`
+
+    *   **Sub-Sprint 5.3: Conversational UI & Siri Integration** (Week 3)
+        *   **Goal:** Voice interface and Siri App Intents for natural search interaction
+        *   **Atomic Units:**
+            *   **5.3.1: Speech Recognition & Voice Input**
+                *   **Deliverable:** Real-time voice-to-text with search optimization
+                *   **Tasks:**
+                    *   Integrate Speech Framework with SFSpeechRecognizer
+                    *   Implement continuous speech recognition with live transcription
+                    *   Add speech processing for search queries (noise filtering, normalization)
+                    *   Create voice permission handling and fallback UI
+                *   **Integration Test:** Voice input "find blue dress" → parsed SearchQuery with correct intent
+                *   **Functional Test:** 95% transcription accuracy in quiet environment, 85% with background noise
+                *   **Files:** `Services/AI/VoiceSearchService.swift`, `Views/VoiceInputView.swift`
+
+            *   **5.3.2: Siri App Intents Foundation**
+                *   **Deliverable:** Custom SearchScreenshotsIntent for Siri integration
+                *   **Tasks:**
+                    *   Create SearchScreenshotsIntent conforming to AppIntent protocol
+                    *   Implement ScreenshotEntity for Siri result presentation
+                    *   Add intent parameter validation and error handling
+                    *   Configure App Intents with proper shortcut phrases
+                *   **Integration Test:** "Hey Siri, search Screenshot Vault for receipts" → launches intent successfully
+                *   **Functional Test:** Siri recognizes and executes 10 different search phrases correctly
+                *   **Files:** `Intents/SearchScreenshotsIntent.swift`, `Models/ScreenshotEntity.swift`
+
+            *   **5.3.3: Conversational Search UI & Siri Response Interface**
+                *   **Deliverable:** Enhanced search interface with voice feedback and Siri result presentation
+                *   **Tasks:**
+                    *   Create ConversationalSearchView with voice input button
+                    *   Implement real-time query understanding feedback UI
+                    *   Add Siri result interface with screenshot previews
+                    *   Create search suggestions based on content analysis
+                *   **Integration Test:** Voice search shows live transcription and query understanding hints
+                *   **Functional Test:** Users complete voice searches 50% faster than typing
+                *   **Files:** `Views/ConversationalSearchView.swift`, `Views/SiriResultView.swift`
+
+    *   **Sub-Sprint 5.4: Performance Optimization & Caching** (Week 4)
+        *   **Goal:** Optimize for <200ms response time with intelligent caching
+        *   **Atomic Units:**
+            *   **5.4.1: On-Device AI Performance Optimization**
+                *   **Deliverable:** Optimized AI pipeline with <200ms query response time
+                *   **Tasks:**
+                    *   Profile and optimize Core ML model inference times
+                    *   Implement concurrent processing for vision and NLP tasks
+                    *   Add model quantization and optimization for on-device performance
+                    *   Create performance monitoring and metrics collection
+                *   **Integration Test:** Complex query "blue dress receipts last week" processes in <200ms
+                *   **Functional Test:** 95% of queries respond within performance threshold
+                *   **Files:** `Services/AI/PerformanceOptimizer.swift`, `Services/AI/MetricsCollector.swift`
+
+            *   **5.4.2: Intelligent Semantic Caching**
+                *   **Deliverable:** Smart caching system for semantic data and embeddings
+                *   **Tasks:**
+                    *   Implement LRU cache for processed semantic tags and embeddings
+                    *   Add incremental processing for new screenshots
+                    *   Create cache invalidation strategy for updated content
+                    *   Build cache warming for frequently accessed searches
+                *   **Integration Test:** Repeated semantic queries use cached results and respond in <50ms
+                *   **Functional Test:** Cache hit rate >80% for common queries, memory usage <100MB
+                *   **Files:** `Services/SearchCache.swift`, `Services/AI/SemanticCacheManager.swift`
+
+            *   **5.4.3: Memory Management & Background Processing**
+                *   **Deliverable:** Efficient memory usage with background AI processing
+                *   **Tasks:**
+                    *   Implement background queue for semantic analysis processing
+                    *   Add memory pressure monitoring and automatic cleanup
+                    *   Create progressive enhancement for search quality
+                    *   Build background task management for large AI operations
+                *   **Integration Test:** App maintains <150MB memory footprint during intensive AI processing
+                *   **Functional Test:** Background processing doesn't impact main thread performance
+                *   **Files:** `Services/BackgroundAIProcessor.swift`, `Services/MemoryManager.swift`
+
     *   **Example Queries:**
         *   "find screenshots with blue dress" → Visual object detection + color analysis
         *   "show me receipts from Marriott" → Text recognition + business entity extraction
         *   "find the link to website selling lens" → URL detection + e-commerce classification
         *   "screenshots from last Tuesday with phone numbers" → Temporal + pattern recognition
-    *   **Files to Create:**
-        *   `Services/AI/ConversationalSearchService.swift` - Main AI search orchestrator
-        *   `Services/AI/QueryParserService.swift` - Natural language understanding
-        *   `Services/AI/SemanticTaggingService.swift` - Enhanced content analysis
-        *   `Services/AI/VoiceSearchService.swift` - Speech-to-text integration
-        *   `Views/ConversationalSearchView.swift` - Enhanced search interface with voice
-        *   `Models/SearchQuery.swift`, `Models/SemanticTag.swift` - AI data models
-    *   **UX Focus:** Intuitive conversational search that understands natural language with voice input support
-    *   **Definition of Done:** Natural language search with voice input, semantic understanding, and <200ms response time
 
-*   **Sprint 6: The Connected Brain - Intelligent Mind Map**
+    *   **Siri Integration Examples:**
+        *   "Hey Siri, search Screenshot Vault for blue dress"
+        *   "Hey Siri, find receipts from Marriott in Screenshot Vault"
+        *   "Hey Siri, show me screenshots with website links"
+        *   "Hey Siri, find screenshots from last Tuesday with phone numbers"
+
+    *   **Overall Sprint Definition of Done:**
+        *   ✅ Natural language search with 95% query understanding accuracy
+        *   ✅ Voice input with 95% transcription accuracy in normal conditions
+        *   ✅ Siri integration with 10+ supported search phrases
+        *   ✅ Semantic content analysis with 85% object detection accuracy
+        *   ✅ <200ms response time for 95% of conversational queries
+        *   ✅ Intelligent caching with >80% hit rate for common searches
+        *   ✅ Background AI processing with <150MB memory footprint
+        *   ✅ Comprehensive test coverage with integration and functional tests
+
+*   **Sprint 6: The Connected Brain - Intelligent Mind Map** 🧠
     *   **Goal:** Introduce AI-powered contextual mind map with semantic relationship discovery.
     *   **Features:**
         *   Implement advanced on-device analysis to find semantic links between screenshots
@@ -262,6 +412,151 @@ Each sprint must meet the following criteria before proceeding:
         *   Create interactive 3D mind map visualization with force-directed layout
         *   AI-powered clustering of related content with confidence scoring
         *   Timeline view for chronological relationship mapping
+
+    *   **Sub-Sprint 6.1: Semantic Relationship Discovery** (Week 1)
+        *   **Goal:** Build AI engine for discovering connections between screenshots
+        *   **Atomic Units:**
+            *   **6.1.1: Entity Relationship Mapping**
+                *   **Deliverable:** System to identify shared entities between screenshots
+                *   **Tasks:**
+                    *   Create EntityRelationshipService for cross-screenshot entity matching
+                    *   Implement similarity scoring for people, places, organizations, dates
+                    *   Add temporal relationship detection (same day, sequential events)
+                    *   Build confidence scoring for relationship strength
+                *   **Integration Test:** Two screenshots with "Marriott" text → detected relationship with confidence >0.8
+                *   **Functional Test:** Correctly identify 90% of obvious entity relationships in test dataset
+                *   **Files:** `Services/AI/EntityRelationshipService.swift`, `Models/Relationship.swift`
+
+            *   **6.1.2: Content Similarity Engine**
+                *   **Deliverable:** Advanced similarity detection using visual and textual embeddings
+                *   **Tasks:**
+                    *   Implement vector similarity using Core ML embeddings
+                    *   Add visual similarity detection (layout, colors, composition)
+                    *   Create topic modeling for thematic relationships
+                    *   Build multi-modal similarity scoring combining vision + text
+                *   **Integration Test:** Similar looking receipts grouped with similarity score >0.7
+                *   **Functional Test:** Visual similarity accuracy >85% compared to human judgment
+                *   **Files:** `Services/AI/SimilarityEngine.swift`, `Models/SimilarityScore.swift`
+
+            *   **6.1.3: Knowledge Graph Construction**
+                *   **Deliverable:** Graph data structure representing screenshot relationships
+                *   **Tasks:**
+                    *   Create graph model with nodes (screenshots) and edges (relationships)
+                    *   Implement graph algorithms for connected component analysis
+                    *   Add relationship type classification (temporal, spatial, thematic, entity-based)
+                    *   Build graph persistence with SwiftData relationships
+                *   **Integration Test:** 10 related screenshots form connected component in knowledge graph
+                *   **Functional Test:** Graph construction completes in <5 seconds for 1000 screenshots
+                *   **Files:** `Models/KnowledgeGraph.swift`, `Services/GraphConstructionService.swift`
+
+    *   **Sub-Sprint 6.2: 3D Mind Map Visualization** (Week 2)
+        *   **Goal:** Create immersive 3D visualization for exploring screenshot relationships
+        *   **Atomic Units:**
+            *   **6.2.1: 3D Force-Directed Layout Engine**
+                *   **Deliverable:** Physics-based layout algorithm for 3D node positioning
+                *   **Tasks:**
+                    *   Implement force-directed algorithm with attraction/repulsion forces
+                    *   Add collision detection and boundary constraints
+                    *   Create dynamic layout optimization with spring models
+                    *   Build level-of-detail (LOD) system for performance
+                *   **Integration Test:** 50 nodes stabilize in 3D space within 2 seconds
+                *   **Functional Test:** Layout algorithm maintains 60fps with 200+ nodes on target devices
+                *   **Files:** `Services/3D/ForceDirectedLayoutEngine.swift`, `Models/3DNode.swift`
+
+            *   **6.2.2: SwiftUI 3D Rendering Pipeline**
+                *   **Deliverable:** Hardware-accelerated 3D mind map view with gesture controls
+                *   **Tasks:**
+                    *   Create 3D coordinate system with perspective projection
+                    *   Implement node rendering with screenshot thumbnails as textures
+                    *   Add edge rendering with dynamic thickness based on relationship strength
+                    *   Build camera controls (orbit, zoom, pan) with gesture recognition
+                *   **Integration Test:** Mind map renders smoothly with pinch-to-zoom and rotation gestures
+                *   **Functional Test:** Maintains 60fps on iPhone 13 Pro with 100 nodes visible
+                *   **Files:** `Views/3D/MindMapView.swift`, `Services/3D/RenderingPipeline.swift`
+
+            *   **6.2.3: Interactive Node Selection & Details**
+                *   **Deliverable:** Touch interaction system for exploring mind map nodes
+                *   **Tasks:**
+                    *   Implement 3D ray casting for node selection from touch input
+                    *   Create node detail popup with screenshot preview and metadata
+                    *   Add node highlighting and connection path visualization
+                    *   Build smooth navigation between related nodes
+                *   **Integration Test:** Tap on 3D node → shows detail view with screenshot and connections
+                *   **Functional Test:** 95% touch accuracy for node selection in various orientations
+                *   **Files:** `Services/3D/InteractionService.swift`, `Views/NodeDetailPopup.swift`
+
+    *   **Sub-Sprint 6.3: Intelligent Clustering & Timeline** (Week 3)
+        *   **Goal:** AI-powered content clustering and temporal visualization
+        *   **Atomic Units:**
+            *   **6.3.1: Smart Clustering Algorithm**
+                *   **Deliverable:** AI clustering system grouping related screenshots automatically
+                *   **Tasks:**
+                    *   Implement hierarchical clustering using combined similarity metrics
+                    *   Add cluster quality assessment and automatic cluster count determination
+                    *   Create cluster labeling with AI-generated descriptive names
+                    *   Build cluster confidence scoring and boundary detection
+                *   **Integration Test:** Travel photos automatically cluster into "Paris Trip", "Hotel Receipts" groups
+                *   **Functional Test:** Clustering accuracy >80% compared to manual user categorization
+                *   **Files:** `Services/AI/ClusteringService.swift`, `Models/ScreenshotCluster.swift`
+
+            *   **6.3.2: Timeline Relationship Mapping**
+                *   **Deliverable:** Temporal visualization showing chronological relationships
+                *   **Tasks:**
+                    *   Create timeline view with scroll-based time navigation
+                    *   Implement temporal clustering (events, sessions, activities)
+                    *   Add timeline zoom levels (hour, day, week, month views)
+                    *   Build temporal relationship detection (before/after, concurrent events)
+                *   **Integration Test:** Screenshots from same shopping session appear as temporal cluster
+                *   **Functional Test:** Timeline navigation is smooth and intuitive for 1000+ screenshots
+                *   **Files:** `Views/TimelineView.swift`, `Services/TemporalAnalysisService.swift`
+
+            *   **6.3.3: Contextual Insights & Suggestions**
+                *   **Deliverable:** AI-generated insights about screenshot relationships and patterns
+                *   **Tasks:**
+                    *   Implement pattern detection for user behavior analysis
+                    *   Create contextual suggestions for related content exploration
+                    *   Add anomaly detection for unusual screenshot patterns
+                    *   Build insight scoring and relevance ranking
+                *   **Integration Test:** System suggests "Related receipts from this trip" when viewing travel photo
+                *   **Functional Test:** 70% of insights rated as "useful" by user testing
+                *   **Files:** `Services/AI/InsightEngine.swift`, `Models/ContextualInsight.swift`
+
+    *   **Sub-Sprint 6.4: Performance & User Experience** (Week 4)
+        *   **Goal:** Optimize mind map performance and polish user experience
+        *   **Atomic Units:**
+            *   **6.4.1: Performance Optimization & Memory Management**
+                *   **Deliverable:** Optimized mind map with efficient resource usage
+                *   **Tasks:**
+                    *   Implement viewport culling and level-of-detail rendering
+                    *   Add progressive loading for large datasets
+                    *   Create memory-efficient texture management for thumbnails
+                    *   Build background processing for relationship analysis
+                *   **Integration Test:** Mind map loads and renders 1000+ nodes without memory warnings
+                *   **Functional Test:** Memory usage <200MB, consistent 60fps performance
+                *   **Files:** `Services/3D/PerformanceOptimizer.swift`, `Services/MemoryManager.swift`
+
+            *   **6.4.2: Navigation & Accessibility**
+                *   **Deliverable:** Intuitive navigation with full accessibility support
+                *   **Tasks:**
+                    *   Implement guided tours and automatic interesting node discovery
+                    *   Add VoiceOver support for 3D mind map navigation
+                    *   Create keyboard navigation alternatives for accessibility
+                    *   Build search functionality within mind map context
+                *   **Integration Test:** VoiceOver users can navigate and explore mind map effectively
+                *   **Functional Test:** Accessibility audit passes with WCAG AA compliance
+                *   **Files:** `Services/AccessibilityService.swift`, `Views/MindMapAccessibilityOverlay.swift`
+
+            *   **6.4.3: Export & Sharing Features**
+                *   **Deliverable:** Mind map export and collaborative sharing capabilities
+                *   **Tasks:**
+                    *   Implement mind map screenshot and video export
+                    *   Add interactive mind map sharing with web viewer
+                    *   Create PDF export with relationship annotations
+                    *   Build mind map state saving and restoration
+                *   **Integration Test:** Export mind map as PDF with clickable nodes and relationship annotations
+                *   **Functional Test:** Exported content maintains interactivity and visual fidelity
+                *   **Files:** `Services/ExportService.swift`, `Services/SharingService.swift`
+
     *   **Technical Specifications:**
         *   SwiftData: Add `Connection`, `Entity`, `Topic` models with relationship mapping
         *   NLP: Core ML models for named entity recognition and topic modeling
@@ -270,6 +565,16 @@ Each sprint must meet the following criteria before proceeding:
         *   Gestures: Complex multi-touch interactions with haptic feedback
         *   Performance: Efficient graph algorithms with dynamic LOD (Level of Detail)
         *   ML Pipeline: On-device processing with incremental learning capabilities
+
+    *   **Overall Sprint Definition of Done:**
+        *   ✅ Semantic relationship discovery with 90% accuracy for obvious connections
+        *   ✅ 3D mind map visualization maintaining 60fps on target devices
+        *   ✅ Interactive node selection with 95% touch accuracy
+        *   ✅ Smart clustering with 80% accuracy compared to manual categorization
+        *   ✅ Timeline view with smooth navigation for 1000+ screenshots
+        *   ✅ Memory usage <200MB with progressive loading
+        *   ✅ Full accessibility support with VoiceOver compatibility
+        *   ✅ Export functionality with PDF and interactive sharing options
     *   **UX Focus:** Immersive 3D mind map with intuitive navigation, organic animations, and contextual insights.
     *   **Definition of Done:** AI-powered mind map with semantic relationship discovery and smooth 3D interactions
 
