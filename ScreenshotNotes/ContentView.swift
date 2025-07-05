@@ -21,6 +21,7 @@ struct ContentView: View {
     @State private var searchRobustnessService = SearchRobustnessService()
     @State private var enhancedSearchResult: EnhancedSearchResult?
     @State private var showingSearchSuggestions = false
+    @State private var searchTask: Task<Void, Never>?
     
     private var filteredScreenshots: [Screenshot] {
         if searchText.isEmpty {
@@ -189,25 +190,40 @@ struct ContentView: View {
                     isSearchActive = !newValue.isEmpty
                 }
                 
-                // Add natural language processing for enhanced search
+                // 🔧 Sprint 5.2.4: Search Race Condition Fix
+                // Cancel previous search task to prevent race conditions
+                searchTask?.cancel()
+                
                 if !newValue.isEmpty && newValue.count > 2 {
-                    Task {
-                        let parsedQuery = await queryParser.parseQuery(newValue)
-                        await MainActor.run {
-                            lastParsedQuery = parsedQuery
-                            showingQueryAnalysis = parsedQuery.isActionable
-                        }
-                    }
-                    
-                    // Phase 5.1.4: Enhanced search robustness with progressive fallback
-                    Task {
-                        let enhancedResult = await searchRobustnessService.enhanceSearchQuery(newValue, screenshots: screenshots)
-                        await MainActor.run {
-                            enhancedSearchResult = enhancedResult
-                            showingSearchSuggestions = !enhancedResult.suggestions.isEmpty
+                    // Combine query parser and enhanced search into single task with debouncing
+                    searchTask = Task {
+                        do {
+                            // Debounce: wait 300ms before processing to avoid excessive requests
+                            try await Task.sleep(for: .milliseconds(300))
+                            try Task.checkCancellation()
+                            
+                            // Process query parser first
+                            let parsedQuery = await queryParser.parseQuery(newValue)
+                            try Task.checkCancellation()
+                            
+                            // Process enhanced search robustness
+                            let enhancedResult = await searchRobustnessService.enhanceSearchQuery(newValue, screenshots: screenshots)
+                            try Task.checkCancellation()
+                            
+                            // Update UI on main actor atomically
+                            await MainActor.run {
+                                lastParsedQuery = parsedQuery
+                                showingQueryAnalysis = parsedQuery.isActionable
+                                enhancedSearchResult = enhancedResult
+                                showingSearchSuggestions = !enhancedResult.suggestions.isEmpty
+                            }
+                        } catch {
+                            // Task was cancelled - this is expected behavior during rapid typing
+                            // No need to log or handle this error
                         }
                     }
                 } else {
+                    // Clear state immediately for empty/short search
                     lastParsedQuery = nil
                     showingQueryAnalysis = false
                     enhancedSearchResult = nil
@@ -244,6 +260,11 @@ struct ContentView: View {
                 
                 // Schedule periodic background processing
                 backgroundVisionProcessor.scheduleBackgroundVisionProcessing()
+            }
+            .onDisappear {
+                // 🔧 Sprint 5.2.4: Cleanup search task to prevent memory leaks
+                searchTask?.cancel()
+                searchTask = nil
             }
         }
     }

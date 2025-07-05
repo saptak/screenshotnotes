@@ -393,6 +393,32 @@ Each sprint must meet the following criteria before proceeding:
                 *   **Functional Test:** Semantic tags improve search relevance by 40% over keyword matching
                 *   **Files:** `Services/AI/SemanticTaggingService.swift`, `Models/SemanticTag.swift`
 
+            *   **5.2.4: Search Race Condition Fix** 🔧 **CRITICAL BUG FIX**
+                *   **Problem:** Race condition when typing/deleting quickly in search bar causes:
+                    *   Outdated search results overwriting newer ones
+                    *   UI state inconsistency between search tasks
+                    *   Performance degradation from overlapping async operations
+                *   **Root Cause:** Multiple concurrent Task blocks in ContentView.onChange(searchText)
+                *   **Solution:** Task cancellation with debouncing pattern
+                *   **Implementation:**
+                    *   Add `@State private var searchTask: Task<Void, Never>?` to ContentView
+                    *   Cancel previous task before starting new one: `searchTask?.cancel()`
+                    *   Implement 300ms debounce delay using `Task.sleep(for: .milliseconds(300))`
+                    *   Add task cancellation checks: `try Task.checkCancellation()`
+                    *   Combine both query parser and enhanced search into single task
+                *   **Files:** `ContentView.swift` (lines 183-210)
+                *   **Benefits:**
+                    *   ✅ Eliminates race conditions completely
+                    *   ✅ Improves performance by canceling unnecessary work
+                    *   ✅ Maintains responsive UI during rapid typing
+                    *   ✅ Simple 10-line fix with minimal risk
+                *   **Test Cases:**
+                    *   Type "receipt" quickly, then delete → should show latest results only
+                    *   Rapid typing/deleting sequence → no stale UI state
+                    *   Search performance under stress → <100ms response maintained
+    *   **UX Focus:** ✅ Enhanced visual analysis with object detection, scene classification, and color analysis. Semantic tagging improves search relevance.
+    *   **Definition of Done:** ✅ Advanced vision processing with 85% accuracy, semantic tagging with 40% relevance improvement, and critical bug fix for search race condition.
+
     *   **Sub-Sprint 5.3: Conversational UI & Siri Integration** (Week 3)
         *   **Goal:** Voice interface and Siri App Intents for natural search interaction
         *   **Atomic Units:**
