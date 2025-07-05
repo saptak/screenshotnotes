@@ -1,5 +1,53 @@
 import SwiftUI
 import Foundation
+import NaturalLanguage
+
+// MARK: - Sub-Sprint 5.1.1 Integration: Natural Language Query Parser
+
+/// Simple Query Intent Detection for SearchView
+/// This integrates Sub-Sprint 5.1.1 functionality into the existing search experience
+enum SimpleQueryIntent {
+    case find, search, show, filter, unknown
+    
+    var icon: String {
+        switch self {
+        case .find: return "location.magnifyingglass"
+        case .search: return "magnifyingglass"
+        case .show: return "eye"
+        case .filter: return "line.3.horizontal.decrease.circle"
+        case .unknown: return "magnifyingglass"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .find: return .blue
+        case .search: return .primary
+        case .show: return .green
+        case .filter: return .orange
+        case .unknown: return .secondary
+        }
+    }
+}
+
+/// Simple query parser for SearchView integration
+class SimpleQueryParser {
+    static func parseIntent(from query: String) -> SimpleQueryIntent {
+        let lowercased = query.lowercased()
+        
+        if lowercased.hasPrefix("find") || lowercased.contains("find") {
+            return .find
+        } else if lowercased.hasPrefix("show") || lowercased.contains("show") {
+            return .show
+        } else if lowercased.hasPrefix("filter") || lowercased.contains("filter") {
+            return .filter
+        } else if !query.isEmpty {
+            return .search
+        } else {
+            return .unknown
+        }
+    }
+}
 
 struct SearchFilters {
     var dateRange: DateRange = .all
@@ -51,6 +99,7 @@ struct SearchView: View {
     @FocusState private var isSearchFieldFocused: Bool
     @State private var searchFieldHeight: CGFloat = 44
     @State private var showingFilters = false
+    @State private var detectedIntent: SimpleQueryIntent = .unknown
     
     private var hasActiveFilters: Bool {
         searchFilters.dateRange != .all || 
@@ -61,11 +110,13 @@ struct SearchView: View {
     var body: some View {
         HStack(spacing: 12) {
             HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
+                // 🎯 Sub-Sprint 5.1.1: Dynamic intent-based search icon
+                Image(systemName: detectedIntent.icon)
+                    .foregroundStyle(detectedIntent.color)
                     .font(.system(size: 16, weight: .medium))
                     .scaleEffect(isSearchActive ? 1.1 : 1.0)
                     .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSearchActive)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: detectedIntent)
                 
                 TextField("Search screenshots...", text: $searchText)
                     .textFieldStyle(.plain)
@@ -77,6 +128,8 @@ struct SearchView: View {
                     .onChange(of: searchText) { _, newValue in
                         withAnimation(.spring(response: 0.2, dampingFraction: 1.0)) {
                             isSearchActive = !newValue.isEmpty
+                            // 🎯 Sub-Sprint 5.1.1: Detect intent as user types
+                            detectedIntent = SimpleQueryParser.parseIntent(from: newValue)
                         }
                     }
                 
@@ -85,6 +138,7 @@ struct SearchView: View {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             searchText = ""
                             isSearchActive = false
+                            detectedIntent = .unknown
                             onClear()
                         }
                         isSearchFieldFocused = false
@@ -147,6 +201,11 @@ struct SearchView: View {
         }
         .sheet(isPresented: $showingFilters) {
             SearchFiltersView(filters: $searchFilters, isPresented: $showingFilters)
+        }
+        .onChange(of: searchText) { _, newValue in
+            let intent = SimpleQueryParser.parseIntent(from: newValue)
+            // Handle the detected intent (e.g., update UI, modify search behavior)
+            print("Detected intent: \(intent)")
         }
     }
 }

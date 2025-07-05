@@ -7,6 +7,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Screenshot.timestamp, order: .reverse) private var screenshots: [Screenshot]
     @StateObject private var photoLibraryService = PhotoLibraryService()
+    @StateObject private var queryParser = QueryParserService()
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var showingImportSheet = false
     @State private var showingSettings = false
@@ -14,14 +15,63 @@ struct ContentView: View {
     @State private var isSearchActive = false
     @State private var isImporting = false
     @State private var importProgress: Double = 0.0
+    @State private var lastParsedQuery: SearchQuery?
+    @State private var showingQueryAnalysis = false
     
     private var filteredScreenshots: [Screenshot] {
         if searchText.isEmpty {
             return screenshots
         } else {
-            return screenshots.filter { screenshot in
-                screenshot.filename.localizedCaseInsensitiveContains(searchText) ||
-                (screenshot.extractedText?.localizedCaseInsensitiveContains(searchText) ?? false)
+            // Use natural language understanding for enhanced search
+            if let parsedQuery = lastParsedQuery, parsedQuery.isActionable {
+                return screenshots.filter { screenshot in
+                    // Apply temporal filtering if query has temporal context
+                    if parsedQuery.hasTemporalContext {
+                        if !matchesTemporalContext(screenshot: screenshot, query: parsedQuery) {
+                            return false
+                        }
+                    }
+                    
+                    // Apply text-based filtering
+                    let enhancedTerms = parsedQuery.searchTerms.filter { term in
+                        !isTemporalTerm(term) // Exclude temporal terms from text search
+                    }
+                    
+                    print("🔍 Non-temporal terms to search: \(enhancedTerms)")
+                    
+                    if enhancedTerms.isEmpty {
+                        print("🔍 Only temporal terms, returning true for temporal match")
+                        return true // If only temporal terms, return true (temporal filter already applied)
+                    }
+                    
+                    // For terms like "screenshots" that are generic references to the content type,
+                    // don't require them to match - the temporal filter is sufficient
+                    let meaningfulTerms = enhancedTerms.filter { term in
+                        !["screenshots", "screenshot", "images", "image", "photos", "photo", "pictures", "picture"].contains(term.lowercased())
+                    }
+                    
+                    print("🔍 Meaningful terms after filtering generic words: \(meaningfulTerms)")
+                    
+                    if meaningfulTerms.isEmpty {
+                        print("🔍 Only generic content type terms, temporal filter is sufficient")
+                        return true // If only generic content type terms, temporal filter is sufficient
+                    }
+                    
+                    let textMatch = meaningfulTerms.allSatisfy { term in
+                        let filenameMatch = screenshot.filename.localizedCaseInsensitiveContains(term)
+                        let textMatch = screenshot.extractedText?.localizedCaseInsensitiveContains(term) ?? false
+                        print("🔍 Checking meaningful term '\(term)' in filename '\(screenshot.filename)': \(filenameMatch), extractedText: \(textMatch)")
+                        return filenameMatch || textMatch
+                    }
+                    
+                    return textMatch
+                }
+            } else {
+                // Fallback to traditional search
+                return screenshots.filter { screenshot in
+                    screenshot.filename.localizedCaseInsensitiveContains(searchText) ||
+                    (screenshot.extractedText?.localizedCaseInsensitiveContains(searchText) ?? false)
+                }
             }
         }
     }
@@ -41,6 +91,23 @@ struct ContentView: View {
                 
                 if isImporting {
                     ImportProgressOverlay(progress: importProgress)
+                }
+                
+                // AI Query Analysis Indicator
+                if showingQueryAnalysis, let query = lastParsedQuery {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            AIQueryIndicator(query: query)
+                                .padding(.trailing, 16)
+                                .padding(.bottom, 100)
+                        }
+                    }
+                    .transition(.asymmetric(
+                        insertion: .scale.combined(with: .opacity),
+                        removal: .opacity
+                    ))
                 }
             }
             .navigationTitle("Screenshot Vault")
@@ -73,6 +140,28 @@ struct ContentView: View {
             .onChange(of: searchText) { _, newValue in
                 withAnimation(.spring(response: 0.2, dampingFraction: 1.0)) {
                     isSearchActive = !newValue.isEmpty
+                }
+                
+                // Add natural language processing for enhanced search
+                if !newValue.isEmpty && newValue.count > 2 {
+                    Task {
+                        let parsedQuery = await queryParser.parseQuery(newValue)
+                        await MainActor.run {
+                            lastParsedQuery = parsedQuery
+                            showingQueryAnalysis = parsedQuery.isActionable
+                            
+                            // Debug output
+                            print("🔍 Debug Query: '\(newValue)'")
+                            print("   Terms: \(parsedQuery.searchTerms)")
+                            print("   Temporal: \(parsedQuery.hasTemporalContext)")
+                            print("   Intent: \(parsedQuery.intent)")
+                            print("   Confidence: \(parsedQuery.confidence) (\(parsedQuery.confidence.rawValue))")
+                            print("   Actionable: \(parsedQuery.isActionable)")
+                        }
+                    }
+                } else {
+                    lastParsedQuery = nil
+                    showingQueryAnalysis = false
                 }
             }
             .photosPicker(
@@ -118,6 +207,69 @@ struct ContentView: View {
         
         try? modelContext.save()
         isImporting = false
+    }
+    
+    // MARK: - Temporal Query Helpers
+    
+    private func matchesTemporalContext(screenshot: Screenshot, query: SearchQuery) -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        let screenshotDate = screenshot.timestamp
+        
+        print("📅 Checking temporal match for screenshot from \(screenshotDate) vs now \(now)")
+        
+        for term in query.searchTerms {
+            switch term.lowercased() {
+            case "today":
+                let isToday = calendar.isDate(screenshotDate, inSameDayAs: now)
+                print("   Term 'today': \(isToday)")
+                if isToday {
+                    return true
+                }
+            case "yesterday":
+                if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+                   calendar.isDate(screenshotDate, inSameDayAs: yesterday) {
+                    return true
+                }
+            case "week", "this week":
+                if calendar.isDate(screenshotDate, equalTo: now, toGranularity: .weekOfYear) {
+                    return true
+                }
+            case "last week":
+                if let lastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: now),
+                   calendar.isDate(screenshotDate, equalTo: lastWeek, toGranularity: .weekOfYear) {
+                    return true
+                }
+            case "month", "this month":
+                if calendar.isDate(screenshotDate, equalTo: now, toGranularity: .month) {
+                    return true
+                }
+            case "last month":
+                if let lastMonth = calendar.date(byAdding: .month, value: -1, to: now),
+                   calendar.isDate(screenshotDate, equalTo: lastMonth, toGranularity: .month) {
+                    return true
+                }
+            case "recent":
+                // Define recent as within the last 7 days
+                if let weekAgo = calendar.date(byAdding: .day, value: -7, to: now),
+                   screenshotDate >= weekAgo {
+                    return true
+                }
+            default:
+                continue
+            }
+        }
+        
+        return false
+    }
+    
+    private func isTemporalTerm(_ term: String) -> Bool {
+        let temporalTerms: Set<String> = [
+            "today", "yesterday", "tomorrow", "week", "this week", "last week",
+            "month", "this month", "last month", "year", "this year", "last year",
+            "recent", "lately"
+        ]
+        return temporalTerms.contains(term.lowercased())
     }
 }
 
@@ -289,6 +441,45 @@ struct ImportProgressOverlay: View {
             )
         }
         .transition(.opacity)
+    }
+}
+
+/// AI Query Processing Indicator - Shows when natural language understanding is active
+struct AIQueryIndicator: View {
+    let query: SearchQuery
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "brain.head.profile")
+                .foregroundColor(.blue)
+                .font(.caption)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("AI: \(query.intent.rawValue)")
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                if query.hasVisualAttributes {
+                    Text("Visual search")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            if query.confidence.rawValue >= 0.8 {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.caption)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        )
     }
 }
 
