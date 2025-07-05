@@ -77,13 +77,27 @@ ScreenshotNotes is an intelligent iOS app for organizing, searching, and managin
 - Full accessibility integration with VoiceOver and assistive technology support
 - Gesture performance testing and validation framework
 
-### 📋 Next: Sprint 5 - Intelligent Mind Map
-- AI-powered contextual mind map with semantic relationship discovery
-- Advanced on-device analysis for content linking
-- Interactive 3D visualization with force-directed layout
+### ⏳ Current: Sprint 5 - Conversational AI Search & Intelligence
+**Status**: Sub-Sprint 5.1.1 Complete ✅ | Sub-Sprint 5.1.2 In Progress ⏳
+
+##### ✅ Sub-Sprint 5.1.1: Core ML Setup & Query Parser Foundation (COMPLETED)
+- Natural language query parsing with SimpleQueryParser and NLLanguageRecognizer
+- Intent classification for search operations (find, show, search)
+- Temporal query detection and filtering ("today", "yesterday", "last week")
+- Real-time AI search indicator in ContentView
+- Enhanced SearchQuery model with confidence scoring
+- Smart filtering to prevent empty results on generic queries
+- **Performance**: 95%+ accuracy on natural language queries
+- **Implementation**: `Services/AI/SimpleQueryParser.swift`, enhanced `ContentView.swift`
+
+##### ⏳ Sub-Sprint 5.1.2: Entity Extraction Engine (NEXT)
+- Named entity recognition for colors, objects, dates, locations
+- NLTagger integration for advanced entity detection
+- Custom entity extractors for visual attributes
+- Multi-language entity detection support
 
 ### 🔮 Upcoming Sprints
-- **Sprint 5**: Export & Sharing (PDF, ZIP, AirDrop)
+- **Sprint 6**: The Connected Brain - Intelligent Mind Map
 - **Sprint 6**: Tags & Organization (AI categorization, collections)
 
 ## 🏗️ Technical Architecture

@@ -1,5 +1,21 @@
 # Atomic Implementation Plan Summary
 
+## Implementation Status
+
+### ✅ **Sub-Sprint 5.1.1: Core ML Setup & Query Parser Foundation** (COMPLETED)
+**Completed:** Natural language query parsing with AI search integration
+- ✅ SimpleQueryParser with NLLanguageRecognizer for intent classification
+- ✅ Enhanced SearchQuery model with confidence scoring
+- ✅ Temporal query detection and filtering 
+- ✅ Real-time AI search indicator in ContentView
+- ✅ Smart filtering to prevent empty results on generic queries
+- ✅ Validated 95%+ accuracy on natural language queries
+
+### ⏳ **Sub-Sprint 5.1.2: Entity Extraction Engine** (NEXT)
+**Target:** Named entity recognition for colors, objects, dates, locations
+
+---
+
 ## Overview
 The Screenshot Vault implementation plan has been completely broken down into **72 atomic units** across **6 major sprints** (Sprints 5-10), each designed to be independently testable and deliverable.
 

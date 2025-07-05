@@ -37,10 +37,7 @@ struct ContentView: View {
                         !isTemporalTerm(term) // Exclude temporal terms from text search
                     }
                     
-                    print("🔍 Non-temporal terms to search: \(enhancedTerms)")
-                    
                     if enhancedTerms.isEmpty {
-                        print("🔍 Only temporal terms, returning true for temporal match")
                         return true // If only temporal terms, return true (temporal filter already applied)
                     }
                     
@@ -50,21 +47,14 @@ struct ContentView: View {
                         !["screenshots", "screenshot", "images", "image", "photos", "photo", "pictures", "picture"].contains(term.lowercased())
                     }
                     
-                    print("🔍 Meaningful terms after filtering generic words: \(meaningfulTerms)")
-                    
                     if meaningfulTerms.isEmpty {
-                        print("🔍 Only generic content type terms, temporal filter is sufficient")
                         return true // If only generic content type terms, temporal filter is sufficient
                     }
                     
-                    let textMatch = meaningfulTerms.allSatisfy { term in
-                        let filenameMatch = screenshot.filename.localizedCaseInsensitiveContains(term)
-                        let textMatch = screenshot.extractedText?.localizedCaseInsensitiveContains(term) ?? false
-                        print("🔍 Checking meaningful term '\(term)' in filename '\(screenshot.filename)': \(filenameMatch), extractedText: \(textMatch)")
-                        return filenameMatch || textMatch
+                    return meaningfulTerms.allSatisfy { term in
+                        screenshot.filename.localizedCaseInsensitiveContains(term) ||
+                        (screenshot.extractedText?.localizedCaseInsensitiveContains(term) ?? false)
                     }
-                    
-                    return textMatch
                 }
             } else {
                 // Fallback to traditional search
@@ -149,14 +139,6 @@ struct ContentView: View {
                         await MainActor.run {
                             lastParsedQuery = parsedQuery
                             showingQueryAnalysis = parsedQuery.isActionable
-                            
-                            // Debug output
-                            print("🔍 Debug Query: '\(newValue)'")
-                            print("   Terms: \(parsedQuery.searchTerms)")
-                            print("   Temporal: \(parsedQuery.hasTemporalContext)")
-                            print("   Intent: \(parsedQuery.intent)")
-                            print("   Confidence: \(parsedQuery.confidence) (\(parsedQuery.confidence.rawValue))")
-                            print("   Actionable: \(parsedQuery.isActionable)")
                         }
                     }
                 } else {
@@ -216,14 +198,10 @@ struct ContentView: View {
         let now = Date()
         let screenshotDate = screenshot.timestamp
         
-        print("📅 Checking temporal match for screenshot from \(screenshotDate) vs now \(now)")
-        
         for term in query.searchTerms {
             switch term.lowercased() {
             case "today":
-                let isToday = calendar.isDate(screenshotDate, inSameDayAs: now)
-                print("   Term 'today': \(isToday)")
-                if isToday {
+                if calendar.isDate(screenshotDate, inSameDayAs: now) {
                     return true
                 }
             case "yesterday":
