@@ -1,11 +1,15 @@
 import Foundation
 import Vision
-import UIKit
 import CoreML
 import ImageIO
+import UniformTypeIdentifiers
 
-/// Phase 5.2.1: Enhanced Vision Processing Service
-/// Advanced object detection and scene classification using Apple's Vision framework
+#if canImport(UIKit)
+import UIKit
+#endif
+
+/// Phase 5.2.1 & 5.2.2: Enhanced Vision Processing Service
+/// Advanced object detection, scene classification, and color analysis using Apple's Vision framework
 @MainActor
 public final class EnhancedVisionService: ObservableObject {
     
@@ -30,6 +34,12 @@ public final class EnhancedVisionService: ObservableObject {
     }
     
     @Published public var lastMetrics = PerformanceMetrics()
+    
+    // MARK: - Dependencies
+    
+    // Note: ColorAnalysisService integration temporarily simplified due to build issues
+    // TODO: Re-integrate full ColorAnalysisService when project structure is resolved
+    private let colorAnalysisService = ColorAnalysisService()
     
     // MARK: - Caching
     
@@ -140,9 +150,32 @@ extension EnhancedVisionService {
     
     /// Perform advanced object detection using Vision framework
     private func performObjectDetection(cgImage: CGImage) async -> [DetectedObject] {
-        // For now, return a simplified object detection result
-        // In a production environment, this would use more advanced Vision APIs
-        return []
+        return await withCheckedContinuation { continuation in
+            let request = VNDetectHumanRectanglesRequest { request, error in
+                guard let results = request.results as? [VNHumanObservation] else {
+                    continuation.resume(returning: [])
+                    return
+                }
+
+                let detectedObjects = results.map { result in
+                    return DetectedObject(
+                        identifier: "person",
+                        label: "Person",
+                        confidence: Double(result.confidence),
+                        boundingBox: BoundingBox(from: result.boundingBox),
+                        category: .person
+                    )
+                }
+                continuation.resume(returning: detectedObjects)
+            }
+
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            do {
+                try handler.perform([request])
+            } catch {
+                continuation.resume(returning: [])
+            }
+        }
     }
     
     /// Categorize detected objects into semantic groups
@@ -513,181 +546,11 @@ extension EnhancedVisionService {
         
         return squaredDifferences.reduce(0.0, +) / Double(values.count)
     }
-}
-
-// MARK: - Color Analysis
-
-extension EnhancedVisionService {
     
-    /// Perform comprehensive color analysis
-    private func performColorAnalysis(cgImage: CGImage) async -> ColorAnalysis {
-        let dominantColors = extractDominantColors(from: cgImage)
-        let brightness = calculateImageBrightness(cgImage: cgImage)
-        let contrast = calculateImageContrast(cgImage: cgImage)
-        let saturation = calculateImageSaturation(cgImage: cgImage)
-        let temperature = determineColorTemperature(colors: dominantColors)
-        let colorScheme = determineColorScheme(colors: dominantColors)
-        
-        let colorPalette = createColorPalette(from: dominantColors)
-        
-        return ColorAnalysis(
-            dominantColors: dominantColors,
-            colorPalette: colorPalette,
-            brightness: brightness,
-            contrast: contrast,
-            saturation: saturation,
-            temperature: temperature,
-            colorScheme: colorScheme
-        )
-    }
-    
-    /// Extract dominant colors using simplified clustering
-    private func extractDominantColors(from cgImage: CGImage) -> [DominantColor] {
-        // Simplified dominant color extraction
-        // In a production implementation, this would use more sophisticated clustering
-        
-        var dominantColors: [DominantColor] = []
-        
-        // Sample colors from image and create basic dominant colors
-        let sampleColors = sampleImageColors(cgImage: cgImage, sampleCount: 100)
-        let clusteredColors = clusterColors(colors: sampleColors, clusterCount: 5)
-        
-        for (_, colorCluster) in clusteredColors.enumerated() {
-            let prominence = Double(colorCluster.count) / Double(sampleColors.count)
-            if prominence > 0.05 { // Only include colors that appear in at least 5% of samples
-                let averageColor = averageColor(from: colorCluster)
-                let colorName = mapColorToName(color: averageColor)
-                let hexValue = colorToHex(color: averageColor)
-                
-                var red: CGFloat = 0
-                var green: CGFloat = 0
-                var blue: CGFloat = 0
-                var alpha: CGFloat = 0
-                averageColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-                
-                let dominantColor = DominantColor(
-                    red: Double(red),
-                    green: Double(green),
-                    blue: Double(blue),
-                    prominence: prominence,
-                    colorName: colorName,
-                    hexValue: hexValue
-                )
-                
-                dominantColors.append(dominantColor)
-            }
-        }
-        
-        return dominantColors.sorted { $0.prominence > $1.prominence }
-    }
-    
-    /// Sample colors from image at regular intervals
-    private func sampleImageColors(cgImage: CGImage, sampleCount: Int) -> [UIColor] {
-        // Simplified color sampling implementation
-        var colors: [UIColor] = []
-        
-        // Add some basic color samples (in real implementation, would sample actual pixels)
-        colors.append(UIColor.white)
-        colors.append(UIColor.black)
-        colors.append(UIColor.blue)
-        colors.append(UIColor.gray)
-        
-        return colors
-    }
-    
-    /// Simple color clustering (placeholder implementation)
-    private func clusterColors(colors: [UIColor], clusterCount: Int) -> [[UIColor]] {
-        // Simplified clustering - in practice would use k-means or similar
-        var clusters: [[UIColor]] = Array(repeating: [], count: clusterCount)
-        
-        for (index, color) in colors.enumerated() {
-            clusters[index % clusterCount].append(color)
-        }
-        
-        return clusters.filter { !$0.isEmpty }
-    }
-    
-    /// Calculate average color from color array
-    private func averageColor(from colors: [UIColor]) -> UIColor {
-        guard !colors.isEmpty else { return UIColor.gray }
-        
-        var totalRed: CGFloat = 0
-        var totalGreen: CGFloat = 0
-        var totalBlue: CGFloat = 0
-        var totalAlpha: CGFloat = 0
-        
-        for color in colors {
-            var red: CGFloat = 0
-            var green: CGFloat = 0
-            var blue: CGFloat = 0
-            var alpha: CGFloat = 0
-            
-            color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-            
-            totalRed += red
-            totalGreen += green
-            totalBlue += blue
-            totalAlpha += alpha
-        }
-        
-        let count = CGFloat(colors.count)
-        return UIColor(
-            red: totalRed / count,
-            green: totalGreen / count,
-            blue: totalBlue / count,
-            alpha: totalAlpha / count
-        )
-    }
-    
-    /// Map UIColor to human-readable color name
-    private func mapColorToName(color: UIColor) -> String {
-        var red: CGFloat = 0
-        var green: CGFloat = 0
-        var blue: CGFloat = 0
-        var alpha: CGFloat = 0
-        
-        color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-        
-        // Simplified color name mapping
-        if red > 0.8 && green < 0.3 && blue < 0.3 {
-            return "Red"
-        } else if green > 0.8 && red < 0.3 && blue < 0.3 {
-            return "Green"
-        } else if blue > 0.8 && red < 0.3 && green < 0.3 {
-            return "Blue"
-        } else if red > 0.8 && green > 0.8 && blue < 0.3 {
-            return "Yellow"
-        } else if red > 0.5 && green < 0.5 && blue > 0.5 {
-            return "Purple"
-        } else if red > 0.8 && green > 0.4 && blue < 0.3 {
-            return "Orange"
-        } else if red > 0.8 && green > 0.7 && blue > 0.7 {
-            return "Pink"
-        } else if red > 0.8 && green > 0.8 && blue > 0.8 {
-            return "White"
-        } else if red < 0.2 && green < 0.2 && blue < 0.2 {
-            return "Black"
-        } else if abs(red - green) < 0.1 && abs(green - blue) < 0.1 {
-            return "Gray"
-        } else {
-            return "Mixed"
-        }
-    }
-    
-    /// Convert UIColor to hex string
-    private func colorToHex(color: UIColor) -> String {
-        var red: CGFloat = 0
-        var green: CGFloat = 0
-        var blue: CGFloat = 0
-        var alpha: CGFloat = 0
-        
-        color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-        
-        let r = Int(red * 255)
-        let g = Int(green * 255)
-        let b = Int(blue * 255)
-        
-        return String(format: "#%02X%02X%02X", r, g, b)
+    /// Calculate color variance for complexity analysis
+    private func calculateColorVariance(cgImage: CGImage) -> Double {
+        // Simplified color variance calculation
+        return 0.5 // Placeholder
     }
     
     /// Calculate image brightness
@@ -696,90 +559,109 @@ extension EnhancedVisionService {
         // In practice, would analyze actual pixel values
         return 0.5 // Placeholder
     }
+}
+
+// MARK: - Color Analysis
+
+extension EnhancedVisionService {
     
-    /// Calculate image contrast
-    private func calculateImageContrast(cgImage: CGImage) -> Double {
-        // Simplified contrast calculation
-        return 0.5 // Placeholder
-    }
-    
-    /// Calculate image saturation
-    private func calculateImageSaturation(cgImage: CGImage) -> Double {
-        // Simplified saturation calculation
-        return 0.5 // Placeholder
-    }
-    
-    /// Calculate color variance for complexity analysis
-    private func calculateColorVariance(cgImage: CGImage) -> Double {
-        // Simplified color variance calculation
-        return 0.5 // Placeholder
-    }
-    
-    /// Determine color temperature from dominant colors
-    private func determineColorTemperature(colors: [DominantColor]) -> ColorTemperature {
-        guard !colors.isEmpty else { return .neutral }
-        
-        var warmScore = 0.0
-        var coolScore = 0.0
-        
-        for color in colors {
-            // Simplified temperature calculation based on red/blue balance
-            let warmness = color.red - color.blue
-            if warmness > 0 {
-                warmScore += warmness * color.prominence
-            } else {
-                coolScore += abs(warmness) * color.prominence
-            }
+    /// Perform comprehensive color analysis using ColorAnalysisService
+    private func performColorAnalysis(cgImage: CGImage) async -> ColorAnalysis {
+        // Convert CGImage to Data for the ColorAnalysisService
+        guard let data = convertCGImageToData(cgImage) else {
+            return createFallbackColorAnalysis()
         }
         
-        if warmScore > coolScore * 1.2 {
-            return .warm
-        } else if coolScore > warmScore * 1.2 {
-            return .cool
-        } else {
-            return .neutral
-        }
+        // Use the ColorAnalysisService for comprehensive analysis
+        let result = await colorAnalysisService.analyzeImage(data)
+        
+        // Convert the result to the expected ColorAnalysis format
+        return convertToColorAnalysis(result)
     }
     
-    /// Determine color scheme type
-    private func determineColorScheme(colors: [DominantColor]) -> VisualColorScheme {
-        guard colors.count >= 2 else { return .monochromatic }
-        
-        // Simplified color scheme analysis
-        let saturationSum = colors.reduce(0.0) { sum, color in
-            let uiColor = color.uiColor
-            var saturation: CGFloat = 0
-            uiColor.getHue(nil, saturation: &saturation, brightness: nil, alpha: nil)
-            return sum + Double(saturation)
+    /// Convert CGImage to Data for processing
+    private func convertCGImageToData(_ cgImage: CGImage) -> Data? {
+        guard let mutableData = CFDataCreateMutable(nil, 0),
+              let destination = CGImageDestinationCreateWithData(mutableData, UTType.jpeg.identifier as CFString, 1, nil) else {
+            return nil
         }
         
-        let averageSaturation = saturationSum / Double(colors.count)
-        
-        if averageSaturation > 0.7 {
-            return .vibrant
-        } else if averageSaturation < 0.3 {
-            return .muted
-        } else {
-            return .unknown
+        CGImageDestinationAddImage(destination, cgImage, nil)
+        guard CGImageDestinationFinalize(destination) else {
+            return nil
         }
+        
+        return mutableData as Data
     }
     
-    /// Create organized color palette
-    private func createColorPalette(from colors: [DominantColor]) -> ColorPalette {
-        let sortedColors = colors.sorted { $0.prominence > $1.prominence }
+    /// Convert ColorAnalysisService result to VisualAttributes ColorAnalysis
+    private func convertToColorAnalysis(_ result: ColorAnalysisService.ColorAnalysisResult) -> ColorAnalysis {
+        // Convert dominant colors
+        let dominantColors = result.dominantColors.map { colorInfo in
+            DominantColor(
+                red: colorInfo.red,
+                green: colorInfo.green,
+                blue: colorInfo.blue,
+                prominence: colorInfo.prominence,
+                colorName: colorInfo.colorName,
+                hexValue: colorInfo.hexValue
+            )
+        }
         
-        let primaryColors = Array(sortedColors.prefix(2))
-        let secondaryColors = Array(sortedColors.dropFirst(2).prefix(2))
-        let accentColors = Array(sortedColors.dropFirst(4).prefix(1))
-        let backgroundColors = Array(sortedColors.dropFirst(5))
+        // Map color scheme
+        let colorScheme = mapColorScheme(result.colorScheme)
         
-        return ColorPalette(
-            primaryColors: primaryColors,
-            secondaryColors: secondaryColors,
-            accentColors: accentColors,
-            backgroundColors: backgroundColors
+        // Map temperature
+        let temperature = mapTemperature(result.temperature)
+        
+        return ColorAnalysis(
+            dominantColors: dominantColors,
+            brightness: result.brightness,
+            contrast: result.contrast,
+            saturation: result.saturation,
+            temperature: temperature,
+            colorScheme: colorScheme,
+            visualEmbedding: result.visualEmbedding.map { Float($0) }
         )
     }
+    
+    /// Map AdvancedColorScheme to VisualColorScheme
+    private func mapColorScheme(_ scheme: ColorAnalysisService.AdvancedColorScheme) -> VisualColorScheme {
+        switch scheme {
+        case .monochromatic: return .monochromatic
+        case .analogous: return .analogous
+        case .complementary: return .complementary
+        case .triadic: return .triadic
+        case .tetradic: return .tetradic
+        case .vibrant: return .vibrant
+        case .muted: return .muted
+        case .highContrast, .lowContrast, .natural, .artificial: return .unknown
+        }
+    }
+    
+    /// Map AdvancedColorTemperature to ColorTemperature
+    private func mapTemperature(_ temp: ColorAnalysisService.AdvancedColorTemperature) -> ColorTemperature {
+        switch temp {
+        case .veryWarm, .warm: return .warm
+        case .cool, .veryCool: return .cool
+        case .neutral: return .neutral
+        case .mixed: return .mixed
+        }
+    }
+    
+    /// Create fallback color analysis when processing fails
+    private func createFallbackColorAnalysis() -> ColorAnalysis {
+        return ColorAnalysis(
+            dominantColors: [],
+            brightness: 0.5,
+            contrast: 0.5,
+            saturation: 0.5,
+            temperature: .neutral,
+            colorScheme: .unknown,
+            visualEmbedding: []
+        )
+    }
+    
 }
 
 // MARK: - Helper Methods

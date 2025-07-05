@@ -1,6 +1,10 @@
 import Foundation
 import Vision
+import SwiftUI
+
+#if canImport(UIKit)
 import UIKit
+#endif
 
 /// Comprehensive visual attributes extracted from screenshot images using Apple's Vision framework
 public struct VisualAttributes: Codable, Sendable {
@@ -310,8 +314,6 @@ public struct TextRegion: Codable, Sendable {
 public struct ColorAnalysis: Codable, Sendable {
     /// Dominant colors in order of prominence
     public let dominantColors: [DominantColor]
-    /// Color palette representation
-    public let colorPalette: ColorPalette
     /// Overall brightness (0.0 to 1.0)
     public let brightness: Double
     /// Contrast level (0.0 to 1.0)
@@ -322,23 +324,25 @@ public struct ColorAnalysis: Codable, Sendable {
     public let temperature: ColorTemperature
     /// Color scheme type
     public let colorScheme: VisualColorScheme
+    /// Visual embedding for similarity search (512-dimensional vector)
+    public let visualEmbedding: [Float]
     
     public init(
         dominantColors: [DominantColor],
-        colorPalette: ColorPalette,
         brightness: Double,
         contrast: Double,
         saturation: Double,
         temperature: ColorTemperature,
-        colorScheme: VisualColorScheme
+        colorScheme: VisualColorScheme,
+        visualEmbedding: [Float] = []
     ) {
         self.dominantColors = dominantColors
-        self.colorPalette = colorPalette
         self.brightness = brightness
         self.contrast = contrast
         self.saturation = saturation
         self.temperature = temperature
         self.colorScheme = colorScheme
+        self.visualEmbedding = visualEmbedding
     }
 }
 
@@ -364,30 +368,19 @@ public struct DominantColor: Codable, Sendable {
         self.hexValue = hexValue
     }
     
-    /// Convert to UIColor
+    /// Convert to SwiftUI Color
+    #if canImport(UIKit)
     public var uiColor: UIColor {
         return UIColor(red: red, green: green, blue: blue, alpha: 1.0)
     }
-}
-
-/// Color palette with grouped colors
-public struct ColorPalette: Codable, Sendable {
-    /// Primary colors (most prominent)
-    public let primaryColors: [DominantColor]
-    /// Secondary colors (supporting colors)
-    public let secondaryColors: [DominantColor]
-    /// Accent colors (highlight colors)
-    public let accentColors: [DominantColor]
-    /// Background colors
-    public let backgroundColors: [DominantColor]
+    #endif
     
-    public init(primaryColors: [DominantColor], secondaryColors: [DominantColor], accentColors: [DominantColor], backgroundColors: [DominantColor]) {
-        self.primaryColors = primaryColors
-        self.secondaryColors = secondaryColors
-        self.accentColors = accentColors
-        self.backgroundColors = backgroundColors
+    public var color: Color {
+        return Color(red: red, green: green, blue: blue)
     }
 }
+
+
 
 /// Color temperature classification
 public enum ColorTemperature: String, Codable, CaseIterable, Sendable {
