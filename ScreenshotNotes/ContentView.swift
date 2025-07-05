@@ -17,6 +17,9 @@ struct ContentView: View {
     @State private var importProgress: Double = 0.0
     @State private var lastParsedQuery: SearchQuery?
     @State private var showingQueryAnalysis = false
+    @State private var searchRobustnessService = SearchRobustnessService()
+    @State private var enhancedSearchResult: EnhancedSearchResult?
+    @State private var showingSearchSuggestions = false
     
     private var filteredScreenshots: [Screenshot] {
         if searchText.isEmpty {
@@ -65,10 +68,15 @@ struct ContentView: View {
                     }
                 }
             } else {
-                // Fallback to traditional search
-                return screenshots.filter { screenshot in
-                    screenshot.filename.localizedCaseInsensitiveContains(searchText) ||
-                    (screenshot.extractedText?.localizedCaseInsensitiveContains(searchText) ?? false)
+                // Phase 5.1.4: Enhanced search robustness with progressive fallback
+                if let enhancedResult = enhancedSearchResult, enhancedResult.originalQuery == searchText {
+                    return enhancedResult.results
+                } else {
+                    // Fallback to traditional search if enhanced search hasn't completed yet
+                    return screenshots.filter { screenshot in
+                        screenshot.filename.localizedCaseInsensitiveContains(searchText) ||
+                        (screenshot.extractedText?.localizedCaseInsensitiveContains(searchText) ?? false)
+                    }
                 }
             }
         }
@@ -104,6 +112,31 @@ struct ContentView: View {
                     }
                     .transition(.asymmetric(
                         insertion: .scale.combined(with: .opacity),
+                        removal: .opacity
+                    ))
+                }
+                
+                // Search Suggestions (Phase 5.1.4)
+                if showingSearchSuggestions, let enhancedResult = enhancedSearchResult {
+                    VStack {
+                        HStack {
+                            SearchSuggestionsView(
+                                suggestions: enhancedResult.suggestions,
+                                metrics: enhancedResult.metrics,
+                                onSuggestionTapped: { suggestion in
+                                    // Extract the quoted text from suggestions like "Did you mean: \"receipt\"?"
+                                    let suggestionText = extractSuggestionText(from: suggestion)
+                                    searchText = suggestionText
+                                }
+                            )
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                            Spacer()
+                        }
+                        Spacer()
+                    }
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .top).combined(with: .opacity),
                         removal: .opacity
                     ))
                 }
@@ -164,9 +197,20 @@ struct ContentView: View {
                             showingQueryAnalysis = parsedQuery.isActionable
                         }
                     }
+                    
+                    // Phase 5.1.4: Enhanced search robustness with progressive fallback
+                    Task {
+                        let enhancedResult = await searchRobustnessService.enhanceSearchQuery(newValue, screenshots: screenshots)
+                        await MainActor.run {
+                            enhancedSearchResult = enhancedResult
+                            showingSearchSuggestions = !enhancedResult.suggestions.isEmpty
+                        }
+                    }
                 } else {
                     lastParsedQuery = nil
                     showingQueryAnalysis = false
+                    enhancedSearchResult = nil
+                    showingSearchSuggestions = false
                 }
             }
             .photosPicker(
@@ -346,6 +390,24 @@ struct ContentView: View {
             "recent", "lately"
         ]
         return temporalTerms.contains(term.lowercased())
+    }
+    
+    // MARK: - Phase 5.1.4: Search Robustness Helpers
+    
+    private func extractSuggestionText(from suggestion: String) -> String {
+        // Extract quoted text from suggestions like "Did you mean: \"receipt\"?"
+        let pattern = #""([^"]+)""#
+        if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+            let range = NSRange(location: 0, length: suggestion.utf16.count)
+            if let match = regex.firstMatch(in: suggestion, options: [], range: range) {
+                if let swiftRange = Range(match.range(at: 1), in: suggestion) {
+                    return String(suggestion[swiftRange])
+                }
+            }
+        }
+        
+        // If no quoted text found, return the original suggestion
+        return suggestion
     }
 }
 
@@ -551,6 +613,83 @@ struct AIQueryIndicator: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        )
+    }
+}
+
+/// Search Suggestions View for Phase 5.1.4 Enhanced Search Robustness
+struct SearchSuggestionsView: View {
+    let suggestions: [String]
+    let metrics: SearchRobustnessService.PerformanceMetrics
+    let onSuggestionTapped: (String) -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass.circle.fill")
+                    .foregroundColor(.blue)
+                    .font(.caption)
+                
+                Text("Search Suggestions")
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                if metrics.fallbackTier > 1 {
+                    Text("Tier \(metrics.fallbackTier)")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.secondary.opacity(0.1))
+                        )
+                }
+                
+                Spacer()
+                
+                if metrics.processingTime > 0 {
+                    Text("\(String(format: "%.0f", metrics.processingTime * 1000))ms")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            LazyVStack(alignment: .leading, spacing: 4) {
+                ForEach(suggestions.prefix(3), id: \.self) { suggestion in
+                    Button(action: {
+                        onSuggestionTapped(suggestion)
+                    }) {
+                        HStack {
+                            Text(suggestion)
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                                .multilineTextAlignment(.leading)
+                            
+                            Spacer()
+                            
+                            Image(systemName: "arrow.up.left")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.secondary.opacity(0.05))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(.regularMaterial)

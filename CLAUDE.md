@@ -27,18 +27,19 @@ ScreenshotNotes is an iOS app for intelligent screenshot organization with OCR c
 - **Sprint 4 Sub-Sprint 4.4**: Advanced Gestures ✅ (Enhanced gestures, accessibility integration)
 - **Sprint 5 Sub-Sprint 5.1.1**: Core ML Setup & Query Parser Foundation ✅ (Natural language processing)
 - **Sprint 5 Sub-Sprint 5.1.2**: Entity Extraction Engine ✅ (16 entity types, multi-language support)
+- **Sprint 5 Sub-Sprint 5.1.4**: Search Robustness Enhancement ✅ (5-tier progressive fallback, fuzzy matching, synonym expansion)
 
 ### Project Health Metrics
 - **App Stability**: 100% - No crashes or critical bugs
-- **Performance**: 60fps+ material rendering, <100ms search response (achieved <100ms)
+- **Performance**: 60fps+ material rendering, <100ms search response with robustness enhancements
 - **AI Performance**: <5ms entity extraction, 90%+ accuracy across 16 entity types
+- **Search Intelligence**: 5-tier progressive fallback with <2s timeout, 200+ synonym mappings
 - **Test Coverage**: 90%+ for new components with automated validation
 - **Accessibility**: WCAG AA compliant across all implemented features
-- **Development Progress**: 62% complete (4.8/8 sprints)
-- **Search Robustness**: Major conversational search improvements implemented
+- **Development Progress**: 65% complete (5.2/8 sprints)
 
 ### Current Sprint
-**Sprint 5: Conversational AI Search & Intelligence** (Phase 5.1.4 Search Robustness Enhancement In Progress)
+**Sprint 5: Conversational AI Search & Intelligence** (Phase 5.1.4 Complete, Phase 5.2+ Available)
 
 ## Key Technical Decisions
 
@@ -228,6 +229,40 @@ xcodebuild test -project ScreenshotNotes.xcodeproj -scheme ScreenshotNotes -dest
 - **4.7**: Accessibility Enhancement (2 days) - Full VoiceOver, Voice Control support
 - **4.8**: Integration & Polish (3 days) - Integration testing, performance validation
 
+## Sprint 5 Detailed Breakdown
+
+### ✅ Sub-Sprint 5.1.1: Core ML Setup & Query Parser Foundation (2 days) - COMPLETED
+- **QueryParserService**: Natural language understanding for search queries
+- **Core ML Integration**: iOS 17+ Natural Language framework utilization
+- **Intent Recognition**: Search, filter, temporal, and visual query intents
+- **Confidence Scoring**: Weighted confidence for actionable queries
+- **Multi-language Support**: English, Spanish, French query processing
+- **Files**: `QueryParserService.swift`, `SimpleQueryParser.swift`
+
+### ✅ Sub-Sprint 5.1.2: Entity Extraction Engine (3 days) - COMPLETED
+- **EntityExtractionService**: 16-type entity recognition system
+- **Entity Types**: Person, organization, place, color, object, document, phone, email, URL, date, time, currency, address, product, brand, quantity
+- **Multi-language Processing**: Advanced language detection and processing
+- **Performance Optimization**: <5ms extraction time, 90%+ accuracy
+- **Smart Categorization**: Semantic grouping for enhanced search relevance
+- **Files**: `EntityExtractionService.swift`, entity processing components
+
+### ✅ Sub-Sprint 5.1.4: Search Robustness Enhancement (3 days) - COMPLETED
+- **SearchRobustnessService**: 5-tier progressive fallback search system
+- **Tier 1**: Exact match with advanced query normalization using Apple's NLTokenizer
+- **Tier 2**: Spell correction using iOS-native UITextChecker API
+- **Tier 3**: Synonym expansion with 200+ comprehensive mappings
+- **Tier 4**: Fuzzy matching with Levenshtein, Jaccard, N-gram, and phonetic algorithms
+- **Tier 5**: Semantic similarity using Apple's NLEmbedding (iOS 17+)
+- **Performance**: <2s timeout, comprehensive caching, thread-safe operations
+- **UI Integration**: Smart suggestions, performance metrics display
+- **Files**: `SearchRobustnessService.swift`, `FuzzyMatchingService.swift`, `SynonymExpansionService.swift`
+
+### 📋 Remaining Sub-Sprints 5.2-5.4
+- **5.2**: Semantic Relationship Discovery (3 days) - AI-powered content connections
+- **5.3**: Mind Mapping Visualization (4 days) - Interactive relationship graphs
+- **5.4**: Advanced Query Understanding (2 days) - Complex multi-entity queries
+
 ## Next Development Priorities
 
 ### Sprint 4 Success Metrics
@@ -271,7 +306,13 @@ ScreenshotNotes/
 │   ├── PhotoLibraryService.swift
 │   ├── BackgroundTaskService.swift
 │   ├── SettingsService.swift
-│   └── ImageStorageService.swift
+│   ├── ImageStorageService.swift
+│   └── AI/
+│       ├── QueryParserService.swift
+│       ├── EntityExtractionService.swift
+│       ├── SearchRobustnessService.swift
+│       ├── FuzzyMatchingService.swift
+│       └── SynonymExpansionService.swift
 ├── Views/
 │   ├── SearchView.swift
 │   ├── SearchFiltersView.swift
@@ -296,6 +337,11 @@ ScreenshotNotes/
 - **SearchService** ← Used by SearchView, ContentView for intelligent search
 - **PhotoLibraryService** ← Used by ScreenshotListViewModel for screenshot detection
 - **BackgroundTaskService** ← Used for background processing coordination
+- **QueryParserService** ← Used by ContentView for natural language understanding
+- **EntityExtractionService** ← Used by QueryParserService for 16-type entity recognition
+- **SearchRobustnessService** ← Used by ContentView for 5-tier progressive fallback search
+- **FuzzyMatchingService** ← Used by SearchRobustnessService for advanced similarity matching
+- **SynonymExpansionService** ← Used by SearchRobustnessService for query expansion
 - **SettingsService** ← Used by SettingsView and app configuration
 
 ## Performance Targets
@@ -349,9 +395,9 @@ ScreenshotNotes/
 
 ---
 
-**Last Updated**: Sprint 5 Sub-Sprint 5.1.2 Complete - Entity Extraction & Search Robustness Enhancement  
-**Next Milestone**: Phase 5.1.4 - Search Robustness Enhancement (Fuzzy Matching, Synonyms, Progressive Fallback)  
-**Recent Achievement**: Major conversational search improvements with intent word filtering  
+**Last Updated**: Sprint 5 Sub-Sprint 5.1.4 Complete - Search Robustness Enhancement  
+**Next Milestone**: Phase 5.2 - Semantic Relationship Discovery  
+**Recent Achievement**: 5-tier progressive fallback search with Apple API integration  
 **Critical Issues**: Hero animation navigation timing (workaround in place)
 
 ## Recent Enhancements
@@ -374,5 +420,8 @@ ScreenshotNotes/
 - ✅ **Accessibility Support**: Comprehensive VoiceOver and assistive technology integration
 - ✅ **Swipe Navigation**: Full gesture support for screenshot browsing
 - ✅ **Intelligent Search**: Advanced search with filters and caching
+- ✅ **Search Robustness**: 5-tier progressive fallback with fuzzy matching and synonyms
+- ✅ **Entity Extraction**: 16-type entity recognition with multi-language support
+- ✅ **Natural Language Processing**: Query parsing with intent recognition
 - ✅ **OCR Integration**: Background text extraction with progress tracking
 - ✅ **Photo Library Monitoring**: Automatic screenshot detection and import

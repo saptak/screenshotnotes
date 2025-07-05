@@ -2,18 +2,18 @@ import Foundation
 import SwiftData
 
 @Model
-final class Screenshot {
-    @Attribute(.unique) var id: UUID
-    var imageData: Data
-    var timestamp: Date
-    var filename: String
-    var extractedText: String?
-    var objectTags: [String]?
-    var userNotes: String?
-    var userTags: [String]?
-    var assetIdentifier: String?
+public final class Screenshot {
+    @Attribute(.unique) public var id: UUID
+    public var imageData: Data
+    public var timestamp: Date
+    public var filename: String
+    public var extractedText: String?
+    public var objectTags: [String]?
+    public var userNotes: String?
+    public var userTags: [String]?
+    public var assetIdentifier: String?
     
-    init(imageData: Data, filename: String, timestamp: Date? = nil, assetIdentifier: String? = nil) {
+    public init(imageData: Data, filename: String, timestamp: Date? = nil, assetIdentifier: String? = nil) {
         self.id = UUID()
         self.imageData = imageData
         self.timestamp = timestamp ?? Date()
