@@ -640,7 +640,7 @@ Each sprint must meet the following criteria before proceeding:
 
         *   **Deliverable Status:** ✅ Production-ready mind map visualization exceeding original 3D requirements with 2D excellence
 
-    *   **Sub-Sprint 6.5: Essential Copy/Edit Functionality** (Reallocated from Sprint 5.5) ⏳ **PRIORITY FOR COMPLETION**
+    *   **Sub-Sprint 6.5: Essential Copy/Edit Functionality** ⏳ **PRIORITY FOR COMPLETION**
         *   **Goal:** Complete core text extraction and copy capabilities (excluding advanced batch operations)
         *   **Status:** Ready for Implementation - Foundation services in place, focused on essential user functionality
         *   **Atomic Units:**
@@ -720,11 +720,6 @@ Each sprint must meet the following criteria before proceeding:
             *   ⏳ Smart data recognition for URLs, phone numbers, emails, QR codes (Sprint 6.5.2)
             *   ⏳ Interactive entity chips in mind map node details (Sprint 6.5.3)
 
-    *   **Reallocation Summary:**
-        *   **Sprint 6 Status:** Core mind map functionality complete and production-ready
-        *   **Sprint 7 Focus:** Complete advanced AI infrastructure with reallocated Sprint 6 components
-        *   **Sprint 8 Focus:** Advanced clustering, timeline visualization, and production optimization
-        *   **Rationale:** Complex AI/ML components require dedicated development cycles for reliability
     *   **UX Focus:** Immersive 3D mind map with Apple Glass UX principles, featuring translucent materials, physics-based animations, adaptive layouts, and premium haptic feedback throughout the conversational AI interaction.
     *   **Glass UX Integration:** Bottom Glass search bar drives all mind map discovery through conversational queries, with state-aware visual effects synchronized to user voice input and seamless transitions between 2D search results and 3D relationship visualization.
     *   **Definition of Done:** AI-powered mind map with Glass design language, conversational search integration, and smooth 3D interactions maintaining Apple's premium interaction standards

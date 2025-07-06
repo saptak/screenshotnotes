@@ -14,27 +14,23 @@ struct ScreenshotDetailView: View {
     @State private var controlsTimer: Timer?
     @State private var currentScreenshot: Screenshot
     @State private var showingActionSheet = false
-    
+
     // Navigation support
-    
     private let minScale: CGFloat = 0.5
     private let maxScale: CGFloat = 4.0
-    
     // Swipe thresholds
     private let swipeThreshold: CGFloat = 50
-    
+
     private var currentIndex: Int {
         allScreenshots.firstIndex(where: { $0.id == currentScreenshot.id }) ?? 0
     }
-    
     private var canNavigatePrevious: Bool {
         currentIndex > 0
     }
-    
     private var canNavigateNext: Bool {
         currentIndex < allScreenshots.count - 1
     }
-    
+
     init(screenshot: Screenshot, heroNamespace: Namespace.ID, allScreenshots: [Screenshot], onDelete: ((Screenshot) -> Void)? = nil) {
         self.screenshot = screenshot
         self.heroNamespace = heroNamespace
@@ -42,48 +38,53 @@ struct ScreenshotDetailView: View {
         self.onDelete = onDelete
         self._currentScreenshot = State(initialValue: screenshot)
     }
-    
+
     var body: some View {
-        ZStack {
-            Color.black
-                .ignoresSafeArea()
-            
-            GeometryReader { geometry in
-                if let image = UIImage(data: currentScreenshot.imageData) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .scaleEffect(scale)
-                        .offset(offset)
-                        .gesture(allGestures)
-                        .onTapGesture(count: 2) {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                if scale > 1.0 {
-                                    resetZoom()
-                                } else {
-                                    scale = 2.0
-                                    offset = .zero
+        return ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: 0) {
+                GeometryReader { geometry in
+                    if let image = UIImage(data: currentScreenshot.imageData) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .scaleEffect(scale)
+                            .offset(offset)
+                            .gesture(allGestures)
+                            .onTapGesture(count: 2) {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    if scale > 1.0 {
+                                        resetZoom()
+                                        scale = 2.0
+                                        offset = .zero
+                                    }
                                 }
+                                addHapticFeedback(.light)
                             }
-                            addHapticFeedback(.light)
+                            .onTapGesture {
+                                toggleControlsVisibility()
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .clipped()
+                    } else {
+                        VStack {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.system(size: 50))
+                                .foregroundColor(.gray)
+                            Text("Unable to load image")
+                                .font(.headline)
+                                .foregroundColor(.gray)
                         }
-                        .onTapGesture {
-                            toggleControlsVisibility()
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipped()
-                } else {
-                    VStack {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray)
-                        Text("Unable to load image")
-                            .font(.headline)
-                            .foregroundColor(.gray)
                     }
                 }
+                // --- Extracted Text Display ---
+                if let extractedText = currentScreenshot.extractedText, !extractedText.isEmpty {
+                    ExtractedTextSection(text: extractedText)
+                        .padding(.top, 0)
+                        .padding(.bottom, 8)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
-            
             // Navigation bar overlay
             VStack {
                 if showingControls {
@@ -98,9 +99,7 @@ struct ScreenshotDetailView: View {
                                 .overlayMaterial(cornerRadius: 20)
                                 .clipShape(Circle())
                         }
-                        
                         Spacer()
-                        
                         Text(currentScreenshot.filename)
                             .font(.headline)
                             .foregroundColor(.white)
@@ -108,14 +107,11 @@ struct ScreenshotDetailView: View {
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                             .overlayMaterial(cornerRadius: 8)
-                        
                         Spacer()
-                        
                         Menu {
                             Button("Share", systemImage: "square.and.arrow.up") {
                                 shareImage()
                             }
-                            
                             Button("Copy", systemImage: "doc.on.doc") {
                                 copyImage()
                             }
@@ -130,9 +126,7 @@ struct ScreenshotDetailView: View {
                     .padding()
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                
                 Spacer()
-                
                 // Bottom info overlay
                 if showingControls {
                     VStack(spacing: 8) {
@@ -145,17 +139,14 @@ struct ScreenshotDetailView: View {
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 8)
                             }
-                            
                             VStack(spacing: 4) {
                                 Text(currentScreenshot.timestamp.formatted(date: .abbreviated, time: .shortened))
                                     .font(.caption)
                                     .foregroundColor(.white.opacity(0.8))
-                                
                                 Text("\(currentIndex + 1) of \(allScreenshots.count)")
                                     .font(.caption2)
                                     .foregroundColor(.white.opacity(0.6))
                             }
-                            
                             if canNavigateNext {
                                 Button("▶") {
                                     navigateToNext()
@@ -165,7 +156,6 @@ struct ScreenshotDetailView: View {
                                 .padding(.horizontal, 8)
                             }
                         }
-                        
                         if scale != 1.0 {
                             HStack {
                                 Button("Reset Zoom") {
@@ -180,7 +170,6 @@ struct ScreenshotDetailView: View {
                                 .overlayMaterial(cornerRadius: 6)
                                 .foregroundColor(.white)
                                 .clipShape(RoundedRectangle(cornerRadius: 6))
-                                
                                 Text("\(Int(scale * 100))%")
                                     .font(.caption)
                                     .foregroundColor(.white.opacity(0.8))
@@ -204,25 +193,23 @@ struct ScreenshotDetailView: View {
             Button("Share") {
                 shareCurrentImage()
             }
-            
             Button("Delete", role: .destructive) {
                 deleteCurrentImage()
             }
-            
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("What would you like to do with this screenshot?")
         }
     }
-    
-    private var allGestures: some Gesture {
+
+    var allGestures: some Gesture {
         SimultaneousGesture(
             magnificationGesture,
             combinedDragGesture
         )
     }
     
-    private var combinedDragGesture: some Gesture {
+    var combinedDragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
                 if scale > 1.0 {
@@ -277,7 +264,7 @@ struct ScreenshotDetailView: View {
             }
     }
     
-    private var magnificationGesture: some Gesture {
+    var magnificationGesture: some Gesture {
         MagnificationGesture()
             .onChanged { value in
                 let newScale = lastScale * value
@@ -302,14 +289,14 @@ struct ScreenshotDetailView: View {
     }
     
     
-    private func resetZoom() {
+    func resetZoom() {
         scale = 1.0
         offset = .zero
         lastScale = 1.0
         lastOffset = .zero
     }
     
-    private func constrainOffset() {
+    func constrainOffset() {
         // Simple constraint - reset to center if too far
         let maxOffset: CGFloat = 100
         if abs(offset.width) > maxOffset || abs(offset.height) > maxOffset {
@@ -318,7 +305,7 @@ struct ScreenshotDetailView: View {
         }
     }
     
-    private func toggleControlsVisibility() {
+    func toggleControlsVisibility() {
         withAnimation(.easeInOut(duration: 0.3)) {
             showingControls.toggle()
         }
@@ -330,7 +317,7 @@ struct ScreenshotDetailView: View {
         }
     }
     
-    private func scheduleControlsTimer() {
+    func scheduleControlsTimer() {
         controlsTimer?.invalidate()
         controlsTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
             withAnimation(.easeInOut(duration: 0.3)) {
@@ -339,7 +326,7 @@ struct ScreenshotDetailView: View {
         }
     }
     
-    private func navigateToPrevious() {
+    func navigateToPrevious() {
         guard canNavigatePrevious else { return }
         
         withAnimation(.easeInOut(duration: 0.3)) {
@@ -349,7 +336,7 @@ struct ScreenshotDetailView: View {
         addHapticFeedback(.light)
     }
     
-    private func navigateToNext() {
+    func navigateToNext() {
         guard canNavigateNext else { return }
         
         withAnimation(.easeInOut(duration: 0.3)) {
@@ -359,7 +346,7 @@ struct ScreenshotDetailView: View {
         addHapticFeedback(.light)
     }
     
-    private func shareImage() {
+    func shareImage() {
         guard let image = UIImage(data: currentScreenshot.imageData) else { 
             addHapticFeedback(.error)
             return 
@@ -395,7 +382,7 @@ struct ScreenshotDetailView: View {
         }
     }
     
-    private func copyImage() {
+    func copyImage() {
         guard let image = UIImage(data: currentScreenshot.imageData) else { 
             addHapticFeedback(.error)
             return 
@@ -404,11 +391,11 @@ struct ScreenshotDetailView: View {
         addHapticFeedback(.success)
     }
     
-    private func shareCurrentImage() {
+    func shareCurrentImage() {
         shareImage()
     }
     
-    private func deleteCurrentImage() {
+    func deleteCurrentImage() {
         addHapticFeedback(.heavy)
         
         // Call the deletion callback if provided
@@ -420,12 +407,12 @@ struct ScreenshotDetailView: View {
         dismiss()
     }
     
-    private func addHapticFeedback(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+    func addHapticFeedback(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
         let impact = UIImpactFeedbackGenerator(style: style)
         impact.impactOccurred()
     }
     
-    private func addHapticFeedback(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+    func addHapticFeedback(_ type: UINotificationFeedbackGenerator.FeedbackType) {
         let notification = UINotificationFeedbackGenerator()
         notification.notificationOccurred(type)
     }
