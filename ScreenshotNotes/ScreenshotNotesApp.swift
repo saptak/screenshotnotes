@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import AppIntents
 
 @main
 struct ScreenshotNotesApp: App {
@@ -22,6 +23,11 @@ struct ScreenshotNotesApp: App {
     init() {
         // Register background tasks
         BackgroundTaskService.shared.registerBackgroundTasks()
+        
+        // Register App Intents for Siri integration
+        if #available(iOS 16.0, *) {
+            ScreenshotNotesShortcuts.updateAppShortcutParameters()
+        }
     }
 
     var body: some Scene {

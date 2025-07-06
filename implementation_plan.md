@@ -541,7 +541,7 @@ Each sprint must meet the following criteria before proceeding:
         *   ✅ **Phase 5.1.4:** Search Robustness Enhancement (COMPLETED)
         *   ✅ **Sub-Sprint 5.2:** Content Analysis & Semantic Tagging (COMPLETED - Sub-Sprint 5.2.3)
         *   ✅ **Sub-Sprint 5.3.1:** Speech Recognition & Voice Input (COMPLETED)
-        *   ⏳ **Sub-Sprint 5.3.2:** Siri App Intents Foundation (PLANNED)
+        *   ✅ **Sub-Sprint 5.3.2:** Siri App Intents Foundation (COMPLETED)
         *   ⏳ **Sub-Sprint 5.3.3:** Conversational Search UI & Siri Response Interface (PLANNED)
         *   ⏳ **Sub-Sprint 5.4:** Performance Optimization & Caching (PLANNED)
 
@@ -567,7 +567,7 @@ Each sprint must meet the following criteria before proceeding:
         *   ✅ Complete voice search integration with existing AI pipeline (ACHIEVED)
         *   ✅ Manual input fallback for simulator and accessibility support (ACHIEVED)
         *   ✅ Privacy compliance with microphone and speech recognition permissions (ACHIEVED)
-        *   ⏳ Siri integration with 10+ supported search phrases (PLANNED)
+        *   ✅ Siri integration with 10+ supported search phrases (ACHIEVED)
         *   ⏳ Intelligent caching with >80% hit rate for common searches (PLANNED)
 
 *   **Sprint 6: The Connected Brain - Intelligent Mind Map** 🧠
