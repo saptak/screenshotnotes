@@ -29,6 +29,13 @@ This document outlines the technical requirements for mind map performance optim
 - **Regional updates:** <500ms for changes affecting up to 20 connected nodes
 - **Incremental layout:** Only recalculate positions for nodes within 2-degree separation from changes
 
+#### Background Processing & Asynchronous Updates
+- **Import-triggered updates:** Layout calculations triggered automatically during screenshot import
+- **Progressive enhancement:** Layout improves incrementally as OCR and AI analysis complete
+- **Non-blocking processing:** Background layout updates never block main UI thread
+- **Queue management:** Priority-based processing queue (user interactions > new imports > optimizations)
+- **Resource adaptation:** Processing adapts to device performance, battery level, and memory pressure
+
 ### Performance Benchmarks
 
 | Operation | Target Time | Measurement Method |
@@ -40,6 +47,9 @@ This document outlines the technical requirements for mind map performance optim
 | Regional update (20 nodes) | <500ms | AI re-analysis affecting cluster |
 | Cache hit rate | >90% | Percentage of cached position reuse |
 | Memory footprint | <200MB | Peak memory during layout calculation |
+| **Background processing response** | **<2 seconds** | **Layout update after screenshot import** |
+| **Mind map view switching** | **<100ms** | **Time to display cached/updated layout** |
+| **Progressive enhancement** | **<5 seconds** | **Layout refinement as AI analysis completes** |
 
 ## Data Consistency Management
 
@@ -200,6 +210,31 @@ class ChangeTrackingService {
 }
 ```
 
+#### BackgroundLayoutProcessor
+```swift
+class BackgroundLayoutProcessor: ObservableObject {
+    func scheduleLayoutUpdate(for change: DataChange, priority: ProcessingPriority)
+    func processQueue() async
+    func pauseProcessing() // Low battery/memory conditions
+    func resumeProcessing()
+}
+```
+
+#### LayoutUpdateQueue
+```swift
+class LayoutUpdateQueue {
+    enum ProcessingPriority {
+        case userInteraction    // Highest priority
+        case newImport         // Medium priority  
+        case optimization      // Lowest priority
+    }
+    
+    func enqueue(_ task: LayoutTask, priority: ProcessingPriority)
+    func processNext() async -> LayoutTask?
+    func clear(priority: ProcessingPriority)
+}
+```
+
 ### Performance Monitoring
 
 #### Metrics Collection
@@ -208,12 +243,18 @@ class ChangeTrackingService {
 - Memory usage patterns
 - Change propagation times
 - User interaction response times
+- **Background processing efficiency**
+- **Queue processing throughput**
+- **Resource usage during background operations**
 
 #### Performance Alerts
 - Layout calculation >5 seconds
 - Cache hit rate <80%
 - Memory usage >250MB
 - Incremental update >1 second
+- **Background processing CPU usage >10%**
+- **Mind map view switching delay >200ms**
+- **Processing queue backlog >50 tasks**
 
 ## Testing Strategy
 
@@ -222,18 +263,24 @@ class ChangeTrackingService {
 2. **Incremental update testing:** Rapid add/delete operations
 3. **Cache effectiveness:** Measure hit rates under various usage patterns
 4. **Memory stress testing:** Large datasets with limited memory
+5. **Background processing testing:** Continuous import scenarios with layout updates
+6. **Resource adaptation testing:** Performance under low battery/memory conditions
 
 ### Edge Case Tests
 1. **Rapid deletion:** Delete multiple connected screenshots quickly
 2. **Concurrent modification:** Simultaneous user/AI changes
 3. **Data corruption:** Recovery from corrupted cache data
 4. **Network interruption:** Handle incomplete AI analysis updates
+5. **Background processing interruption:** App backgrounding during layout updates
+6. **Resource exhaustion:** Behavior under extreme memory/CPU pressure
 
 ### Consistency Tests
 1. **Relationship integrity:** Ensure no orphaned connections
 2. **Layout consistency:** Verify positions remain stable across sessions
 3. **Version conflicts:** Test resolution of competing changes
 4. **Rollback scenarios:** Verify undo functionality works correctly
+5. **Background sync integrity:** Ensure background updates don't corrupt active layouts
+6. **Priority handling:** Verify higher priority tasks interrupt lower priority processing
 
 ## Success Criteria
 
@@ -257,6 +304,10 @@ class ChangeTrackingService {
 - ✅ Immediate response to user positioning changes
 - ✅ No data loss during concurrent modifications
 - ✅ Intuitive conflict resolution without user intervention
+- **✅ Instant mind map view switching regardless of recent import activity**
+- **✅ Progressive layout enhancement visible to user (nodes appear and organize)**
+- **✅ Background processing invisible to user (no performance degradation)**
+- **✅ Graceful handling of resource constraints (reduced processing, not failures)**
 
 ---
 
