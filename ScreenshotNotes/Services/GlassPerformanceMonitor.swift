@@ -142,8 +142,11 @@ class GlassPerformanceMonitor: ObservableObject {
     
     private func startMemoryMonitoring() {
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            guard let self = self, self.isMonitoring else { return }
-            self.updateMemoryUsage()
+            guard let self = self else { return }
+            Task { @MainActor in
+                guard self.isMonitoring else { return }
+                self.updateMemoryUsage()
+            }
         }
     }
     
@@ -185,7 +188,10 @@ class GlassPerformanceMonitor: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.updateThermalState()
+            guard let self = self else { return }
+            Task { @MainActor in
+                self.updateThermalState()
+            }
         }
         updateThermalState()
     }

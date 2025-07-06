@@ -475,7 +475,10 @@ class GlassCacheManager: ObservableObject {
     
     private func scheduleCleanup() {
         Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            self?.performPeriodicCleanup()
+            guard let self = self else { return }
+            Task { @MainActor in
+                self.performPeriodicCleanup()
+            }
         }
     }
     

@@ -6,6 +6,77 @@ import os.log
 /// Service for creating and managing mind map visualizations of screenshot relationships
 @MainActor
 class MindMapService: ObservableObject {
+    // Track last data fingerprint to avoid unnecessary regeneration
+    private var lastDataFingerprint: String?
+    /// Compute a fingerprint (hash) for the current screenshots and relationships
+    func computeDataFingerprint(screenshots: [Screenshot]) async -> String {
+        // Use screenshot IDs and timestamps for a simple fingerprint
+        let sorted = screenshots.sorted { $0.id.uuidString < $1.id.uuidString }
+        let idString = sorted.map { "\($0.id.uuidString):\($0.timestamp.timeIntervalSince1970)" }.joined(separator: ",")
+        // Optionally, relationships could be included if available
+        return String(idString.hashValue)
+    }
+
+    /// Refresh mind map only if data has changed
+    func refreshMindMapIfNeeded(screenshots: [Screenshot]) async {
+        let newFingerprint = await computeDataFingerprint(screenshots: screenshots)
+        if newFingerprint != lastDataFingerprint {
+            lastDataFingerprint = newFingerprint
+            await generateMindMap(from: screenshots)
+        } else {
+            // Just load from cache for speed
+            await loadFromCache()
+        }
+    }
+    
+    /// Check if this is the first time generating (no cached data)
+    var isFirstTimeGeneration: Bool {
+        guard let url = cacheURL else { return true }
+        return !FileManager.default.fileExists(atPath: url.path)
+    }
+    // Cache file location
+    private var cacheURL: URL? {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("mindmap_cache.json")
+    }
+
+    /// Load mind map data from cache (if available)
+    func loadFromCache() async {
+        guard let url = cacheURL, FileManager.default.fileExists(atPath: url.path) else { return }
+        do {
+            let data = try Data(contentsOf: url)
+            let decoder = JSONDecoder()
+            let cached = try decoder.decode(MindMapData.self, from: data)
+            await MainActor.run { [weak self] in
+                guard let self = self else { return }
+                self.mindMapData = cached
+                // Ensure all nodes are visible after loading from cache
+                self.resetFocus()
+                // Force update for SwiftUI
+                self.mindMapData = self.mindMapData
+                self.logger.info("✅ Mind map loaded from cache: \(cached.totalNodes) nodes, \(cached.totalConnections) connections")
+            }
+        } catch {
+            logger.error("❌ Failed to load mind map cache: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Return whether mind map has nodes to display
+    var hasNodes: Bool {
+        return mindMapData.totalNodes > 0
+    }
+
+    /// Save current mind map data to cache
+    func saveToCache() async {
+        guard let url = self.cacheURL else { return }
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(self.mindMapData)
+            try data.write(to: url, options: .atomic)
+            self.logger.info("💾 Mind map saved to cache: \(self.mindMapData.totalNodes) nodes, \(self.mindMapData.totalConnections) connections")
+        } catch {
+            self.logger.error("❌ Failed to save mind map cache: \(error.localizedDescription)")
+        }
+    }
     static let shared = MindMapService()
     
     // MARK: - Properties
@@ -204,7 +275,7 @@ class MindMapService: ObservableObject {
         isGenerating = true
         generationProgress = 0.0
         
-        do {
+    do {
             // More aggressive memory management: Process screenshots in smaller batches for large datasets
             let maxScreenshots = 20 // Reduced from 50 to 20 to prevent memory issues
             let processingScreenshots = Array(screenshots.prefix(maxScreenshots))
@@ -266,6 +337,11 @@ class MindMapService: ObservableObject {
             
             logger.info("✅ Mind map generation completed in \(String(format: "%.2f", totalTime))s")
             logger.info("📈 Stats: \(self.mindMapData.totalNodes) nodes, \(self.mindMapData.totalConnections) connections, \(self.mindMapData.clusters.count) clusters")
+            // Save to cache after successful generation
+            await saveToCache()
+            
+            // Post notification that generation is complete
+            NotificationCenter.default.post(name: .mindMapGenerationComplete, object: nil)
             
         } catch {
             if error is CancellationError {
@@ -279,7 +355,7 @@ class MindMapService: ObservableObject {
     }
     
     private func createNodes(from screenshots: [Screenshot]) async {
-        mindMapData.nodes.removeAll()
+    mindMapData.nodes.removeAll()
         
         // Use a centered coordinate system starting from (0,0)
         let canvasRadius: CGFloat = 300  // Radius for node placement
@@ -337,11 +413,13 @@ class MindMapService: ObservableObject {
             }
         }
         
-        logger.info("📍 Created \(screenshots.count) nodes in \(ringCount) rings")
+    logger.info("📍 Created \(screenshots.count) nodes in \(ringCount) rings")
+    // Force update for SwiftUI
+    mindMapData = mindMapData
     }
     
     private func createConnections(from relationships: [Relationship]) async {
-        mindMapData.connections.removeAll()
+    mindMapData.connections.removeAll()
         
         print("🔗 MindMapService: Creating connections from \(relationships.count) relationships")
         
@@ -367,7 +445,9 @@ class MindMapService: ObservableObject {
             print("✅ MindMapService: Added connection from \(source.id) to \(target.id) with strength \(relationship.strength)")
         }
         
-        print("🔗 MindMapService: Created \(mindMapData.connections.count) connections total")
+    print("🔗 MindMapService: Created \(mindMapData.connections.count) connections total")
+    // Force update for SwiftUI
+    mindMapData = mindMapData
     }
     
     private func performLayout() async {
@@ -412,7 +492,9 @@ class MindMapService: ObservableObject {
             }
         }
         
-        await MainActor.run { layoutProgress = 1.0 }
+    await MainActor.run { layoutProgress = 1.0 }
+    // Force update for SwiftUI
+    mindMapData = mindMapData
     }
     
     private func createClusters() async {
@@ -831,4 +913,8 @@ extension Color {
         let colors: [Color] = [.blue, .green, .orange, .purple, .pink, .indigo, .teal, .cyan]
         return colors.randomElement() ?? .blue
     }
+}
+
+extension Notification.Name {
+    static let mindMapGenerationComplete = Notification.Name("mindMapGenerationComplete")
 }

@@ -82,8 +82,24 @@ struct MindMapView: View {
                     .disabled(mindMapService.isGenerating)
                 }
             }
-            .onAppear {
-                setupInitialView()
+            .task {
+                let isFirstTime = mindMapService.isFirstTimeGeneration
+                await mindMapService.refreshMindMapIfNeeded(screenshots: screenshots)
+                
+                // Set animation progress after loading from cache
+                if mindMapService.hasNodes && animationProgress == 0.0 && !isFirstTime {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        animationProgress = 1.0
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .mindMapGenerationComplete)) { _ in
+                // Handle first-time generation completion
+                if mindMapService.hasNodes && animationProgress == 0.0 {
+                    withAnimation(.easeInOut(duration: 2.0)) {
+                        animationProgress = 1.0
+                    }
+                }
             }
             .sheet(isPresented: $showingNodeDetail) {
                 if let selectedScreenshot = selectedScreenshot {
@@ -544,34 +560,13 @@ struct MindMapView: View {
     
     // MARK: - Helper Methods
     
-    private func setupInitialView() {
-        if !screenshots.isEmpty && mindMapService.mindMapData.totalNodes == 0 {
-            Task {
-                await mindMapService.generateMindMap(from: screenshots)
-                
-                // Start initial animation
-                withAnimation(.easeInOut(duration: 2.0)) {
-                    animationProgress = 1.0
-                }
-                
-                // Mark animation as complete after delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    isInitialAnimationComplete = true
-                }
-            }
-        }
-    }
-    
     private func regenerateMindMap() {
         hapticService.impact(.medium)
-        
         // Reset animation state
         animationProgress = 0.0
         isInitialAnimationComplete = false
-        
         Task {
-            await mindMapService.generateMindMap(from: screenshots)
-            
+            await mindMapService.refreshMindMapIfNeeded(screenshots: screenshots)
             withAnimation(.easeInOut(duration: 1.5)) {
                 animationProgress = 1.0
             }
