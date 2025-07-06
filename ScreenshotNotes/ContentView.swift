@@ -25,6 +25,10 @@ struct ContentView: View {
     @State private var showingVoiceInput = false
     @State private var showingConversationalSearch = false
     
+    // 🎯 Sprint 5.4.1: Glass Search Bar State
+    @State private var glassMicrophoneState: GlassMicrophoneButtonState = .ready
+    @State private var glassSearchBarActive = false
+    
     private var filteredScreenshots: [Screenshot] {
         if searchText.isEmpty {
             return screenshots
@@ -86,63 +90,106 @@ struct ContentView: View {
         }
     }
     
+    // MARK: - 🎯 Sprint 5.4.1: Glass Search Bar View Components
+    
+    /// Main content area with proper padding for bottom Glass search bar
+    private var mainContentArea: some View {
+        Group {
+            if screenshots.isEmpty && !isImporting {
+                EmptyStateView(onImportTapped: {
+                    showingImportSheet = true
+                })
+            } else if isSearchActive {
+                ScreenshotGridView(screenshots: filteredScreenshots)
+            } else {
+                ScreenshotGridView(screenshots: screenshots)
+            }
+        }
+        .padding(.bottom, 100) // Space for Glass search bar
+    }
+    
+    /// Overlay content including progress, analysis, and suggestions
+    private var overlayContent: some View {
+        ZStack {
+            if isImporting {
+                ImportProgressOverlay(progress: importProgress)
+            }
+            
+            // AI Query Analysis Indicator - repositioned for Glass search bar
+            if showingQueryAnalysis, let query = lastParsedQuery {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        AIQueryIndicator(query: query)
+                            .padding(.trailing, 16)
+                            .padding(.bottom, 150) // Adjusted for Glass search bar
+                    }
+                }
+                .transition(.asymmetric(
+                    insertion: .scale.combined(with: .opacity),
+                    removal: .opacity
+                ))
+            }
+            
+            // Search Suggestions (Phase 5.1.4) - repositioned for Glass search bar
+            if showingSearchSuggestions, let enhancedResult = enhancedSearchResult {
+                VStack {
+                    HStack {
+                        SearchSuggestionsView(
+                            suggestions: enhancedResult.suggestions,
+                            metrics: enhancedResult.metrics,
+                            onSuggestionTapped: { suggestion in
+                                // Extract the quoted text from suggestions like "Did you mean: \"receipt\"?"
+                                let suggestionText = extractSuggestionText(from: suggestion)
+                                searchText = suggestionText
+                            }
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        Spacer()
+                    }
+                    Spacer()
+                    
+                    // Add space for Glass search bar
+                    Rectangle()
+                        .fill(.clear)
+                        .frame(height: 100)
+                }
+                .transition(.asymmetric(
+                    insertion: .move(edge: .top).combined(with: .opacity),
+                    removal: .opacity
+                ))
+            }
+        }
+    }
+    
+    /// Bottom Glass search bar with conversational microphone integration
+    private var bottomGlassSearchBar: some View {
+        GlassSearchBar(
+            searchText: $searchText,
+            isActive: $glassSearchBarActive,
+            microphoneState: $glassMicrophoneState,
+            placeholder: "Search screenshots with voice or text...",
+            onMicrophoneTapped: handleGlassMicrophoneTapped,
+            onSearchSubmitted: handleGlassSearchSubmitted,
+            onClearTapped: handleGlassSearchCleared
+        )
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
-                if screenshots.isEmpty && !isImporting {
-                    EmptyStateView(onImportTapped: {
-                        showingImportSheet = true
-                    })
-                } else if isSearchActive {
-                    ScreenshotGridView(screenshots: filteredScreenshots)
-                } else {
-                    ScreenshotGridView(screenshots: screenshots)
-                }
+                // Main content area
+                mainContentArea
                 
-                if isImporting {
-                    ImportProgressOverlay(progress: importProgress)
-                }
+                // Overlays
+                overlayContent
                 
-                // AI Query Analysis Indicator
-                if showingQueryAnalysis, let query = lastParsedQuery {
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Spacer()
-                            AIQueryIndicator(query: query)
-                                .padding(.trailing, 16)
-                                .padding(.bottom, 100)
-                        }
-                    }
-                    .transition(.asymmetric(
-                        insertion: .scale.combined(with: .opacity),
-                        removal: .opacity
-                    ))
-                }
-                
-                // Search Suggestions (Phase 5.1.4)
-                if showingSearchSuggestions, let enhancedResult = enhancedSearchResult {
-                    VStack {
-                        HStack {
-                            SearchSuggestionsView(
-                                suggestions: enhancedResult.suggestions,
-                                metrics: enhancedResult.metrics,
-                                onSuggestionTapped: { suggestion in
-                                    // Extract the quoted text from suggestions like "Did you mean: \"receipt\"?"
-                                    let suggestionText = extractSuggestionText(from: suggestion)
-                                    searchText = suggestionText
-                                }
-                            )
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8)
-                            Spacer()
-                        }
-                        Spacer()
-                    }
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .top).combined(with: .opacity),
-                        removal: .opacity
-                    ))
+                // 🎯 Sprint 5.4.1: Bottom Glass Search Bar
+                VStack {
+                    Spacer()
+                    bottomGlassSearchBar
                 }
             }
             .navigationTitle("Screenshot Vault")
@@ -150,13 +197,13 @@ struct ContentView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    // Conversational AI Search
-                    Button(action: {
-                        showingConversationalSearch = true
-                    }) {
-                        Image(systemName: "sparkles.rectangle.stack")
-                            .foregroundColor(.blue)
-                    }
+                    // Conversational AI Search - Remove since we have Glass search bar
+                    // Button(action: {
+                    //     showingConversationalSearch = true
+                    // }) {
+                    //     Image(systemName: "sparkles.rectangle.stack")
+                    //         .foregroundColor(.blue)
+                    // }
                     
                     // Temporary: Entity Extraction Demo button for testing
                     if #available(iOS 17.0, *) {
@@ -184,24 +231,11 @@ struct ContentView: View {
                     .opacity(isImporting ? 0.5 : 1.0)
                 }
             }
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search screenshots...") {
-                // Voice search button in search suggestions
-                if #available(iOS 17.0, *) {
-                    Button(action: {
-                        showingVoiceInput = true
-                    }) {
-                        HStack {
-                            Image(systemName: "mic.fill")
-                                .foregroundColor(.blue)
-                            Text("Voice Search")
-                                .foregroundColor(.primary)
-                        }
-                    }
-                }
-            }
+            // Remove the old .searchable modifier since we're using Glass search bar
             .onChange(of: searchText) { _, newValue in
                 withAnimation(.spring(response: 0.2, dampingFraction: 1.0)) {
                     isSearchActive = !newValue.isEmpty
+                    glassSearchBarActive = !newValue.isEmpty // 🎯 Sprint 5.4.1: Update Glass search bar state
                 }
                 
                 // 🔧 Sprint 5.2.4: Search Race Condition Fix
@@ -293,6 +327,25 @@ struct ContentView: View {
                 // 🔧 Sprint 5.2.4: Cleanup search task to prevent memory leaks
                 searchTask?.cancel()
                 searchTask = nil
+            }
+        }
+    }
+    
+    private func performSearch(_ query: String) async {
+        glassMicrophoneState = .results
+        
+        // Trigger UI update for search
+        await MainActor.run {
+            searchText = query
+            isSearchActive = true
+        }
+        
+        // Reset state after a short delay
+        try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+        
+        await MainActor.run {
+            if glassMicrophoneState == .results {
+                glassMicrophoneState = .ready
             }
         }
     }
@@ -508,6 +561,75 @@ struct ContentView: View {
         showingConversationalSearch = false
         
         print("✨ Conversational search processed: '\(optimizedQuery)'")
+    }
+
+    // MARK: - 🎯 Sprint 5.4.1: Glass Search Bar Actions
+    
+    /// Handle Glass microphone button tapped - initiates conversational search
+    private func handleGlassMicrophoneTapped() {
+        switch glassMicrophoneState {
+        case .ready:
+            // Start voice input
+            glassMicrophoneState = .listening
+            showingVoiceInput = true
+            
+        case .listening:
+            // Stop voice input
+            glassMicrophoneState = .ready
+            showingVoiceInput = false
+            
+        case .processing:
+            // Cancel processing (if possible)
+            glassMicrophoneState = .ready
+            
+        case .results:
+            // Enter conversation mode
+            glassMicrophoneState = .conversation
+            showingConversationalSearch = true
+            
+        case .conversation:
+            // Exit conversation mode
+            glassMicrophoneState = .ready
+            showingConversationalSearch = false
+            
+        case .error:
+            // Retry voice input
+            glassMicrophoneState = .listening
+            showingVoiceInput = true
+        }
+    }
+    
+    /// Handle Glass search submission with enhanced processing
+    private func handleGlassSearchSubmitted(_ query: String) {
+        glassMicrophoneState = .processing
+        
+        // Process the search with existing logic
+        processConversationalSearchResult(query)
+        
+        // Update Glass state to results
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            glassMicrophoneState = .results
+            
+            // Auto-transition to ready after showing results
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                if glassMicrophoneState == .results {
+                    glassMicrophoneState = .ready
+                }
+            }
+        }
+    }
+    
+    /// Handle Glass search cleared
+    private func handleGlassSearchCleared() {
+        searchText = ""
+        glassMicrophoneState = .ready
+        glassSearchBarActive = false
+        
+        // Reset other search states
+        showingQueryAnalysis = false
+        showingSearchSuggestions = false
+        lastParsedQuery = nil
+        enhancedSearchResult = nil
     }
 }
 
