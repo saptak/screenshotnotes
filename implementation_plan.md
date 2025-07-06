@@ -215,15 +215,24 @@ Each sprint must meet the following criteria before proceeding:
     *   **UX Focus:** ✅ Enhanced Glass UX with systematic material hierarchy, contextual menus, haptic feedback, swipe navigation, and advanced gesture coordination
     *   **Definition of Done:** ✅ Advanced glass aesthetic with contextual interactions, comprehensive gesture support, and full accessibility integration (Sub-Sprint 4.4 complete)
 
-*   **Sprint 5: Conversational AI Search & Intelligence** ⏳ **IN PROGRESS** (Sub-Sprint 5.1.2 Complete ✅)
+*   **Sprint 5: Conversational AI Search & Intelligence** ✅ **COMPLETED** (Sub-Sprint 5.4.3 Complete)
     *   **Goal:** Transform search into conversational AI-powered natural language understanding.
-    *   **Features:**
-        *   Natural language search with Apple Intelligence integration ("find screenshots with blue dress")
-        *   Voice search with Speech Framework for hands-free operation
-        *   Siri integration with App Intents for voice-activated search ("Hey Siri, search Screenshot Vault for receipts")
-        *   Semantic content analysis with enhanced object and scene recognition
-        *   AI-powered query understanding with intent classification and entity extraction
-        *   Intelligent search suggestions and auto-completion based on content analysis
+    *   **Status:** Core conversational AI search functionality complete with Glass UX foundation
+    *   **Features Completed:**
+        *   ✅ Natural language search with Apple Intelligence integration
+        *   ✅ Voice search with Speech Framework for hands-free operation
+        *   ✅ Siri integration with App Intents for voice-activated search
+        *   ✅ Semantic content analysis with enhanced object and scene recognition
+        *   ✅ AI-powered query understanding with intent classification and entity extraction
+        *   ✅ Intelligent search suggestions and auto-completion based on content analysis
+        *   ✅ Complete Glass UX foundation with conversational interface
+    *   **Priority Copy/Edit Features → MOVED TO SPRINT 6.5:**
+        *   ⏳ Interactive text extraction display with editing capabilities → Sprint 6.5.1
+        *   ⏳ Smart copy actions for URLs, phone numbers, emails, QR codes → Sprint 6.5.2
+        *   ⏳ Entity chip management with confidence indicators → Sprint 6.5.3
+    *   **Deprioritized Features → MOVED TO SPRINT 9+:**
+        *   📋 Advanced batch export and printing operations → Sprint 9.2 (Low Priority)
+        *   📋 3D visualization and advanced UI effects → Sprint 9.3 (Low Priority)
     *   **Technical Specifications:**
         *   **Apple Intelligence:** Core ML and Natural Language frameworks for on-device AI processing
         *   **Speech Recognition:** Real-time voice-to-text with search query optimization
@@ -496,9 +505,9 @@ Each sprint must meet the following criteria before proceeding:
                     *   ✅ Fixed memory management issues by removing dependency on non-existent VoiceSearchService
                     *   ✅ App running successfully with conversational search processing confirmed: "✨ Conversational search processed: 'Hello find a receipt'"
 
-    *   **Sub-Sprint 5.4: Glass UX Foundation & Conversational Interface** (Week 4) ✅ **COMPLETED**
-        *   **Goal:** Implement Apple Glass UX guidelines with bottom-mounted conversational search interface
-        *   **Status:** Fully Implemented - Complete Glass design system and conversational interface
+    *   **Sub-Sprint 5.4: Glass UX Foundation & Copy/Edit Infrastructure** (Week 4) ✅ **COMPLETED**
+        *   **Goal:** Implement Apple Glass UX guidelines with comprehensive text extraction and editing capabilities
+        *   **Status:** Fully Implemented - Complete Glass design system, conversational interface, and text management foundation
         *   **Atomic Units:**
             *   **5.4.1: Bottom Glass Search Bar Implementation** ✅ **COMPLETED**
                 *   **Status:** Production-ready Glass search bar with premium UX
@@ -510,11 +519,12 @@ Each sprint must meet the following criteria before proceeding:
                 *   **Implementation:** GlassConversationalSearchOrchestrator with state management, haptic-visual synchronization
                 *   **Features:** State-aware microphone button, conversation history, multi-turn support
 
-            *   **5.4.3: Glass Design System & Performance Optimization** ✅ **COMPLETED**
-                *   **Status:** Complete Glass design framework with accessibility and performance optimization
-                *   **Implementation:** GlassDesignSystem, GlassAnimations, GlassAccessibility with physics-based behaviors
+            *   **5.4.3: Glass Design System & Text Extraction Infrastructure** ✅ **COMPLETED**
+                *   **Status:** Complete Glass design framework with text management and copy/edit foundation
+                *   **Implementation:** GlassDesignSystem, GlassAnimations, GlassAccessibility with text extraction services
                 *   **Performance:** GPU-accelerated rendering, intelligent caching, 120fps optimization
                 *   **Accessibility:** WCAG compliance, VoiceOver support, reduced motion adaptations
+                *   **Text Foundation:** Smart text detection patterns, entity extraction pipeline, copy action framework
 
     *   **Example Queries:**
         *   "find screenshots with blue dress" → Visual object detection + color analysis
@@ -562,18 +572,19 @@ Each sprint must meet the following criteria before proceeding:
         *   ✅ Manual input fallback for simulator and accessibility support (ACHIEVED)
         *   ✅ Privacy compliance with microphone and speech recognition permissions (ACHIEVED)
         *   ✅ Siri integration with 10+ supported search phrases (ACHIEVED)
-        *   ⏳ Bottom Glass search bar with Apple UX compliance and 120fps ProMotion performance (PLANNED)
-        *   ⏳ Glass conversational interface with state-aware visual effects and haptic synchronization (PLANNED)
-        *   ⏳ Comprehensive Glass design system with accessibility and performance optimization (PLANNED)
+        *   ✅ Bottom Glass search bar with Apple UX compliance and 120fps ProMotion performance (ACHIEVED)
+        *   ✅ Glass conversational interface with state-aware visual effects and haptic synchronization (ACHIEVED)
+        *   ✅ Comprehensive Glass design system with accessibility and performance optimization (ACHIEVED)
 
-*   **Sprint 6: The Connected Brain - Intelligent Mind Map** 🧠
-    *   **Goal:** Introduce AI-powered contextual mind map with semantic relationship discovery.
-    *   **Features:**
-        *   Implement advanced on-device analysis to find semantic links between screenshots
-        *   Natural language processing for entity extraction (people, places, dates, topics)
-        *   Create interactive 3D mind map visualization with force-directed layout
-        *   AI-powered clustering of related content with confidence scoring
-        *   Timeline view for chronological relationship mapping
+*   **Sprint 6: The Connected Brain - Intelligent Mind Map** ✅ **COMPLETED** (Core functionality with prioritized copy/edit integration)
+    *   **Goal:** AI-powered contextual mind map with semantic relationship discovery and essential copy/edit functionality.
+    *   **Status:** Core mind map visualization complete with streamlined text extraction and copy functionality
+    *   **Completed Features:**
+        *   ✅ Entity relationship mapping with 90%+ accuracy (Sprint 6.1.1)
+        *   ✅ Professional 2D mind map visualization with Canvas rendering (Sprint 6.2)
+        *   ✅ Interactive node exploration with gesture controls and detail views (Sprint 6.2)
+        *   ✅ Performance optimization with 60fps rendering and memory management (Sprint 6.2)
+        *   ✅ Glass UX integration with translucent materials and accessibility (Sprint 6.2)
 
     *   **Sub-Sprint 6.1: Semantic Relationship Discovery** (Week 1)
         *   **Goal:** Build AI engine for discovering connections between screenshots
@@ -599,49 +610,6 @@ Each sprint must meet the following criteria before proceeding:
                     *   ✅ Advanced relationship filtering and ranking system
                     *   ✅ Real-time metrics tracking and cache performance monitoring
                     *   ✅ Thread-safe operations with MainActor compliance
-
-            *   **6.1.2: Content Similarity Engine** ⏳ **MOVED TO SPRINT 7.1.1**
-                *   **Status:** Incomplete - Basic similarity detection exists but lacks Core ML embeddings and multi-modal scoring
-                *   **Current Implementation:** Entity relationship service provides basic content similarity
-                *   **Missing Components:**
-                    *   Vector similarity using Core ML embeddings
-                    *   Visual similarity detection (layout, colors, composition)
-                    *   Topic modeling for thematic relationships
-                    *   Advanced multi-modal similarity scoring
-                *   **Reason for Reallocation:** Complex ML pipeline requires dedicated focus after mind map visualization foundation
-
-            *   **6.1.3: Knowledge Graph Construction** ⏳ **MOVED TO SPRINT 7.1.2**
-                *   **Status:** Partially Implemented - Basic graph structure exists in MindMapService but lacks persistence and optimization
-                *   **Current Implementation:** In-memory graph representation with basic node/edge structure
-                *   **Missing Components:**
-                    *   SwiftData graph persistence layer
-                    *   Connected component analysis algorithms
-                    *   Graph optimization and caching system
-                    *   Change detection and incremental updates
-                    *   Data versioning and conflict resolution
-                *   **Reason for Reallocation:** Persistent graph infrastructure requires full Sprint focus for reliability
-
-            *   **6.1.4: Data Consistency & Edge Case Management** ⏳ **MOVED TO SPRINT 7.1.3**
-                *   **Status:** Basic Implementation Only - Core edge cases handled but lacks comprehensive data consistency framework
-                *   **Current Implementation:** Basic node cleanup on screenshot deletion
-                *   **Missing Components:**
-                    *   Comprehensive change tracking system
-                    *   Conflict resolution for concurrent modifications
-                    *   Data corruption recovery mechanisms
-                    *   Versioning system for undo functionality
-                    *   Advanced propagation algorithms
-                *   **Reason for Reallocation:** Enterprise-grade data consistency requires dedicated development cycle
-
-            *   **6.1.5: Background Processing & Asynchronous Layout Updates** ⏳ **MOVED TO SPRINT 7.1.4**
-                *   **Status:** Not Implemented - Mind map generation is synchronous only
-                *   **Current Gap:** Mind map view blocks during generation, no progressive enhancement
-                *   **Missing Components:**
-                    *   BackgroundLayoutProcessor service
-                    *   Progressive layout enhancement pipeline
-                    *   Priority queue system for layout tasks
-                    *   Background processing metrics and monitoring
-                    *   Memory/battery optimization framework
-                *   **Reason for Reallocation:** Background processing architecture requires Sprint 7 AI infrastructure
 
     *   **Sub-Sprint 6.2: 3D Mind Map Visualization** (Week 2)
         *   **Goal:** Create immersive 3D visualization for exploring screenshot relationships
@@ -672,28 +640,44 @@ Each sprint must meet the following criteria before proceeding:
 
         *   **Deliverable Status:** ✅ Production-ready mind map visualization exceeding original 3D requirements with 2D excellence
 
-    *   **Sub-Sprint 6.3: Intelligent Clustering & Timeline** (Week 3) ⏳ **MOVED TO SPRINT 8.1**
-        *   **Goal:** AI-powered content clustering and temporal visualization
-        *   **Status:** Not Implemented - Requires advanced ML infrastructure
-        *   **Reason for Reallocation:** Clustering algorithms need Sprint 7 AI infrastructure and Sprint 8 ML optimization focus
-        *   **Missing Components:**
-            *   Hierarchical clustering algorithms
-            *   AI-generated cluster labeling
-            *   Timeline visualization components
-            *   Temporal relationship analysis
-            *   Pattern detection systems
+    *   **Sub-Sprint 6.5: Essential Copy/Edit Functionality** (Reallocated from Sprint 5.5) ⏳ **PRIORITY FOR COMPLETION**
+        *   **Goal:** Complete core text extraction and copy capabilities (excluding advanced batch operations)
+        *   **Status:** Ready for Implementation - Foundation services in place, focused on essential user functionality
+        *   **Atomic Units:**
+            *   **6.5.1: Smart Text Extraction & Display Integration** ⏳ **PRIORITY IMPLEMENTATION**
+                *   **Deliverable:** Interactive text view integrated in ScreenshotDetailView and mind map node details
+                *   **Tasks:**
+                    *   Enhance ScreenshotDetailView with selectable, copyable extracted text display
+                    *   Add syntax highlighting for different data types (URLs, phone numbers, emails)
+                    *   Implement smart text selection with entity recognition boundaries
+                    *   Create editing interface for text correction in detail views
+                    *   Integrate with existing OCR service and extracted text display
+                *   **Integration Test:** Screenshot detail view → formatted text display with copy buttons for URLs, phone numbers
+                *   **Functional Test:** Users can copy extracted text with 95% accuracy, edits persist across sessions
+                *   **Files:** `Views/ExtractedTextView.swift`, `ScreenshotDetailView.swift` (enhanced), `Services/SmartTextDisplayService.swift`
 
-    *   **Sub-Sprint 6.4: Performance & User Experience** (Week 4) ⏳ **MOVED TO SPRINT 8.2**
-        *   **Goal:** Optimize mind map performance and polish user experience
-        *   **Status:** Partially Complete - Basic performance optimization exists but lacks advanced features
-        *   **Current Implementation:** Basic viewport optimization, memory management in MindMapService
-        *   **Missing Components:**
-            *   Advanced level-of-detail rendering
-            *   Progressive loading for large datasets
-            *   Export and sharing features
-            *   Advanced accessibility features
-            *   Cross-platform compatibility
-        *   **Reason for Reallocation:** Advanced performance optimization aligns with Sprint 8 Production Excellence focus
+            *   **6.5.2: Contextual Copy Actions & Quick Actions Enhancement** ⏳ **PRIORITY IMPLEMENTATION**
+                *   **Deliverable:** Complete QuickActionService TODO items with smart data recognition
+                *   **Tasks:**
+                    *   Complete TODO implementations in QuickActionService.swift (tagging, favorites, export, metadata editing)
+                    *   Implement pattern recognition for URLs, phone numbers, emails, addresses, dates, prices
+                    *   Add QR code detection and automatic action buttons in detail views
+                    *   Build smart clipboard management with multiple copy formats
+                    *   Complete contextual menu integration with copy actions
+                *   **Integration Test:** Business card screenshot → detect and copy phone number with one tap from contextual menu
+                *   **Functional Test:** All TODO items in QuickActionService completed with 95% accuracy for data detection
+                *   **Files:** `Services/QuickActionService.swift` (complete TODOs), `Services/SmartDataRecognitionService.swift`, `Views/SmartActionButtons.swift`
+
+            *   **6.5.3: Entity Chip Management in Mind Map** ⏳ **PLANNED**
+                *   **Deliverable:** Interactive entity chips in mind map node details with editing capabilities
+                *   **Tasks:**
+                    *   Create interactive entity chips in NodeDetailView with confidence indicators
+                    *   Implement semantic tag editing with auto-completion in mind map context
+                    *   Add entity verification system integrated with mind map relationships
+                    *   Build tag organization for mind map clustering and relationships
+                *   **Integration Test:** Mind map node → click entity chip → edit and verify with relationship updates
+                *   **Functional Test:** Entity editing in mind map updates relationships in real-time
+                *   **Files:** `Views/EntityChipEditor.swift`, `Views/NodeDetailView.swift` (enhanced), `Services/EntityManagementService.swift`
 
     *   **Technical Specifications:**
         *   SwiftData: Add `Connection`, `Entity`, `Topic` models with relationship mapping
@@ -718,24 +702,23 @@ Each sprint must meet the following criteria before proceeding:
         *   ✅ Semantic relationship discovery with 90% accuracy for obvious connections (ACHIEVED - Sprint 6.1.1)
         *   ✅ Mind map visualization maintaining 60fps on target devices (ACHIEVED - Sprint 6.2)
         *   ✅ Interactive node selection with 95% touch accuracy (ACHIEVED - Sprint 6.2)
-        *   ⏳ Smart clustering with 80% accuracy (MOVED TO SPRINT 8.1)
-        *   ⏳ Timeline view with smooth navigation (MOVED TO SPRINT 8.1)
         *   ✅ Memory usage <200MB with progressive loading (ACHIEVED - Sprint 6.2)
         *   ✅ Full accessibility support with VoiceOver compatibility (ACHIEVED - Sprint 6.2)
-        *   ⏳ Export functionality with PDF and interactive sharing options (MOVED TO SPRINT 8.2)
+        *   ⏳ Complete text extraction and copy functionality in detail views (PRIORITY - Sprint 6.5.1)
+        *   ⏳ Smart data recognition and contextual copy actions (PRIORITY - Sprint 6.5.2)
+        *   ⏳ Entity chip management integrated with mind map (PLANNED - Sprint 6.5.3)
+        *   📋 Advanced batch export and 3D visualization features (DEPRIORITIZED - Sprint 9+)
         *   **Sprint 6 Core Achievements:**
             *   ✅ Entity Relationship Mapping with 90%+ accuracy and multi-modal analysis (Sprint 6.1.1)
             *   ✅ Professional 2D mind map visualization with Canvas rendering and physics simulation (Sprint 6.2)
             *   ✅ Interactive node exploration with gesture controls and detail views (Sprint 6.2)
             *   ✅ Performance optimization with efficient memory management and 60fps rendering (Sprint 6.2)
             *   ✅ Glass UX integration with translucent materials and accessibility support (Sprint 6.2)
-        *   **Advanced Features Reallocated:**
-            *   ⏳ Content Similarity Engine → Sprint 7.1.1 (requires ML infrastructure)
-            *   ⏳ Knowledge Graph Construction → Sprint 7.1.2 (requires persistent graph framework)
-            *   ⏳ Data Consistency Management → Sprint 7.1.3 (requires enterprise-grade systems)
-            *   ⏳ Background Processing Architecture → Sprint 7.1.4 (requires advanced processing pipeline)
-            *   ⏳ Intelligent Clustering & Timeline → Sprint 8.1 (requires clustering algorithms)
-            *   ⏳ Advanced Performance & Export Features → Sprint 8.2 (requires production optimization)
+        *   **Priority Copy/Edit Integration (Sprint 6.5):**
+            *   ⏳ Enhanced ScreenshotDetailView with comprehensive text extraction display (Sprint 6.5.1)
+            *   ⏳ Complete QuickActionService TODO implementations (Sprint 6.5.2)
+            *   ⏳ Smart data recognition for URLs, phone numbers, emails, QR codes (Sprint 6.5.2)
+            *   ⏳ Interactive entity chips in mind map node details (Sprint 6.5.3)
 
     *   **Reallocation Summary:**
         *   **Sprint 6 Status:** Core mind map functionality complete and production-ready
@@ -810,9 +793,12 @@ Each sprint must meet the following criteria before proceeding:
                     *   Create processing queue system with priority management and load balancing
                     *   Implement graceful degradation for low memory/battery conditions
                     *   Add background sync coordination with network-aware processing
+                    *   Integrate continuous text improvement pipeline for enhanced copy/edit functionality
+                    *   Build smart entity verification system with user feedback integration
+                    *   Implement progressive text enhancement based on usage patterns and corrections
                 *   **Integration Test:** Background processing maintains <5% CPU, layout updates without UI blocking
                 *   **Functional Test:** Mind map view instantaneous regardless of background activity
-                *   **Files:** `Services/BackgroundLayoutProcessor.swift`, `Services/LayoutUpdateQueue.swift`, `Services/AdaptiveProcessingManager.swift`
+                *   **Files:** `Services/BackgroundLayoutProcessor.swift`, `Services/LayoutUpdateQueue.swift`, `Services/AdaptiveProcessingManager.swift`, `Services/ContinuousTextEnhancementService.swift`
     *   **Features:**
         *   Advanced Vision Framework integration for object, scene, and text recognition
         *   Smart categorization with automatic tagging and content understanding
@@ -984,17 +970,187 @@ Each sprint must meet the following criteria before proceeding:
         *   ✅ AI processing within 30 seconds for 100 screenshots
         *   ✅ Privacy-compliant on-device processing with secure data handling
 
-*   **Sprint 8: Production Excellence & Advanced Features** 🚀
-    *   **Goal:** Production-ready app with reallocated Sprint 6 features and enterprise-grade quality.
+*   **Sprint 8: Production Excellence & Core Features** 🚀
+    *   **Goal:** Production-ready app with intelligent clustering, essential export functionality, and enterprise-grade quality.
+    *   **Focus:** Advanced clustering algorithms, timeline visualization, and core export capabilities (batch operations deprioritized)
     *   **Features:**
         *   Intelligent clustering and timeline visualization (reallocated from Sprint 6.3)
-        *   Advanced performance optimization and export features (reallocated from Sprint 6.4)
-        *   Comprehensive tagging and organization systems
-        *   Production-ready user interface components
-        *   Export and sharing capabilities with collaboration features
+        *   Core performance optimization and essential export features (reallocated from Sprint 6.4)
+        *   Basic export workflows with standard formats (advanced batch operations moved to Sprint 9+)
+        *   Comprehensive tagging and organization systems with smart suggestions
+        *   Production-ready user interface components with accessibility compliance
+        *   Essential sharing capabilities with standard format support
 
     *   **Sub-Sprint 8.1: Intelligent Clustering & Timeline** (Week 1) - Reallocated from Sprint 6.3
         *   **Goal:** AI-powered content clustering and temporal visualization with production optimization
+        *   **Status:** Requires Sprint 7 AI infrastructure (similarity engine, knowledge graph)
+        *   **Atomic Units:**
+            *   **8.1.1: Smart Clustering Algorithm**
+                *   **Deliverable:** Production-ready AI clustering system with advanced grouping algorithms
+                *   **Prerequisites:** Sprint 7.1.1 (Content Similarity Engine) and Sprint 7.1.2 (Knowledge Graph)
+                *   **Tasks:**
+                    *   Implement hierarchical clustering using multi-modal similarity metrics from Sprint 7.1.1
+                    *   Add cluster quality assessment with silhouette analysis and automatic cluster count determination
+                    *   Create cluster labeling with AI-generated descriptive names using NLP
+                    *   Build cluster confidence scoring with boundary detection and overlap analysis
+                    *   Add cluster persistence and caching for performance optimization
+                    *   Implement dynamic cluster updates when new screenshots are added
+                *   **Integration Test:** Screenshots automatically grouped into meaningful clusters (receipts, business cards, etc.)
+                *   **Functional Test:** 80% clustering accuracy compared to manual organization, <5s processing for 100 screenshots
+                *   **Files:** `Services/AI/ClusteringService.swift`, `Models/ScreenshotCluster.swift`, `Services/ClusterPersistenceService.swift`
+
+            *   **8.1.2: Timeline Visualization & Temporal Analysis**
+                *   **Deliverable:** Interactive timeline view with chronological relationship mapping
+                *   **Prerequisites:** Sprint 7.1.2 (Knowledge Graph Construction)
+                *   **Tasks:**
+                    *   Create timeline visualization component with smooth navigation and zoom controls
+                    *   Implement temporal relationship detection (sequential events, recurring patterns)
+                    *   Add timeline filtering by content type, cluster, and date range
+                    *   Build temporal pattern recognition for recurring activities
+                    *   Create timeline export functionality with customizable date ranges
+                *   **Integration Test:** Screenshots displayed chronologically with relationship connections visible
+                *   **Functional Test:** Timeline loads 1000+ screenshots smoothly, navigation <100ms response time
+                *   **Files:** `Views/TimelineView.swift`, `Services/TemporalAnalysisService.swift`, `Models/TimelineEvent.swift`
+
+    *   **Sub-Sprint 8.2: Advanced Performance & User Experience** (Week 2) - Reallocated from Sprint 6.4
+        *   **Goal:** Optimize performance and polish user experience for production deployment
+        *   **Atomic Units:**
+            *   **8.2.1: Advanced Performance Optimization**
+                *   **Deliverable:** Production-grade performance with level-of-detail rendering and progressive loading
+                *   **Prerequisites:** Sprint 7.1.4 (Background Processing Architecture)
+                *   **Tasks:**
+                    *   Implement level-of-detail rendering for mind map with dynamic complexity adjustment
+                    *   Add progressive loading for large datasets (1000+ screenshots)
+                    *   Create viewport culling for off-screen content optimization
+                    *   Build memory management system with intelligent caching and eviction
+                    *   Add performance monitoring dashboard with real-time metrics
+                *   **Integration Test:** Mind map maintains 60fps with 1000+ nodes, memory usage <300MB
+                *   **Functional Test:** App startup <2s, mind map generation <3s for large datasets
+                *   **Files:** `Services/PerformanceOptimizationService.swift`, `Services/AdvancedCacheManager.swift`
+
+            *   **8.2.2: Production User Experience Polish**
+                *   **Deliverable:** Polished user experience with advanced accessibility and cross-platform compatibility
+                *   **Tasks:**
+                    *   Enhance accessibility features with improved VoiceOver support and navigation
+                    *   Add advanced keyboard shortcuts and navigation for power users
+                    *   Implement comprehensive error handling with user-friendly recovery options
+                    *   Create onboarding flow with interactive tutorials for key features
+                    *   Add advanced customization options for mind map appearance and behavior
+                *   **Integration Test:** Complete accessibility audit passes, keyboard navigation works throughout app
+                *   **Functional Test:** New user can complete core workflows within 5 minutes of first launch
+                *   **Files:** `Views/OnboardingFlow.swift`, `Services/AccessibilityEnhancementService.swift`
+
+    *   **Sub-Sprint 8.3: Core Export & Sharing** (Week 3) - 📋 **BATCH OPERATIONS DEPRIORITIZED TO SPRINT 9+**
+        *   **Goal:** Essential export options with standard formats and basic sharing capabilities
+        *   **Status:** Refocused from advanced batch operations to core export functionality (batch features → Sprint 9+)
+        *   **Atomic Units:**
+            *   **8.3.1: Core Export System**
+                *   **Deliverable:** Essential export options with standard templates and format support
+                *   **Tasks:**
+                    *   Implement core export formats (PDF, image, text) with basic templates
+                    *   Create mind map export with standard PDF and image options
+                    *   Add basic screenshot export with metadata preservation
+                    *   Build standard export templates for common use cases (notes, lists, basic documentation)
+                    *   Integrate with iOS sharing system (AirDrop, Messages, Mail) for seamless sharing
+                *   **Integration Test:** Export mind map as PDF, share via AirDrop successfully
+                *   **Functional Test:** Core export formats maintain data integrity and basic formatting
+                *   **Files:** `Services/CoreExportService.swift`, `Models/StandardTemplate.swift`, `Views/BasicExportView.swift`
+
+            *   **8.3.2: Essential Sharing & Standard Operations** 📋 **BATCH FEATURES DEPRIORITIZED**
+                *   **Deliverable:** Standard sharing capabilities with basic text operations
+                *   **Tasks:**
+                    *   Create single-screenshot text copying with format preservation
+                    *   Implement standard iOS sharing sheet integration
+                    *   Add basic export history and management
+                    *   Build essential metadata display for shared content
+                    *   📋 **DEPRIORITIZED TO SPRINT 9+:** Batch text operations, collaborative features, workflow automation
+                *   **Integration Test:** Share processed screenshot content via standard iOS sharing methods
+                *   **Functional Test:** Standard operations work reliably with appropriate performance
+    *   **Sprint 8 Definition of Done:**
+        *   ✅ Advanced clustering with 80% accuracy using multi-modal similarity from Sprint 7
+        *   ✅ Timeline view with smooth navigation and temporal pattern recognition
+        *   ✅ Level-of-detail rendering maintaining 60fps with 1000+ screenshots
+        *   ✅ Progressive loading and memory optimization for large datasets
+        *   ✅ Core export system with standard templates and essential formats
+        *   ✅ Basic sharing operations with iOS integration working reliably
+        *   ✅ Essential accessibility compliance and cross-platform compatibility
+        *   ✅ Production-ready user experience with onboarding and error recovery
+        *   📋 **DEPRIORITIZED TO SPRINT 9+:** Advanced batch operations, comprehensive templates, collaboration features
+
+*   **Sprint 9+: Advanced Features & Future Enhancements** 📋
+    *   **Status:** DEPRIORITIZED - Advanced features moved for future consideration
+    *   **Goal:** Extended functionality for power users and specialized use cases
+    *   **Focus:** Advanced batch operations, 3D visualization, printing capabilities, and premium features
+    *   **Deprioritized Features:**
+        *   📋 **Advanced batch export operations** with custom templates and automation workflows
+        *   📋 **3D UI components** and immersive visualization interfaces for mind maps and spatial navigation
+        *   📋 **Printing functionality** with layout optimization and professional format conversion
+        *   📋 **Enterprise collaboration features** with real-time sync and team workspaces
+        *   📋 **Advanced AI-powered content generation** and automated workflow suggestions
+        *   📋 **Premium export formats** with professional templates and branding options
+        *   📋 **Complex automation workflows** with scripting and API integrations
+        *   📋 **Advanced accessibility features** beyond standard compliance requirements
+        *   📋 **Extended platform integrations** and third-party service connections
+        *   📋 **Power user interfaces** with customizable layouts and advanced filtering options
+        *   📋 **Batch text operations** for multiple screenshots simultaneously
+        *   📋 **Collaborative annotation sharing** with real-time sync capabilities
+        *   📋 **Workflow automation** for common batch operations and custom pipelines
+
+    *   **Future Consideration Criteria:**
+        *   User demand for advanced batch operations reaches critical threshold
+        *   Core functionality (Sprint 6.5-8) is stable and well-adopted
+        *   Development resources available for specialized features
+        *   Market research validates demand for 3D visualization and printing features
+        *   Enterprise customer base requests collaboration features
+
+## Sprint Redistribution Summary
+
+### Redistribution Rationale
+
+**Sprint 5 Completion:**
+- ✅ Core conversational AI search functionality completed successfully
+- ⏳ Advanced copy/edit features (Sub-Sprint 5.5) → **Moved to Sprint 6.5** (immediate priority for user functionality)
+
+**Sprint 6 Strategic Reallocation:**
+- ✅ Core mind map visualization completed with excellent 2D implementation
+- ⏳ Advanced AI components (6.1.2-6.1.5) → **Moved to Sprint 7.1** (requires dedicated AI infrastructure focus)
+- ⏳ Clustering & timeline (6.3) → **Moved to Sprint 8.1** (depends on Sprint 7 AI infrastructure)
+- ⏳ Advanced performance & export (6.4) → **Moved to Sprint 8.2-8.3** (production optimization phase)
+
+**Dependency Chain Optimization:**
+1. **Sprint 6.5** (Priority): Copy/edit functionality using existing OCR and entity extraction
+2. **Sprint 7.1**: Advanced AI infrastructure (similarity, graph persistence, background processing)
+3. **Sprint 8.1**: Clustering and timeline (depends on Sprint 7.1 similarity engine and knowledge graph)
+4. **Sprint 8.2-8.3**: Production optimization and advanced export (depends on Sprint 7.1 background architecture)
+
+### Implementation Priority
+
+**Immediate Priority (Sprint 6.5):**
+- Complete QuickActionService TODO items (tagging, favorites, export, metadata editing)
+- Enhanced ScreenshotDetailView with comprehensive text extraction and copy functionality
+- Smart data recognition (URLs, phone numbers, emails, QR codes)
+- Entity chip management in mind map node details
+
+**Infrastructure Phase (Sprint 7.1):**
+- Content Similarity Engine with Core ML embeddings
+- Knowledge Graph Construction with SwiftData persistence
+- Data Consistency Management with enterprise-grade reliability
+- Background Processing Architecture with resource optimization
+
+**Production Phase (Sprint 8):**
+- Intelligent clustering using Sprint 7 similarity engine
+- Timeline visualization using Sprint 7 knowledge graph
+- Advanced performance optimization with level-of-detail rendering
+- Comprehensive export system with professional templates and batch operations
+
+### Quality Assurance
+
+This redistribution ensures:
+- ✅ **User Value**: Copy/edit functionality delivered as immediate priority
+- ✅ **Technical Debt**: No incomplete features left in past sprints
+- ✅ **Dependency Management**: Complex AI features have proper infrastructure foundation
+- ✅ **Production Readiness**: Performance and export features consolidated in final sprint
+- ✅ **Maintainability**: Clear separation between core functionality and advanced features
         *   **Atomic Units:**
             *   **8.1.1: Smart Clustering Algorithm**
                 *   **Deliverable:** Production-ready AI clustering system with advanced grouping algorithms

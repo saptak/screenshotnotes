@@ -94,21 +94,36 @@ The user experience is paramount and will be guided by the following principles:
     *   **Data Integrity:** Automatic conflict resolution when screenshots are deleted or AI analysis results change
 *   **Manual Import:** Users can explicitly import any image from their Photos library, not just screenshots
 *   **Deletion:** Users can easily delete single or multiple screenshots from the app's library
-*   **Copying:** Users should be able to copy out information (e.g. coupon codes, URLs, information in QR codes, etc.)
-*   **Accessibility:** Full VoiceOver support and assistive technology compatibility
+*   **Information Extraction & Editing:** Comprehensive copy and edit capabilities for extracted and inferred content:
+    *   **Text Extraction Display:** Full OCR text presented in an editable, selectable text view with proper formatting
+    *   **Smart Copy Actions:** Contextual copy buttons for specific data types (URLs, phone numbers, email addresses, coupon codes, QR code data, addresses, dates, prices)
+    *   **Entity Recognition & Copy:** AI-extracted entities (people, organizations, locations, products) presented as copyable chips with confidence indicators
+    *   **Structured Data Editing:** Edit and enhance AI-extracted information with manual corrections and additional context
+    *   **Semantic Tag Management:** Add, edit, and organize AI-generated semantic tags with custom user tags
+    *   **Rich Text Export:** Export extracted text with formatting options (plain text, markdown, rich text)
+    *   **Batch Text Operations:** Select and copy text from multiple screenshots simultaneously
+    *   **Smart Text Actions:** Contextual actions for extracted text (create contact, add to calendar, open in maps, call phone number)
+    *   **QR Code Integration:** Automatic QR code detection with direct action buttons (open URL, save contact, connect to WiFi)
+    *   **Text Search & Highlight:** Search within extracted text with copy functionality for specific matches
+*   **Accessibility:** Full VoiceOver support and assistive technology compatibility with text extraction narration
 
 ## 5. Technical Requirements & Considerations
 
 *   **Platform:** iOS 18.0+, targeting the latest major version.
 *   **Primary APIs:**
-    *   **Vision Framework:** For all on-device OCR and image analysis tasks.
+    *   **Vision Framework:** For all on-device OCR and image analysis tasks, including advanced text detection and QR code recognition.
     *   **Apple Intelligence & Core ML:** For conversational AI search and semantic understanding using on-device language models.
-    *   **Natural Language Framework:** For query parsing, intent classification, and semantic analysis.
+    *   **Natural Language Framework:** For query parsing, intent classification, semantic analysis, and entity extraction with confidence scoring.
     *   **App Intents Framework:** For Siri integration and voice-activated search capabilities.
     *   **Photos Framework:** For observing and fetching screenshots from the user's library.
     *   **SwiftUI:** To build a modern, responsive, and fluid user interface that embodies the design principles.
     *   **SwiftData:** For robust, on-device storage (preferred over Core Data for new projects).
     *   **Speech Framework:** For voice-to-text conversion enabling spoken search queries.
+    *   **Foundation Framework:** For comprehensive text processing, pattern matching, and data type recognition (URLs, phone numbers, emails, addresses).
+    *   **AVFoundation:** For QR code detection and processing with real-time camera integration.
+    *   **MessageUI & EventKit:** For smart actions like creating contacts, calendar events, and sending messages from extracted data.
+    *   **LinkPresentation:** For rich URL preview generation from extracted links.
+    *   **UniformTypeIdentifiers:** For comprehensive export format support and cross-app data sharing.
 *   **Performance:** All AI processing should happen on-device to ensure user privacy and app responsiveness. Background tasks must be efficient to minimize battery impact.
 
 ### Technical Constraints & Quality Standards
