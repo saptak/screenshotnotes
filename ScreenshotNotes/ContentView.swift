@@ -144,19 +144,9 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("Screenshot Vault")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
-                ToolbarItemGroup(placement: .navigationBarLeading) {
-                    Button(action: {
-                        showingSettings = true
-                    }) {
-                        Image(systemName: "gearshape")
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
-                    }
-                }
-                
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     // Temporary: Entity Extraction Demo button for testing
                     if #available(iOS 17.0, *) {

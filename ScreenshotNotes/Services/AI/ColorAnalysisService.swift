@@ -99,12 +99,12 @@ public class ColorAnalysisService {
 
     private func calculateContrast(ciImage: CIImage) -> Double {
         // A simplified contrast calculation. A more robust method would involve histograms.
-        let contrastFilter = CIFilter(name:"CIColorControls", parameters: [kCIInputImageKey: ciImage, "inputContrast": 1.0])!
+        let _ = CIFilter(name:"CIColorControls", parameters: [kCIInputImageKey: ciImage, "inputContrast": 1.0])!
         return 0.5 // Placeholder
     }
 
     private func calculateSaturation(ciImage: CIImage) -> Double {
-        let saturationFilter = CIFilter(name:"CIColorControls", parameters: [kCIInputImageKey: ciImage, "inputSaturation": 1.0])!
+        let _ = CIFilter(name:"CIColorControls", parameters: [kCIInputImageKey: ciImage, "inputSaturation": 1.0])!
         return 0.5 // Placeholder
     }
 

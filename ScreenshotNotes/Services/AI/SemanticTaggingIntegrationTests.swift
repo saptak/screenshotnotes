@@ -170,37 +170,24 @@ public class SemanticTaggingIntegrationTests: ObservableObject {
         ]
         
         for (expectedType, testText) in testCases {
-            do {
-                let classification = await semanticTaggingService.classifyContent(
-                    ocrText: testText,
-                    visualObjects: []
-                )
-                
-                let classificationMatch = classification.primaryType.displayName.lowercased().contains(expectedType.lowercased()) ||
-                                        expectedType.lowercased().contains(classification.primaryType.displayName.lowercased())
-                
-                let result = TestResult(
-                    name: "Content Type: \(expectedType)",
-                    description: "Classify content as \(expectedType)",
-                    expectedResult: expectedType,
-                    actualResult: classification.primaryType.displayName,
-                    passed: classificationMatch && classification.confidence > 0.3,
-                    confidence: classification.confidence
-                )
-                
-                await addTestResult(result)
-                
-            } catch {
-                let result = TestResult(
-                    name: "Content Type: \(expectedType)",
-                    description: "Classify content as \(expectedType)",
-                    expectedResult: expectedType,
-                    actualResult: "Error: \(error.localizedDescription)",
-                    passed: false,
-                    confidence: 0.0
-                )
-                await addTestResult(result)
-            }
+            let classification = await semanticTaggingService.classifyContent(
+                ocrText: testText,
+                visualObjects: []
+            )
+            
+            let classificationMatch = classification.primaryType.displayName.lowercased().contains(expectedType.lowercased()) ||
+                                    expectedType.lowercased().contains(classification.primaryType.displayName.lowercased())
+            
+            let result = TestResult(
+                name: "Content Type: \(expectedType)",
+                description: "Classify content as \(expectedType)",
+                expectedResult: expectedType,
+                actualResult: classification.primaryType.displayName,
+                passed: classificationMatch && classification.confidence > 0.3,
+                confidence: classification.confidence
+            )
+            
+            await addTestResult(result)
         }
     }
     
