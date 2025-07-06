@@ -22,12 +22,13 @@ struct ContentView: View {
     @State private var enhancedSearchResult: EnhancedSearchResult?
     @State private var showingSearchSuggestions = false
     @State private var searchTask: Task<Void, Never>?
-    @State private var showingVoiceInput = false
-    @State private var showingConversationalSearch = false
     
     // 🎯 Sprint 5.4.1: Glass Search Bar State
-    @State private var glassMicrophoneState: GlassMicrophoneButtonState = .ready
-    @State private var glassSearchBarActive = false
+    @StateObject private var searchOrchestrator: GlassConversationalSearchOrchestrator
+
+    init() {
+        _searchOrchestrator = StateObject(wrappedValue: GlassConversationalSearchOrchestrator(settingsService: SettingsService.shared))
+    }
     
     private var filteredScreenshots: [Screenshot] {
         if searchText.isEmpty {
@@ -168,12 +169,17 @@ struct ContentView: View {
     private var bottomGlassSearchBar: some View {
         GlassSearchBar(
             searchText: $searchText,
-            isActive: $glassSearchBarActive,
-            microphoneState: $glassMicrophoneState,
+            isActive: $searchOrchestrator.isSearchBarActive,
+            microphoneState: $searchOrchestrator.microphoneState,
             placeholder: "Search screenshots with voice or text...",
-            onMicrophoneTapped: handleGlassMicrophoneTapped,
-            onSearchSubmitted: handleGlassSearchSubmitted,
-            onClearTapped: handleGlassSearchCleared
+            onMicrophoneTapped: searchOrchestrator.handleMicrophoneTapped,
+            onSearchSubmitted: { query in
+                searchOrchestrator.handleSearchSubmitted(query: query)
+                Task {
+                    await performSearch(query)
+                }
+            },
+            onClearTapped: searchOrchestrator.handleSearchCleared
         )
     }
     
@@ -235,7 +241,7 @@ struct ContentView: View {
             .onChange(of: searchText) { _, newValue in
                 withAnimation(.spring(response: 0.2, dampingFraction: 1.0)) {
                     isSearchActive = !newValue.isEmpty
-                    glassSearchBarActive = !newValue.isEmpty // 🎯 Sprint 5.4.1: Update Glass search bar state
+                    searchOrchestrator.isSearchBarActive = !newValue.isEmpty // 🎯 Sprint 5.4.1: Update Glass search bar state
                 }
                 
                 // 🔧 Sprint 5.2.4: Search Race Condition Fix
@@ -295,17 +301,17 @@ struct ContentView: View {
             .sheet(isPresented: $showingSettings) {
                 SettingsView(photoLibraryService: photoLibraryService)
             }
-            .sheet(isPresented: $showingConversationalSearch) {
+            .sheet(isPresented: $searchOrchestrator.showingConversationalSearch) {
                 ConversationalSearchView(
                     searchText: $searchText,
-                    isPresented: $showingConversationalSearch,
+                    isPresented: $searchOrchestrator.showingConversationalSearch,
                     onSearchSubmitted: processConversationalSearchResult
                 )
             }
-            .fullScreenCover(isPresented: $showingVoiceInput) {
+            .fullScreenCover(isPresented: $searchOrchestrator.showingVoiceInput) {
                 VoiceInputView(
                     searchText: $searchText,
-                    isPresented: $showingVoiceInput,
+                    isPresented: $searchOrchestrator.showingVoiceInput,
                     onSearchSubmitted: processVoiceSearchResult
                 )
             }
@@ -332,7 +338,7 @@ struct ContentView: View {
     }
     
     private func performSearch(_ query: String) async {
-        glassMicrophoneState = .results
+        searchOrchestrator.microphoneState = .results
         
         // Trigger UI update for search
         await MainActor.run {
@@ -344,8 +350,8 @@ struct ContentView: View {
         try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
         
         await MainActor.run {
-            if glassMicrophoneState == .results {
-                glassMicrophoneState = .ready
+            if searchOrchestrator.microphoneState == .results {
+                searchOrchestrator.microphoneState = .ready
             }
         }
     }
@@ -558,78 +564,9 @@ struct ContentView: View {
         impact.impactOccurred()
         
         // Close the conversational search view
-        showingConversationalSearch = false
+        searchOrchestrator.showingConversationalSearch = false
         
         print("✨ Conversational search processed: '\(optimizedQuery)'")
-    }
-
-    // MARK: - 🎯 Sprint 5.4.1: Glass Search Bar Actions
-    
-    /// Handle Glass microphone button tapped - initiates conversational search
-    private func handleGlassMicrophoneTapped() {
-        switch glassMicrophoneState {
-        case .ready:
-            // Start voice input
-            glassMicrophoneState = .listening
-            showingVoiceInput = true
-            
-        case .listening:
-            // Stop voice input
-            glassMicrophoneState = .ready
-            showingVoiceInput = false
-            
-        case .processing:
-            // Cancel processing (if possible)
-            glassMicrophoneState = .ready
-            
-        case .results:
-            // Enter conversation mode
-            glassMicrophoneState = .conversation
-            showingConversationalSearch = true
-            
-        case .conversation:
-            // Exit conversation mode
-            glassMicrophoneState = .ready
-            showingConversationalSearch = false
-            
-        case .error:
-            // Retry voice input
-            glassMicrophoneState = .listening
-            showingVoiceInput = true
-        }
-    }
-    
-    /// Handle Glass search submission with enhanced processing
-    private func handleGlassSearchSubmitted(_ query: String) {
-        glassMicrophoneState = .processing
-        
-        // Process the search with existing logic
-        processConversationalSearchResult(query)
-        
-        // Update Glass state to results
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            glassMicrophoneState = .results
-            
-            // Auto-transition to ready after showing results
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                if glassMicrophoneState == .results {
-                    glassMicrophoneState = .ready
-                }
-            }
-        }
-    }
-    
-    /// Handle Glass search cleared
-    private func handleGlassSearchCleared() {
-        searchText = ""
-        glassMicrophoneState = .ready
-        glassSearchBarActive = false
-        
-        // Reset other search states
-        showingQueryAnalysis = false
-        showingSearchSuggestions = false
-        lastParsedQuery = nil
-        enhancedSearchResult = nil
     }
 }
 

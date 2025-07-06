@@ -36,11 +36,18 @@ class SettingsService: @preconcurrency SettingsServiceProtocol, ObservableObject
         }
     }
     
+    @Published var autoSubmitVoiceSearch: Bool {
+        didSet {
+            UserDefaults.standard.set(autoSubmitVoiceSearch, forKey: "autoSubmitVoiceSearch")
+        }
+    }
+    
     private init() {
         self.automaticImportEnabled = UserDefaults.standard.bool(forKey: "automaticImportEnabled")
         self.deleteOriginalScreenshots = UserDefaults.standard.bool(forKey: "deleteOriginalScreenshots")
         self.backgroundProcessingEnabled = UserDefaults.standard.bool(forKey: "backgroundProcessingEnabled")
         self.ocrEnabled = UserDefaults.standard.bool(forKey: "ocrEnabled")
+        self.autoSubmitVoiceSearch = UserDefaults.standard.bool(forKey: "autoSubmitVoiceSearch")
         
         // Set defaults for first launch
         if !UserDefaults.standard.bool(forKey: "hasLaunchedBefore") {
@@ -48,6 +55,7 @@ class SettingsService: @preconcurrency SettingsServiceProtocol, ObservableObject
             self.deleteOriginalScreenshots = false
             self.backgroundProcessingEnabled = true
             self.ocrEnabled = true
+            self.autoSubmitVoiceSearch = true
             UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
         }
     }
@@ -57,5 +65,6 @@ class SettingsService: @preconcurrency SettingsServiceProtocol, ObservableObject
         deleteOriginalScreenshots = false
         backgroundProcessingEnabled = true
         ocrEnabled = true
+        autoSubmitVoiceSearch = true
     }
 }

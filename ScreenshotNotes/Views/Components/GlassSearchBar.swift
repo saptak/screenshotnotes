@@ -31,7 +31,7 @@ struct GlassSearchBar: View {
     @State private var isHovered = false
     @State private var glassIntensity: Double = 1.0
     @State private var searchBarHeight: CGFloat = GlassDesignSystem.GlassLayout.searchBarHeight
-    @State private var animationTimer: Timer?
+    @State private var animationTask: Task<Void, Never>?
     
     // MARK: - Environment and System
     
@@ -389,23 +389,28 @@ struct GlassSearchBar: View {
     }
     
     private func startBreathingAnimation() {
-        stopBreathingAnimation() // Ensure no duplicate timers
-        
-        animationTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
-            guard microphoneState == .ready else {
-                stopBreathingAnimation()
-                return
-            }
-            
-            withAnimation(GlassAnimations.microphoneBreathing()) {
-                // Breathing effect is handled by the glassBreathing modifier
+        stopBreathingAnimation() // Ensure no duplicate tasks
+
+        animationTask = Task {
+            while !Task.isCancelled {
+                await MainActor.run {
+                    guard microphoneState == .ready else {
+                        stopBreathingAnimation()
+                        return
+                    }
+                    
+                    withAnimation(GlassAnimations.microphoneBreathing()) {
+                        // Breathing effect is handled by the glassBreathing modifier
+                    }
+                }
+                try? await Task.sleep(for: .seconds(2))
             }
         }
     }
-    
+
     private func stopBreathingAnimation() {
-        animationTimer?.invalidate()
-        animationTimer = nil
+        animationTask?.cancel()
+        animationTask = nil
     }
 }
 
