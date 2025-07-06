@@ -25,6 +25,9 @@ struct ContentView: View {
     
     // 🎯 Sprint 5.4.1: Glass Search Bar State
     @StateObject private var searchOrchestrator: GlassConversationalSearchOrchestrator
+    
+    // 🧠 Sprint 6.1.1: Mind Map Navigation State
+    @State private var showingMindMap = false
 
     init() {
         _searchOrchestrator = StateObject(wrappedValue: GlassConversationalSearchOrchestrator(settingsService: SettingsService.shared))
@@ -211,12 +214,12 @@ struct ContentView: View {
                     //         .foregroundColor(.blue)
                     // }
                     
-                    // Temporary: Entity Extraction Demo button for testing
-                    if #available(iOS 17.0, *) {
-                        NavigationLink(destination: EntityExtractionDemo()) {
-                            Image(systemName: "brain.head.profile")
-                                .foregroundColor(.blue)
-                        }
+                    // 🧠 Sprint 6.1.1: Mind Map Navigation
+                    Button(action: {
+                        showingMindMap = true
+                    }) {
+                        Image(systemName: "brain.head.profile")
+                            .foregroundColor(.blue)
                     }
                     
                     Button(action: {
@@ -314,6 +317,9 @@ struct ContentView: View {
                     isPresented: $searchOrchestrator.showingVoiceInput,
                     onSearchSubmitted: processVoiceSearchResult
                 )
+            }
+            .fullScreenCover(isPresented: $showingMindMap) {
+                MindMapView()
             }
             .onAppear {
                 photoLibraryService.setModelContext(modelContext)
