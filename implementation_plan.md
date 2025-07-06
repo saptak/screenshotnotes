@@ -494,41 +494,47 @@ Each sprint must meet the following criteria before proceeding:
                     *   ✅ Fixed memory management issues by removing dependency on non-existent VoiceSearchService
                     *   ✅ App running successfully with conversational search processing confirmed: "✨ Conversational search processed: 'Hello find a receipt'"
 
-    *   **Sub-Sprint 5.4: Performance Optimization & Caching** (Week 4)
-        *   **Goal:** Optimize for <200ms response time with intelligent caching
+    *   **Sub-Sprint 5.4: Glass UX Foundation & Conversational Interface** (Week 4)
+        *   **Goal:** Implement Apple Glass UX guidelines with bottom-mounted conversational search interface
         *   **Atomic Units:**
-            *   **5.4.1: On-Device AI Performance Optimization**
-                *   **Deliverable:** Optimized AI pipeline with <200ms query response time
+            *   **5.4.1: Bottom Glass Search Bar Implementation**
+                *   **Deliverable:** Premium bottom-mounted Glass search bar with Apple UX compliance
                 *   **Tasks:**
-                    *   Profile and optimize Core ML model inference times
-                    *   Implement concurrent processing for vision and NLP tasks
-                    *   Add model quantization and optimization for on-device performance
-                    *   Create performance monitoring and metrics collection
-                *   **Integration Test:** Complex query "blue dress receipts last week" processes in <200ms
-                *   **Functional Test:** 95% of queries respond within performance threshold
-                *   **Files:** `Services/AI/PerformanceOptimizer.swift`, `Services/AI/MetricsCollector.swift`
+                    *   Create GlassSearchBar with bottom positioning for optimal thumb ergonomics
+                    *   Implement proper Glass materials (.ultraThinMaterial, .regularMaterial, .thickMaterial)
+                    *   Add dynamic vibrancy effects that adapt to content and conversation state
+                    *   Build physics-based animations with spring behaviors and natural easing curves
+                    *   Integrate conversational microphone button with Glass aesthetic
+                    *   Add semantic color usage with Dynamic Type and high contrast accessibility support
+                *   **Integration Test:** Bottom Glass search bar responds to touch in <8ms with proper Glass visual feedback
+                *   **Functional Test:** 120fps ProMotion performance maintained with all Glass materials and effects
+                *   **Files:** `Views/Components/GlassSearchBar.swift`, `Design/GlassDesignSystem.swift`, `Views/ContentView.swift` (bottom layout)
 
-            *   **5.4.2: Intelligent Semantic Caching**
-                *   **Deliverable:** Smart caching system for semantic data and embeddings
+            *   **5.4.2: Glass Conversational Experience**
+                *   **Deliverable:** Unified conversational interface with premium Glass visual polish
                 *   **Tasks:**
-                    *   Implement LRU cache for processed semantic tags and embeddings
-                    *   Add incremental processing for new screenshots
-                    *   Create cache invalidation strategy for updated content
-                    *   Build cache warming for frequently accessed searches
-                *   **Integration Test:** Repeated semantic queries use cached results and respond in <50ms
-                *   **Functional Test:** Cache hit rate >80% for common queries, memory usage <100MB
-                *   **Files:** `Services/SearchCache.swift`, `Services/AI/SemanticCacheManager.swift`
+                    *   Implement GlassConversationalMicrophoneButton with state-aware Glass effects
+                    *   Create GlassConversationalSearchOrchestrator for state management
+                    *   Build Glass conversation states (ready, listening, processing, results, conversation, error)
+                    *   Add contextual Glass animations and haptic-visual synchronization
+                    *   Integrate voice recognition with Glass visual feedback
+                    *   Create Glass conversation history and multi-turn support
+                *   **Integration Test:** Voice conversation "find blue receipts" shows Glass visual states and returns accurate results
+                *   **Functional Test:** >95% conversation success rate with Glass interface maintaining visual continuity
+                *   **Files:** `Views/Components/GlassConversationalMicrophoneButton.swift`, `Services/GlassConversationalSearchOrchestrator.swift`
 
-            *   **5.4.3: Memory Management & Background Processing**
-                *   **Deliverable:** Efficient memory usage with background AI processing
+            *   **5.4.3: Glass Design System & Performance Optimization**
+                *   **Deliverable:** Comprehensive Glass design system with optimized performance
                 *   **Tasks:**
-                    *   Implement background queue for semantic analysis processing
-                    *   Add memory pressure monitoring and automatic cleanup
-                    *   Create progressive enhancement for search quality
-                    *   Build background task management for large AI operations
-                *   **Integration Test:** App maintains <150MB memory footprint during intensive AI processing
-                *   **Functional Test:** Background processing doesn't impact main thread performance
-                *   **Files:** `Services/BackgroundAIProcessor.swift`, `Services/MemoryManager.swift`
+                    *   Create GlassDesignSystem with Material tokens and accessibility compliance
+                    *   Implement GlassAnimations framework with physics-based behaviors
+                    *   Build Glass accessibility features maintaining contrast ratios and VoiceOver compatibility
+                    *   Optimize Glass rendering for 120fps ProMotion performance
+                    *   Add intelligent caching for Glass visual effects and conversation state
+                    *   Create performance monitoring for Glass interactions and memory usage
+                *   **Integration Test:** All Glass components maintain <8ms responsiveness and 120fps performance
+                *   **Functional Test:** Glass interface scores >4.9/5 user satisfaction with accessibility compliance
+                *   **Files:** `Design/GlassAnimations.swift`, `Design/GlassAccessibility.swift`, `Extensions/View+GlassEffects.swift`
 
     *   **Example Queries:**
         *   "find screenshots with blue dress" → Visual object detection + color analysis
@@ -576,7 +582,9 @@ Each sprint must meet the following criteria before proceeding:
         *   ✅ Manual input fallback for simulator and accessibility support (ACHIEVED)
         *   ✅ Privacy compliance with microphone and speech recognition permissions (ACHIEVED)
         *   ✅ Siri integration with 10+ supported search phrases (ACHIEVED)
-        *   ⏳ Intelligent caching with >80% hit rate for common searches (PLANNED)
+        *   ⏳ Bottom Glass search bar with Apple UX compliance and 120fps ProMotion performance (PLANNED)
+        *   ⏳ Glass conversational interface with state-aware visual effects and haptic synchronization (PLANNED)
+        *   ⏳ Comprehensive Glass design system with accessibility and performance optimization (PLANNED)
 
 *   **Sprint 6: The Connected Brain - Intelligent Mind Map** 🧠
     *   **Goal:** Introduce AI-powered contextual mind map with semantic relationship discovery.
@@ -749,8 +757,9 @@ Each sprint must meet the following criteria before proceeding:
         *   ✅ Memory usage <200MB with progressive loading
         *   ✅ Full accessibility support with VoiceOver compatibility
         *   ✅ Export functionality with PDF and interactive sharing options
-    *   **UX Focus:** Immersive 3D mind map with intuitive navigation, organic animations, and contextual insights.
-    *   **Definition of Done:** AI-powered mind map with semantic relationship discovery and smooth 3D interactions
+    *   **UX Focus:** Immersive 3D mind map with Apple Glass UX principles, featuring translucent materials, physics-based animations, adaptive layouts, and premium haptic feedback throughout the conversational AI interaction.
+    *   **Glass UX Integration:** Bottom Glass search bar drives all mind map discovery through conversational queries, with state-aware visual effects synchronized to user voice input and seamless transitions between 2D search results and 3D relationship visualization.
+    *   **Definition of Done:** AI-powered mind map with Glass design language, conversational search integration, and smooth 3D interactions maintaining Apple's premium interaction standards
 
 *   **Sprint 7: Advanced Intelligence & Contextual Understanding** 🤖
     *   **Goal:** Multi-modal AI analysis with user collaboration and smart insights.
