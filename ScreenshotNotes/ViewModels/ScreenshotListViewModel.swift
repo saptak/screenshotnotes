@@ -14,12 +14,15 @@ class ScreenshotListViewModel: ObservableObject {
     
     private let imageStorageService: ImageStorageServiceProtocol
     private let ocrService: OCRServiceProtocol
+    private let backgroundSemanticProcessor: BackgroundSemanticProcessor
     private var modelContext: ModelContext?
     
     init(imageStorageService: ImageStorageServiceProtocol = ImageStorageService(),
-         ocrService: OCRServiceProtocol = OCRService()) {
+         ocrService: OCRServiceProtocol = OCRService(),
+         backgroundSemanticProcessor: BackgroundSemanticProcessor? = nil) {
         self.imageStorageService = imageStorageService
         self.ocrService = ocrService
+        self.backgroundSemanticProcessor = backgroundSemanticProcessor ?? BackgroundSemanticProcessor()
     }
     
     func setModelContext(_ context: ModelContext) {
@@ -63,28 +66,19 @@ class ScreenshotListViewModel: ObservableObject {
         let imageData = try await imageStorageService.saveImage(image, filename: filename)
         
         let screenshot = Screenshot(imageData: imageData, filename: filename)
-        
-        // Process OCR in background
-        Task {
-            do {
-                let extractedText = try await ocrService.extractText(from: image)
-                await MainActor.run {
-                    screenshot.extractedText = extractedText
-                    try? modelContext.save()
-                }
-            } catch {
-                // OCR failure is not critical for import
-                print("OCR processing failed: \(error.localizedDescription)")
-            }
-        }
-        
         modelContext.insert(screenshot)
         
+        // Save immediately so the screenshot is available
         do {
             try modelContext.save()
         } catch {
             modelContext.delete(screenshot)
             throw ImportError.saveFailed
+        }
+        
+        // Process full semantic analysis in background
+        Task {
+            await backgroundSemanticProcessor.processScreenshot(screenshot, in: modelContext)
         }
     }
     
@@ -233,24 +227,16 @@ class ScreenshotListViewModel: ObservableObject {
                                 assetIdentifier: asset.localIdentifier
                             )
                             
-                            // Process OCR in background
-                            Task {
-                                do {
-                                    let extractedText = try await self.ocrService.extractText(from: image)
-                                    await MainActor.run {
-                                        screenshot.extractedText = extractedText
-                                        try? modelContext.save()
-                                    }
-                                } catch {
-                                    print("OCR processing failed: \(error.localizedDescription)")
-                                }
-                            }
-                            
                             await MainActor.run {
                                 modelContext.insert(screenshot)
                                 try? modelContext.save()
                                 
                                 self.importProgress = Double(index + 1) / totalAssets
+                            }
+                            
+                            // Process full semantic analysis in background
+                            Task {
+                                await self.backgroundSemanticProcessor.processScreenshot(screenshot, in: modelContext)
                             }
                         } catch {
                             print("❌ Failed to import screenshot: \(error)")
@@ -269,6 +255,17 @@ class ScreenshotListViewModel: ObservableObject {
         impact.impactOccurred()
         
         print("📸 Completed importing \(assetsToImport.count) existing screenshots")
+    }
+    
+    /// Process existing screenshots that need semantic analysis
+    func processExistingScreenshots() async {
+        guard let modelContext = modelContext else { return }
+        await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+    }
+    
+    /// Get background semantic processor for observing progress
+    var semanticProcessor: BackgroundSemanticProcessor {
+        return backgroundSemanticProcessor
     }
 }
 

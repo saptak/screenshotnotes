@@ -17,6 +17,10 @@ public final class Screenshot {
     public var visualAttributesData: Data?
     public var lastVisionAnalysis: Date?
     
+    // Phase 5.2.3: Semantic Tagging
+    public var semanticTagsData: Data?
+    public var lastSemanticAnalysis: Date?
+    
     public init(imageData: Data, filename: String, timestamp: Date? = nil, assetIdentifier: String? = nil) {
         self.id = UUID()
         self.imageData = imageData
@@ -29,6 +33,76 @@ public final class Screenshot {
         self.assetIdentifier = assetIdentifier
         self.visualAttributesData = nil
         self.lastVisionAnalysis = nil
+        self.semanticTagsData = nil
+        self.lastSemanticAnalysis = nil
+    }
+}
+
+// MARK: - Semantic Tagging Support
+
+extension Screenshot {
+    
+    /// Get semantic tags from stored data
+    public var semanticTags: SemanticTagCollection? {
+        get {
+            guard let data = semanticTagsData else { return nil }
+            return try? JSONDecoder().decode(SemanticTagCollection.self, from: data)
+        }
+        set {
+            if let tags = newValue {
+                semanticTagsData = try? JSONEncoder().encode(tags)
+                lastSemanticAnalysis = Date()
+            } else {
+                semanticTagsData = nil
+                lastSemanticAnalysis = nil
+            }
+        }
+    }
+    
+    /// Check if semantic analysis needs to be refreshed
+    public var needsSemanticAnalysis: Bool {
+        guard let lastAnalysis = lastSemanticAnalysis else { return true }
+        
+        // Consider analysis stale after 30 days
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date.distantPast
+        return lastAnalysis < thirtyDaysAgo
+    }
+    
+    /// Get high-confidence semantic tags for search
+    public var highConfidenceSemanticTags: [SemanticTag] {
+        return semanticTags?.highConfidenceTags() ?? []
+    }
+    
+    /// Get business entities from semantic tags
+    public var businessEntities: [SemanticTag] {
+        return semanticTags?.tags(in: .brand) ?? []
+    }
+    
+    /// Get content type classification
+    public var contentType: SemanticTag? {
+        return semanticTags?.tags(in: .contentType).first
+    }
+    
+    /// Get all searchable tag names
+    public var searchableTagNames: [String] {
+        var tagNames: [String] = []
+        
+        // Add semantic tag names
+        if let semanticTags = semanticTags {
+            tagNames.append(contentsOf: semanticTags.uniqueTagNames)
+        }
+        
+        // Add existing object tags
+        if let objectTags = objectTags {
+            tagNames.append(contentsOf: objectTags)
+        }
+        
+        // Add user tags
+        if let userTags = userTags {
+            tagNames.append(contentsOf: userTags)
+        }
+        
+        return Array(Set(tagNames))
     }
 }
 

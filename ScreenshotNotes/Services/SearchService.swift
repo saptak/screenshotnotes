@@ -73,7 +73,12 @@ final class SearchService: ObservableObject, SearchServiceProtocol {
         let colorNames = screenshot.dominantColors.map { $0.colorName.lowercased() }.joined(separator: " ")
         let objectLabels = screenshot.prominentObjects.map { $0.label.lowercased() }.joined(separator: " ")
         
-        let allText = "\(searchableText) \(userTags) \(objectTags) \(visualTags) \(colorNames) \(objectLabels)"
+        // Phase 5.2.3: Semantic Tagging - Add semantic tags to search
+        let semanticTagNames = screenshot.searchableTagNames.joined(separator: " ").lowercased()
+        let businessEntityNames = screenshot.businessEntities.map { $0.name.lowercased() }.joined(separator: " ")
+        let contentTypeTag = screenshot.contentType?.name.lowercased() ?? ""
+        
+        let allText = "\(searchableText) \(userTags) \(objectTags) \(visualTags) \(colorNames) \(objectLabels) \(semanticTagNames) \(businessEntityNames) \(contentTypeTag)"
         
         return allText.contains(searchTerm)
     }
@@ -92,6 +97,12 @@ final class SearchService: ObservableObject, SearchServiceProtocol {
         let colorNames = screenshot.dominantColors.map { $0.colorName.lowercased() }.joined(separator: " ")
         let objectLabels = screenshot.prominentObjects.map { $0.label.lowercased() }.joined(separator: " ")
         
+        // Phase 5.2.3: Semantic Tagging - Add semantic tag scoring
+        let semanticTagNames = screenshot.searchableTagNames.joined(separator: " ").lowercased()
+        let businessEntityNames = screenshot.businessEntities.map { $0.name.lowercased() }.joined(separator: " ")
+        let highConfidenceTagNames = screenshot.highConfidenceSemanticTags.map { $0.name.lowercased() }.joined(separator: " ")
+        let contentTypeTag = screenshot.contentType?.name.lowercased() ?? ""
+        
         for term in searchTerms {
             if filename.contains(term) {
                 score += 10
@@ -105,6 +116,19 @@ final class SearchService: ObservableObject, SearchServiceProtocol {
                 score += 6
             }
             
+            // Phase 5.2.3: Semantic Tagging - Highest priority scoring
+            if businessEntityNames.contains(term) {
+                score += 12 // Highest score for business entity matches
+            }
+            
+            if contentTypeTag.contains(term) {
+                score += 10 // Very high score for content type matches
+            }
+            
+            if highConfidenceTagNames.contains(term) {
+                score += 9 // High score for confident semantic tag matches
+            }
+            
             // Enhanced scoring for visual attributes
             if objectLabels.contains(term) {
                 score += 7 // Higher score for object detection matches
@@ -112,6 +136,10 @@ final class SearchService: ObservableObject, SearchServiceProtocol {
             
             if colorNames.contains(term) {
                 score += 6 // High score for color matches
+            }
+            
+            if semanticTagNames.contains(term) {
+                score += 5 // Good score for semantic tag matches
             }
             
             if visualTags.contains(term) {
