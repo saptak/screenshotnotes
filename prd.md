@@ -55,6 +55,9 @@ The user experience is paramount and will be guided by the following principles:
 *   **Optical Character Recognition (OCR):** All text and objects within every screenshot will be extracted, indexed, and made searchable. Use Apple Generative AI: https://developer.apple.com/design/human-interface-guidelines/generative-ai
 *   **Object & Scene Recognition:** The app will identify and tag key objects, logos, UI elements (e.g., buttons, forms), and scenes (e.g., maps, charts, conversations).
 *   **Contextual Linking (Mind Map):** The app will intelligently analyze the content of screenshots to automatically create links between them, forming a visual mind map or knowledge graph based on shared text, topics, or visual context.
+    *   **Performance-Optimized Layout:** Mind map layout calculation is cached and only recalculated when underlying data changes (new screenshots, deleted screenshots, updated AI analysis, or user edits)
+    *   **Incremental Layout Updates:** When data changes occur, layout recalculation is localized to affected nodes and their immediate connections to avoid full map regeneration
+    *   **Data Consistency Management:** Robust handling of edge cases including screenshot deletion, user annotation changes, AI re-analysis updates, and manual relationship modifications
 
 ### 4.3. Search & Discovery
 *   **Universal Search:** A powerful, fast search engine to find screenshots based on:
@@ -86,6 +89,9 @@ The user experience is paramount and will be guided by the following principles:
 *   **Swipe Navigation:** Full screen gesture recognition (swipe down to dismiss, left/right to navigate, up for actions)
 *   **Manual Context:** Users can add their own notes, text annotations, and tags to any screenshot
 *   **Mind Map Editing:** Users can manually create, edit, or remove the links between screenshots in the mind map to refine the organization
+    *   **Smart Layout Persistence:** Mind map positions and layout state are preserved across app sessions with efficient caching
+    *   **Incremental Updates:** Adding, editing, or deleting screenshots triggers only localized layout updates affecting nearby nodes
+    *   **Data Integrity:** Automatic conflict resolution when screenshots are deleted or AI analysis results change
 *   **Manual Import:** Users can explicitly import any image from their Photos library, not just screenshots
 *   **Deletion:** Users can easily delete single or multiple screenshots from the app's library
 *   **Copying:** Users should be able to copy out information (e.g. coupon codes, URLs, information in QR codes, etc.)
@@ -118,6 +124,11 @@ The user experience is paramount and will be guided by the following principles:
     *   Animation frame rate: 60fps minimum, 120fps target on ProMotion displays
     *   Contextual menu response: <50ms
     *   Haptic feedback latency: <100ms
+    *   **Mind Map Performance:**
+        *   Initial mind map generation: <5 seconds for 100 screenshots
+        *   Layout caching: Mind map positions persisted and loaded in <200ms
+        *   Incremental updates: Single node changes processed in <100ms
+        *   Localized recalculation: Affected region updates in <500ms for 20 connected nodes
 *   **Battery Optimization:**
     *   Background processing limited to 30 seconds per session
     *   Batch OCR processing during device charging
@@ -126,6 +137,12 @@ The user experience is paramount and will be guided by the following principles:
     *   Atomic database operations with rollback support
     *   Automatic data backup and corruption recovery
     *   Graceful handling of Photos library permission changes
+    *   **Mind Map Data Consistency:**
+        *   Robust handling of screenshot deletion with automatic relationship cleanup
+        *   Version-controlled AI analysis updates with incremental relationship recalculation
+        *   User annotation change tracking with layout impact assessment
+        *   Conflict resolution for concurrent data modifications
+        *   Layout state persistence with automatic recovery from corruption
 *   **Accessibility:**
     *   VoiceOver support for all interactive elements
     *   Dynamic Type support for text scaling

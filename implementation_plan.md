@@ -631,29 +631,52 @@ Each sprint must meet the following criteria before proceeding:
                 *   **Files:** `Services/AI/SimilarityEngine.swift`, `Models/SimilarityScore.swift`
 
             *   **6.1.3: Knowledge Graph Construction**
-                *   **Deliverable:** Graph data structure representing screenshot relationships
+                *   **Deliverable:** Graph data structure representing screenshot relationships with performance optimization
                 *   **Tasks:**
-                    *   Create graph model with nodes (screenshots) and edges (relationships)
-                    *   Implement graph algorithms for connected component analysis
+                    *   Create graph model with nodes (screenshots) and edges (relationships) with cached layout positions
+                    *   Implement graph algorithms for connected component analysis with incremental updates
                     *   Add relationship type classification (temporal, spatial, thematic, entity-based)
-                    *   Build graph persistence with SwiftData relationships
-                *   **Integration Test:** 10 related screenshots form connected component in knowledge graph
-                *   **Functional Test:** Graph construction completes in <5 seconds for 1000 screenshots
-                *   **Files:** `Models/KnowledgeGraph.swift`, `Services/GraphConstructionService.swift`
+                    *   Build graph persistence with SwiftData relationships and layout state caching
+                    *   Implement change detection system for efficient incremental recalculation
+                    *   Create edge case handlers for data consistency (deletion, AI updates, user edits)
+                    *   Add data versioning and conflict resolution for concurrent modifications
+                *   **Integration Test:** 10 related screenshots form connected component in knowledge graph with cached positions
+                *   **Functional Test:** Graph construction completes in <5 seconds for 1000 screenshots, incremental updates in <100ms
+                *   **Performance Test:** Layout state persists across app sessions, localized updates for single node changes
+                *   **Files:** `Models/KnowledgeGraph.swift`, `Services/GraphConstructionService.swift`, `Services/LayoutCacheService.swift`
+
+            *   **6.1.4: Data Consistency & Edge Case Management**
+                *   **Deliverable:** Robust system for handling mind map data changes and edge cases
+                *   **Tasks:**
+                    *   Implement screenshot deletion handler with automatic relationship cleanup
+                    *   Create AI re-analysis system with incremental relationship updates
+                    *   Add user annotation change tracking with minimal layout impact
+                    *   Build conflict resolution for concurrent user/AI modifications
+                    *   Implement data corruption recovery and automatic layout restoration
+                    *   Create change propagation system for localized mind map updates
+                    *   Add versioning system for tracking data changes and enabling undo functionality
+                *   **Integration Test:** Screenshot deletion removes node and adjusts connected relationships without full recalculation
+                *   **Functional Test:** AI analysis updates only affect changed relationships, user edits preserved during AI updates
+                *   **Edge Case Test:** Concurrent modifications resolved correctly, layout corruption auto-recovers
+                *   **Files:** `Services/DataConsistencyManager.swift`, `Services/ChangeTrackingService.swift`, `Models/DataVersion.swift`
 
     *   **Sub-Sprint 6.2: 3D Mind Map Visualization** (Week 2)
         *   **Goal:** Create immersive 3D visualization for exploring screenshot relationships
         *   **Atomic Units:**
             *   **6.2.1: 3D Force-Directed Layout Engine**
-                *   **Deliverable:** Physics-based layout algorithm for 3D node positioning
+                *   **Deliverable:** Physics-based layout algorithm for 3D node positioning with intelligent caching
                 *   **Tasks:**
-                    *   Implement force-directed algorithm with attraction/repulsion forces
-                    *   Add collision detection and boundary constraints
-                    *   Create dynamic layout optimization with spring models
-                    *   Build level-of-detail (LOD) system for performance
-                *   **Integration Test:** 50 nodes stabilize in 3D space within 2 seconds
-                *   **Functional Test:** Layout algorithm maintains 60fps with 200+ nodes on target devices
-                *   **Files:** `Services/3D/ForceDirectedLayoutEngine.swift`, `Models/3DNode.swift`
+                    *   Implement force-directed algorithm with attraction/repulsion forces and layout caching
+                    *   Add collision detection and boundary constraints with position persistence
+                    *   Create dynamic layout optimization with spring models and incremental updates
+                    *   Build level-of-detail (LOD) system for performance with viewport culling
+                    *   Implement change detection to avoid unnecessary recalculation
+                    *   Add localized recalculation algorithms for data changes affecting specific nodes
+                    *   Create layout state versioning for conflict resolution and undo functionality
+                *   **Integration Test:** 50 nodes stabilize in 3D space within 2 seconds, positions cached and restored
+                *   **Functional Test:** Layout algorithm maintains 60fps with 200+ nodes, incremental updates <100ms
+                *   **Performance Test:** Only affected nodes recalculated when single screenshot added/removed
+                *   **Files:** `Services/3D/ForceDirectedLayoutEngine.swift`, `Models/3DNode.swift`, `Services/LayoutCacheManager.swift`
 
             *   **6.2.2: SwiftUI 3D Rendering Pipeline**
                 *   **Deliverable:** Hardware-accelerated 3D mind map view with gesture controls
@@ -717,15 +740,19 @@ Each sprint must meet the following criteria before proceeding:
         *   **Goal:** Optimize mind map performance and polish user experience
         *   **Atomic Units:**
             *   **6.4.1: Performance Optimization & Memory Management**
-                *   **Deliverable:** Optimized mind map with efficient resource usage
+                *   **Deliverable:** Optimized mind map with efficient resource usage and intelligent caching
                 *   **Tasks:**
-                    *   Implement viewport culling and level-of-detail rendering
-                    *   Add progressive loading for large datasets
-                    *   Create memory-efficient texture management for thumbnails
-                    *   Build background processing for relationship analysis
-                *   **Integration Test:** Mind map loads and renders 1000+ nodes without memory warnings
-                *   **Functional Test:** Memory usage <200MB, consistent 60fps performance
-                *   **Files:** `Services/3D/PerformanceOptimizer.swift`, `Services/MemoryManager.swift`
+                    *   Implement viewport culling and level-of-detail rendering with cached positions
+                    *   Add progressive loading for large datasets with layout state persistence
+                    *   Create memory-efficient texture management for thumbnails with automatic cleanup
+                    *   Build background processing for relationship analysis with incremental updates
+                    *   Implement layout caching system with automatic invalidation on data changes
+                    *   Create change tracking system to minimize unnecessary recalculations
+                    *   Add performance monitoring for layout operations and cache hit rates
+                *   **Integration Test:** Mind map loads and renders 1000+ nodes without memory warnings, cached positions restore instantly
+                *   **Functional Test:** Memory usage <200MB, consistent 60fps performance, layout caching 90%+ hit rate
+                *   **Performance Test:** Incremental updates complete in <100ms, cache invalidation selective and efficient
+                *   **Files:** `Services/3D/PerformanceOptimizer.swift`, `Services/MemoryManager.swift`, `Services/LayoutCacheManager.swift`
 
             *   **6.4.2: Navigation & Accessibility**
                 *   **Deliverable:** Intuitive navigation with full accessibility support
@@ -757,6 +784,13 @@ Each sprint must meet the following criteria before proceeding:
         *   Gestures: Complex multi-touch interactions with haptic feedback
         *   Performance: Efficient graph algorithms with dynamic LOD (Level of Detail)
         *   ML Pipeline: On-device processing with incremental learning capabilities
+        *   **Mind Map Performance & Data Consistency:**
+            *   **Layout Caching:** Mind map positions cached in SwiftData with automatic persistence
+            *   **Incremental Updates:** Graph algorithms designed for localized recalculation when data changes
+            *   **Change Detection:** Efficient diffing system to identify which nodes/relationships need recalculation
+            *   **Data Versioning:** Track AI analysis versions and user edit timestamps for conflict resolution
+            *   **Edge Case Handling:** Robust systems for screenshot deletion, annotation changes, and AI re-analysis
+            *   **Performance Targets:** <100ms for single node updates, <500ms for localized region updates
 
     *   **Overall Sprint Definition of Done:**
         *   ✅ Semantic relationship discovery with 90% accuracy for obvious connections
@@ -767,6 +801,15 @@ Each sprint must meet the following criteria before proceeding:
         *   ✅ Memory usage <200MB with progressive loading
         *   ✅ Full accessibility support with VoiceOver compatibility
         *   ✅ Export functionality with PDF and interactive sharing options
+        *   **✅ Performance & Data Consistency Requirements:**
+            *   Layout positions cached and persisted across app sessions (<200ms load time)
+            *   Incremental updates for single node changes completed in <100ms
+            *   Localized recalculation for affected regions in <500ms (up to 20 connected nodes)
+            *   Screenshot deletion handled with automatic relationship cleanup (no orphaned connections)
+            *   AI re-analysis updates processed incrementally without full mind map regeneration
+            *   User annotation changes tracked with minimal layout impact
+            *   Concurrent modification conflicts resolved automatically
+            *   Data corruption detection and automatic recovery implemented
     *   **UX Focus:** Immersive 3D mind map with Apple Glass UX principles, featuring translucent materials, physics-based animations, adaptive layouts, and premium haptic feedback throughout the conversational AI interaction.
     *   **Glass UX Integration:** Bottom Glass search bar drives all mind map discovery through conversational queries, with state-aware visual effects synchronized to user voice input and seamless transitions between 2D search results and 3D relationship visualization.
     *   **Definition of Done:** AI-powered mind map with Glass design language, conversational search integration, and smooth 3D interactions maintaining Apple's premium interaction standards
