@@ -23,6 +23,7 @@ struct ContentView: View {
     @State private var showingSearchSuggestions = false
     @State private var searchTask: Task<Void, Never>?
     @State private var showingVoiceInput = false
+    @State private var showingConversationalSearch = false
     
     private var filteredScreenshots: [Screenshot] {
         if searchText.isEmpty {
@@ -149,6 +150,14 @@ struct ContentView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    // Conversational AI Search
+                    Button(action: {
+                        showingConversationalSearch = true
+                    }) {
+                        Image(systemName: "sparkles.rectangle.stack")
+                            .foregroundColor(.blue)
+                    }
+                    
                     // Temporary: Entity Extraction Demo button for testing
                     if #available(iOS 17.0, *) {
                         NavigationLink(destination: EntityExtractionDemo()) {
@@ -251,6 +260,13 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingSettings) {
                 SettingsView(photoLibraryService: photoLibraryService)
+            }
+            .sheet(isPresented: $showingConversationalSearch) {
+                ConversationalSearchView(
+                    searchText: $searchText,
+                    isPresented: $showingConversationalSearch,
+                    onSearchSubmitted: processConversationalSearchResult
+                )
             }
             .fullScreenCover(isPresented: $showingVoiceInput) {
                 VoiceInputView(
@@ -472,6 +488,26 @@ struct ContentView: View {
         impact.impactOccurred()
         
         print("🎤 Voice search processed: '\(optimizedQuery)'")
+    }
+    
+    /// Process conversational search result with enhanced feedback
+    private func processConversationalSearchResult(_ optimizedQuery: String) {
+        // Update search text to trigger existing search pipeline
+        searchText = optimizedQuery
+        
+        // Provide immediate visual feedback
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            isSearchActive = !optimizedQuery.isEmpty
+        }
+        
+        // Add haptic feedback for successful conversational search
+        let impact = UIImpactFeedbackGenerator(style: .light)
+        impact.impactOccurred()
+        
+        // Close the conversational search view
+        showingConversationalSearch = false
+        
+        print("✨ Conversational search processed: '\(optimizedQuery)'")
     }
 }
 

@@ -381,37 +381,96 @@ struct SearchScreenshotsIntent: AppIntent {
     private func generateDialogText(for results: [ScreenshotEntity]) -> String {
         let count = results.count
         
+        // Analyze search query for more contextual responses
+        let queryLower = searchQuery.lowercased()
+        let hasTimeReference = queryLower.contains("yesterday") || queryLower.contains("today") || queryLower.contains("week")
+        let hasColorReference = queryLower.contains("blue") || queryLower.contains("red") || queryLower.contains("green")
+        let hasBusinessReference = queryLower.contains("receipt") || queryLower.contains("bill") || queryLower.contains("invoice")
+        
         switch count {
         case 0:
-            return "I couldn't find any screenshots matching '\(searchQuery)'. Try a different search term or open Screenshot Vault to see all your screenshots."
+            var suggestions: [String] = []
+            if hasTimeReference {
+                suggestions.append("try expanding your time range")
+            }
+            if hasColorReference {
+                suggestions.append("try searching for similar colors")
+            }
+            if hasBusinessReference {
+                suggestions.append("try searching for 'documents' or 'business'")
+            }
+            
+            let suggestionText = suggestions.isEmpty ? "Try a different search term" : suggestions.joined(separator: " or ")
+            return "I couldn't find any screenshots matching '\(searchQuery)'. \(suggestionText), or open Screenshot Vault to browse all your screenshots."
             
         case 1:
+            let result = results.first!
+            if let text = result.extractedText, !text.isEmpty {
+                let preview = String(text.prefix(30)) + (text.count > 30 ? "..." : "")
+                return "I found 1 screenshot matching '\(searchQuery)' containing '\(preview)'. Opening Screenshot Vault to show the result."
+            }
             return "I found 1 screenshot matching '\(searchQuery)'. Opening Screenshot Vault to show the result."
             
         case 2...5:
-            return "I found \(count) screenshots matching '\(searchQuery)'. Opening Screenshot Vault to show the results."
+            let timeInfo = generateTimeContextInfo(for: results)
+            return "I found \(count) screenshots matching '\(searchQuery)'\(timeInfo). Opening Screenshot Vault to show all results."
             
         case 6...10:
-            return "I found \(count) screenshots matching '\(searchQuery)'. Opening Screenshot Vault to show the most recent ones."
+            let timeInfo = generateTimeContextInfo(for: results)
+            return "I found \(count) screenshots matching '\(searchQuery)'\(timeInfo). Opening Screenshot Vault to show the most relevant ones."
             
         default:
-            return "I found many screenshots matching '\(searchQuery)'. Opening Screenshot Vault to show the 10 most recent ones."
+            let timeInfo = generateTimeContextInfo(for: results)
+            return "I found \(count) screenshots matching '\(searchQuery)'\(timeInfo). Opening Screenshot Vault to show the 10 most relevant ones."
         }
+    }
+    
+    private func generateTimeContextInfo(for results: [ScreenshotEntity]) -> String {
+        guard !results.isEmpty else { return "" }
+        
+        let now = Date()
+        let calendar = Calendar.current
+        
+        // Analyze temporal distribution
+        let recent = results.filter { calendar.isDateInToday($0.timestamp) || calendar.isDateInYesterday($0.timestamp) }
+        let thisWeek = results.filter { calendar.isDate($0.timestamp, equalTo: now, toGranularity: .weekOfYear) }
+        
+        if !recent.isEmpty {
+            return ", including \(recent.count) from the last day"
+        } else if !thisWeek.isEmpty {
+            return ", including \(thisWeek.count) from this week"
+        } else {
+            // Find the most recent
+            let mostRecent = results.max(by: { $0.timestamp < $1.timestamp })
+            if let recent = mostRecent {
+                let formatter = RelativeDateTimeFormatter()
+                formatter.unitsStyle = .abbreviated
+                let timeString = formatter.localizedString(for: recent.timestamp, relativeTo: now)
+                return ", most recent from \(timeString)"
+            }
+        }
+        
+        return ""
     }
     
     private func generateErrorDialog(for error: Error) -> String {
         if error is SearchError {
             switch error as! SearchError {
             case .emptyQuery:
-                return "Please provide a search term to look for in your screenshots."
+                return "Please tell me what you'd like to search for in your screenshots. For example, you can say 'search for receipts' or 'find blue dress photos'."
             case .noPermission:
-                return "I need permission to access your screenshots. Please open Screenshot Vault to grant access."
+                return "I need permission to access your screenshots. Please open Screenshot Vault and grant photo library access to use this feature."
             case .dataUnavailable:
-                return "Your screenshots aren't available right now. Please try again later."
+                return "Your screenshots aren't available right now. This might be due to a sync issue or low storage. Please open Screenshot Vault to check your collection."
             }
         }
         
-        return "I couldn't search your screenshots right now. Please open Screenshot Vault and try again."
+        // Provide helpful guidance for common issues
+        if error.localizedDescription.contains("network") {
+            return "I couldn't search your screenshots due to a connection issue. Your screenshots are stored locally, so please open Screenshot Vault directly."
+        }
+        
+        return "I encountered an issue while searching your screenshots. Please open Screenshot Vault and try your search there."
     }
 }
 

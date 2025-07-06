@@ -9,16 +9,31 @@ struct VoiceInputView: View {
     @Binding var isPresented: Bool
     let onSearchSubmitted: (String) -> Void
     
-    @StateObject private var voiceService = VoiceSearchService()
+    // Speech recognition properties
+    @State private var speechRecognizer = SFSpeechRecognizer()
+    @State private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    @State private var recognitionTask: SFSpeechRecognitionTask?
+    @State private var audioEngine = AVAudioEngine()
+    
+    @State private var isListening = false
+    @State private var transcribedText = ""
     @State private var isInitialized = false
     @State private var showError = false
+    @State private var errorMessage = ""
     @State private var animationOffset: CGFloat = 0
     @State private var pulseScale: CGFloat = 1.0
+    @State private var audioLevel: Float = 0.0
     
     // Visual feedback states
     @State private var wavePhase: CGFloat = 0
     @State private var showTranscription = false
     @State private var manualText = ""
+    @State private var hasPermissions = false
+    
+    // Computed properties
+    private var isSpeechRecognitionAvailable: Bool {
+        speechRecognizer?.isAvailable == true
+    }
     
     var body: some View {
         ZStack {
@@ -32,7 +47,7 @@ struct VoiceInputView: View {
                 // Main content area
                 VStack(spacing: 20) {
                     // Audio visualization (only show if speech recognition is available)
-                    if voiceService.isSpeechRecognitionAvailable() {
+                    if isSpeechRecognitionAvailable {
                         audioVisualizationView
                     }
                     
@@ -40,7 +55,7 @@ struct VoiceInputView: View {
                     transcriptionView
                     
                     // Manual input fallback (when speech recognition not available)
-                    if !voiceService.isSpeechRecognitionAvailable() {
+                    if !isSpeechRecognitionAvailable {
                         manualInputView
                     }
                     
@@ -54,21 +69,19 @@ struct VoiceInputView: View {
             .padding(.top, 60)
         }
         .onAppear {
-            initializeVoiceService()
+            requestPermissions()
         }
         .onDisappear {
-            Task {
-                await voiceService.stopListening()
-            }
+            stopListening()
         }
         .alert("Voice Input Error", isPresented: $showError) {
             Button("OK") {
                 isPresented = false
             }
         } message: {
-            Text(voiceService.errorMessage ?? "Unknown error occurred")
+            Text(errorMessage.isEmpty ? "Unknown error occurred" : errorMessage)
         }
-        .animation(.easeInOut(duration: 0.3), value: voiceService.isListening)
+        .animation(.easeInOut(duration: 0.3), value: isListening)
         .animation(.easeInOut(duration: 0.5), value: showTranscription)
     }
     
@@ -127,22 +140,22 @@ struct VoiceInputView: View {
                         lineWidth: 2
                     )
                     .scaleEffect(scale)
-                    .opacity(voiceService.isListening ? 1 : 0)
+                    .opacity(isListening ? 1 : 0)
             }
             
             // Main microphone button
             microphoneButton
             
             // Audio level indicator
-            if voiceService.isListening {
+            if isListening {
                 audioLevelIndicator
             }
         }
         .frame(width: 200, height: 200)
         .onReceive(Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()) { _ in
-            if voiceService.isListening {
+            if isListening {
                 withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                    pulseScale = 1.0 + CGFloat(voiceService.audioLevel) * 0.5
+                    pulseScale = 1.0 + CGFloat(audioLevel) * 0.5
                 }
             }
         }
@@ -152,17 +165,17 @@ struct VoiceInputView: View {
         Button(action: toggleListening) {
             ZStack {
                 Circle()
-                    .fill(voiceService.isListening ? Color.red : Color.white.opacity(0.2))
+                    .fill(isListening ? Color.red : Color.white.opacity(0.2))
                     .frame(width: 120, height: 120)
                 
-                Image(systemName: voiceService.isListening ? "mic.fill" : "mic")
+                Image(systemName: isListening ? "mic.fill" : "mic")
                     .font(.system(size: 40, weight: .medium))
                     .foregroundColor(.white)
             }
         }
-        .scaleEffect(voiceService.isListening ? 1.1 : 1.0)
-        .disabled(!isInitialized || !voiceService.isSpeechRecognitionAvailable())
-        .opacity((!isInitialized || !voiceService.isSpeechRecognitionAvailable()) ? 0.5 : 1.0)
+        .scaleEffect(isListening ? 1.1 : 1.0)
+        .disabled(!isInitialized || !isSpeechRecognitionAvailable)
+        .opacity((!isInitialized || !isSpeechRecognitionAvailable) ? 0.5 : 1.0)
     }
     
     private var audioLevelIndicator: some View {
@@ -170,7 +183,7 @@ struct VoiceInputView: View {
             ForEach(0..<5, id: \.self) { index in
                 let barHeight = CGFloat(20 + index * 10)
                 let threshold = Float(index) * 0.2
-                let scaleY: CGFloat = voiceService.audioLevel > threshold ? 1.0 : 0.3
+                let scaleY: CGFloat = audioLevel > threshold ? 1.0 : 0.3
                 
                 RoundedRectangle(cornerRadius: 2)
                     .fill(Color.white)
@@ -178,7 +191,7 @@ struct VoiceInputView: View {
                     .scaleEffect(y: scaleY)
                     .animation(
                         .easeInOut(duration: 0.1),
-                        value: voiceService.audioLevel
+                        value: audioLevel
                     )
             }
         }
@@ -188,13 +201,13 @@ struct VoiceInputView: View {
     // MARK: - Transcription
     private var transcriptionView: some View {
         VStack(spacing: 10) {
-            if !voiceService.transcribedText.isEmpty {
+            if !transcribedText.isEmpty {
                 Text("Transcription:")
                     .font(.headline)
                     .foregroundColor(.white.opacity(0.8))
                 
                 ScrollView {
-                    Text(voiceService.transcribedText)
+                    Text(transcribedText)
                         .font(.body)
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
@@ -205,7 +218,7 @@ struct VoiceInputView: View {
                         )
                 }
                 .frame(maxHeight: 120)
-            } else if voiceService.isListening {
+            } else if isListening {
                 Text("Speak now...")
                     .font(.body)
                     .foregroundColor(.white.opacity(0.6))
@@ -213,7 +226,7 @@ struct VoiceInputView: View {
             }
         }
         .opacity(showTranscription ? 1 : 0)
-        .onChange(of: voiceService.transcribedText) { _, newValue in
+        .onChange(of: transcribedText) { _, newValue in
             showTranscription = !newValue.isEmpty
         }
     }
@@ -256,7 +269,7 @@ struct VoiceInputView: View {
     private var controlButtonsView: some View {
         HStack(spacing: 30) {
             // Clear button
-            if !voiceService.transcribedText.isEmpty || !manualText.isEmpty {
+            if !transcribedText.isEmpty || !manualText.isEmpty {
                 Button(action: clearAll) {
                     VStack {
                         Image(systemName: "trash")
@@ -269,7 +282,7 @@ struct VoiceInputView: View {
             }
             
             // Search button
-            if !voiceService.transcribedText.isEmpty || !manualText.isEmpty {
+            if !transcribedText.isEmpty || !manualText.isEmpty {
                 Button(action: performBestSearch) {
                     VStack {
                         Image(systemName: "magnifyingglass")
@@ -289,12 +302,38 @@ struct VoiceInputView: View {
     }
     
     // MARK: - Methods
-    private func initializeVoiceService() {
-        Task {
-            let success = await voiceService.requestPermissions()
-            await MainActor.run {
-                isInitialized = success
-                if !success {
+    
+    private func requestPermissions() {
+        SFSpeechRecognizer.requestAuthorization { status in
+            DispatchQueue.main.async {
+                if status == .authorized {
+                    if #available(iOS 17.0, *) {
+                        AVAudioApplication.requestRecordPermission { granted in
+                            DispatchQueue.main.async {
+                                hasPermissions = granted
+                                isInitialized = granted
+                                if !granted {
+                                    errorMessage = "Microphone access is required for voice search"
+                                    showError = true
+                                }
+                            }
+                        }
+                    } else {
+                        AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                            DispatchQueue.main.async {
+                                hasPermissions = granted
+                                isInitialized = granted
+                                if !granted {
+                                    errorMessage = "Microphone access is required for voice search"
+                                    showError = true
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    hasPermissions = false
+                    isInitialized = false
+                    errorMessage = "Speech recognition permission is required"
                     showError = true
                 }
             }
@@ -302,43 +341,118 @@ struct VoiceInputView: View {
     }
     
     private func toggleListening() {
-        // Check if speech recognition is available
-        guard voiceService.isSpeechRecognitionAvailable() else {
-            voiceService.setErrorMessage("Speech recognition is not available in the simulator. Please test on a physical device.")
+        guard isSpeechRecognitionAvailable else {
+            errorMessage = "Speech recognition is not available in the simulator. Please test on a physical device."
             showError = true
             return
         }
         
-        Task {
-            if voiceService.isListening {
-                await voiceService.stopListening()
-            } else {
-                do {
-                    try await voiceService.startListening()
-                } catch {
-                    await MainActor.run {
-                        showError = true
-                    }
+        if isListening {
+            stopListening()
+        } else {
+            startListening()
+        }
+    }
+    
+    private func startListening() {
+        guard hasPermissions else {
+            errorMessage = "Please grant microphone permissions"
+            showError = true
+            return
+        }
+        
+        // Cancel any existing task
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        
+        // Configure audio session
+        let audioSession = AVAudioSession.sharedInstance()
+        do {
+            try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            errorMessage = "Failed to setup audio session: \(error.localizedDescription)"
+            showError = true
+            return
+        }
+        
+        // Create recognition request
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        guard let recognitionRequest = recognitionRequest else { return }
+        
+        recognitionRequest.shouldReportPartialResults = true
+        
+        // Setup audio engine
+        let inputNode = audioEngine.inputNode
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
+        
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
+            recognitionRequest.append(buffer)
+            
+            // Calculate audio level for visualization
+            let channelData = buffer.floatChannelData?[0]
+            let channelDataValueArray = stride(from: 0, to: Int(buffer.frameLength), by: buffer.stride).map { channelData?[$0] ?? 0 }
+            let rms = sqrt(channelDataValueArray.map { $0 * $0 }.reduce(0, +) / Float(channelDataValueArray.count))
+            
+            DispatchQueue.main.async {
+                audioLevel = min(rms * 10, 1.0) // Normalize and cap at 1.0
+            }
+        }
+        
+        audioEngine.prepare()
+        
+        do {
+            try audioEngine.start()
+        } catch {
+            errorMessage = "Failed to start audio engine: \(error.localizedDescription)"
+            showError = true
+            return
+        }
+        
+        // Start recognition
+        guard let speechRecognizer = speechRecognizer else { return }
+        
+        recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { result, error in
+            DispatchQueue.main.async {
+                if let result = result {
+                    transcribedText = result.bestTranscription.formattedString
+                }
+                
+                if error != nil || result?.isFinal == true {
+                    stopListening()
                 }
             }
         }
+        
+        isListening = true
     }
     
-    private func clearTranscription() {
-        voiceService.clearTranscription()
+    private func stopListening() {
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
+        
+        recognitionRequest = nil
+        recognitionTask = nil
+        
+        isListening = false
+        audioLevel = 0.0
+        
+        // Reset audio session
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("Failed to deactivate audio session: \(error)")
+        }
+    }
+    
+    private func clearAll() {
+        transcribedText = ""
+        manualText = ""
         showTranscription = false
-        Task {
-            await voiceService.stopListening()
-        }
-    }
-    
-    private func performSearch() {
-        let finalTranscription = voiceService.getFinalTranscription()
-        if !finalTranscription.isEmpty {
-            searchText = finalTranscription
-            onSearchSubmitted(finalTranscription)
-        }
-        isPresented = false
+        stopListening()
     }
     
     private func performManualSearch() {
@@ -350,29 +464,19 @@ struct VoiceInputView: View {
     }
     
     private func finishVoiceInput() {
-        if !voiceService.transcribedText.isEmpty {
-            performSearch()
+        if !transcribedText.isEmpty {
+            searchText = transcribedText
+            onSearchSubmitted(transcribedText)
         } else if !manualText.isEmpty {
             performManualSearch()
-        } else {
-            isPresented = false
         }
-    }
-    
-    private func clearAll() {
-        voiceService.clearTranscription()
-        manualText = ""
-        showTranscription = false
-        Task {
-            await voiceService.stopListening()
-        }
+        isPresented = false
     }
     
     private func performBestSearch() {
-        let finalTranscription = voiceService.getFinalTranscription()
-        if !finalTranscription.isEmpty {
-            searchText = finalTranscription
-            onSearchSubmitted(finalTranscription)
+        if !transcribedText.isEmpty {
+            searchText = transcribedText
+            onSearchSubmitted(transcribedText)
         } else if !manualText.isEmpty {
             searchText = manualText
             onSearchSubmitted(manualText)
@@ -385,9 +489,9 @@ struct VoiceInputView: View {
     private func getStatusText() -> String {
         if !isInitialized {
             return "Initializing..."
-        } else if !voiceService.isSpeechRecognitionAvailable() {
+        } else if !isSpeechRecognitionAvailable {
             return "Speech recognition not available in simulator.\nPlease test on a physical device."
-        } else if voiceService.isListening {
+        } else if isListening {
             return "Listening..."
         } else {
             return "Tap to speak"
