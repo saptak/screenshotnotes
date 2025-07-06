@@ -151,7 +151,18 @@ extension EnhancedVisionService {
     /// Perform advanced object detection using Vision framework
     private func performObjectDetection(cgImage: CGImage) async -> [DetectedObject] {
         return await withCheckedContinuation { continuation in
+            var hasResumed = false
+            
             let request = VNDetectHumanRectanglesRequest { request, error in
+                guard !hasResumed else { return }
+                hasResumed = true
+                
+                if let error = error {
+                    print("Object detection error: \(error)")
+                    continuation.resume(returning: [])
+                    return
+                }
+                
                 guard let results = request.results as? [VNHumanObservation] else {
                     continuation.resume(returning: [])
                     return
@@ -173,7 +184,10 @@ extension EnhancedVisionService {
             do {
                 try handler.perform([request])
             } catch {
-                continuation.resume(returning: [])
+                if !hasResumed {
+                    hasResumed = true
+                    continuation.resume(returning: [])
+                }
             }
         }
     }
@@ -227,9 +241,19 @@ extension EnhancedVisionService {
     /// Perform intelligent scene classification
     private func performSceneClassification(cgImage: CGImage) async -> SceneClassification {
         return await withCheckedContinuation { continuation in
+            var hasResumed = false
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             
             let request = VNClassifyImageRequest { request, error in
+                guard !hasResumed else { return }
+                hasResumed = true
+                
+                if let error = error {
+                    print("Scene classification error: \(error)")
+                    continuation.resume(returning: self.defaultSceneClassification())
+                    return
+                }
+                
                 guard let results = request.results as? [VNClassificationObservation] else {
                     continuation.resume(returning: self.defaultSceneClassification())
                     return
@@ -258,7 +282,10 @@ extension EnhancedVisionService {
             do {
                 try handler.perform([request])
             } catch {
-                continuation.resume(returning: self.defaultSceneClassification())
+                if !hasResumed {
+                    hasResumed = true
+                    continuation.resume(returning: self.defaultSceneClassification())
+                }
             }
         }
     }
@@ -356,9 +383,28 @@ extension EnhancedVisionService {
     /// Analyze image composition and layout
     private func performCompositionAnalysis(cgImage: CGImage) async -> CompositionAnalysis {
         return await withCheckedContinuation { continuation in
+            var hasResumed = false
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             
             let request = VNDetectTextRectanglesRequest { request, error in
+                guard !hasResumed else { return }
+                hasResumed = true
+                
+                if let error = error {
+                    print("Composition analysis error: \(error)")
+                    // Fallback composition analysis without text detection
+                    let fallbackComposition = CompositionAnalysis(
+                        layout: .unknown,
+                        textDensity: 0.0,
+                        complexity: 0.5,
+                        symmetry: 0.5,
+                        balance: 0.5,
+                        textRegions: []
+                    )
+                    continuation.resume(returning: fallbackComposition)
+                    return
+                }
+                
                 let textRegions = self.extractTextRegions(from: request.results)
                 let textDensity = self.calculateTextDensity(textRegions: textRegions, imageSize: CGSize(width: cgImage.width, height: cgImage.height))
                 
@@ -382,16 +428,19 @@ extension EnhancedVisionService {
             do {
                 try handler.perform([request])
             } catch {
-                // Fallback composition analysis without text detection
-                let fallbackComposition = CompositionAnalysis(
-                    layout: .unknown,
-                    textDensity: 0.0,
-                    complexity: 0.5,
-                    symmetry: 0.5,
-                    balance: 0.5,
-                    textRegions: []
-                )
-                continuation.resume(returning: fallbackComposition)
+                if !hasResumed {
+                    hasResumed = true
+                    // Fallback composition analysis without text detection
+                    let fallbackComposition = CompositionAnalysis(
+                        layout: .unknown,
+                        textDensity: 0.0,
+                        complexity: 0.5,
+                        symmetry: 0.5,
+                        balance: 0.5,
+                        textRegions: []
+                    )
+                    continuation.resume(returning: fallbackComposition)
+                }
             }
         }
     }

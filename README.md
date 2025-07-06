@@ -2,7 +2,7 @@
 
 ScreenshotNotes is an intelligent iOS app for organizing, searching, and managing screenshot collections using OCR and smart categorization.
 
-**Project Health**: 100% stability | 65% complete (5.2/8 sprints) | WCAG AA accessible
+**Project Health**: 100% stability | 70% complete (5.3/8 sprints) | WCAG AA accessible
 
 ## 🚀 Project Status
 
@@ -78,7 +78,7 @@ ScreenshotNotes is an intelligent iOS app for organizing, searching, and managin
 - Gesture performance testing and validation framework
 
 ### ⏳ Current: Sprint 5 - Conversational AI Search & Intelligence
-**Status**: Sub-Sprint 5.1.4 Complete ✅ | Phase 5.2+ Available ⏳
+**Status**: Sub-Sprint 5.3.1 Complete ✅ | Phase 5.3.2+ Available ⏳
 
 ##### ✅ Sub-Sprint 5.1.1: Core ML Setup & Query Parser Foundation (COMPLETED)
 - Natural language query parsing with SimpleQueryParser and NLLanguageRecognizer
@@ -114,6 +114,18 @@ ScreenshotNotes is an intelligent iOS app for organizing, searching, and managin
 - **UI Integration**: Smart suggestions with performance metrics display
 - **Performance**: <2s timeout, comprehensive caching, thread-safe operations
 - **Implementation**: `Services/AI/SearchRobustnessService.swift`, `FuzzyMatchingService.swift`, `SynonymExpansionService.swift`
+
+##### ✅ Sub-Sprint 5.3.1: Speech Recognition & Voice Input (COMPLETED)
+**Achievement**: Complete voice-powered search with iOS Speech Framework integration
+- **VoiceSearchService**: Full Speech Framework integration with iOS 17+ compatibility
+- **Speech Recognition**: Continuous speech recognition with live transcription
+- **Voice Input UI**: Complete SwiftUI interface with audio visualization and controls
+- **Simulator Compatibility**: Manual text input fallback for development/testing
+- **Privacy Compliance**: Proper microphone and speech recognition permission handling
+- **Error Handling**: Comprehensive error handling with graceful fallbacks
+- **Swift 6 Ready**: Full compatibility with Swift 6 language mode
+- **Performance**: Real-time transcription with audio level monitoring
+- **Implementation**: `Services/AI/VoiceSearchService.swift`, `Views/VoiceInputView.swift`
 
 ### 🔮 Upcoming Sprints
 - **Sprint 6**: The Connected Brain - Intelligent Mind Map

@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var enhancedSearchResult: EnhancedSearchResult?
     @State private var showingSearchSuggestions = false
     @State private var searchTask: Task<Void, Never>?
+    @State private var showingVoiceInput = false
     
     private var filteredScreenshots: [Screenshot] {
         if searchText.isEmpty {
@@ -174,7 +175,21 @@ struct ContentView: View {
                     .opacity(isImporting ? 0.5 : 1.0)
                 }
             }
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search screenshots...")
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search screenshots...") {
+                // Voice search button in search suggestions
+                if #available(iOS 17.0, *) {
+                    Button(action: {
+                        showingVoiceInput = true
+                    }) {
+                        HStack {
+                            Image(systemName: "mic.fill")
+                                .foregroundColor(.blue)
+                            Text("Voice Search")
+                                .foregroundColor(.primary)
+                        }
+                    }
+                }
+            }
             .onChange(of: searchText) { _, newValue in
                 withAnimation(.spring(response: 0.2, dampingFraction: 1.0)) {
                     isSearchActive = !newValue.isEmpty
@@ -236,6 +251,13 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingSettings) {
                 SettingsView(photoLibraryService: photoLibraryService)
+            }
+            .fullScreenCover(isPresented: $showingVoiceInput) {
+                VoiceInputView(
+                    searchText: $searchText,
+                    isPresented: $showingVoiceInput,
+                    onSearchSubmitted: processVoiceSearchResult
+                )
             }
             .onAppear {
                 photoLibraryService.setModelContext(modelContext)
@@ -431,6 +453,25 @@ struct ContentView: View {
         
         // If no quoted text found, return the original suggestion
         return suggestion
+    }
+    
+    // MARK: - Voice Search Integration
+    
+    /// Process voice search result and trigger appropriate search actions
+    private func processVoiceSearchResult(_ optimizedQuery: String) {
+        // Update search text to trigger existing search pipeline
+        searchText = optimizedQuery
+        
+        // Provide immediate visual feedback
+        withAnimation(.spring(response: 0.2, dampingFraction: 1.0)) {
+            isSearchActive = !optimizedQuery.isEmpty
+        }
+        
+        // Add haptic feedback for successful voice search
+        let impact = UIImpactFeedbackGenerator(style: .medium)
+        impact.impactOccurred()
+        
+        print("🎤 Voice search processed: '\(optimizedQuery)'")
     }
 }
 
