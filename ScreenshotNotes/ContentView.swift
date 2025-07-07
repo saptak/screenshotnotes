@@ -9,6 +9,8 @@ struct ContentView: View {
     @StateObject private var photoLibraryService = PhotoLibraryService()
     @StateObject private var queryParser = QueryParserService()
     @StateObject private var backgroundVisionProcessor = BackgroundVisionProcessor()
+    @StateObject private var backgroundSemanticProcessor = BackgroundSemanticProcessor()
+    @EnvironmentObject private var backgroundOCRProcessor: BackgroundOCRProcessor
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var showingImportSheet = false
     @State private var showingSettings = false
@@ -106,19 +108,28 @@ struct ContentView: View {
                         showingImportSheet = true
                     },
                     photoLibraryService: photoLibraryService,
-                    isRefreshing: $isRefreshing
+                    isRefreshing: $isRefreshing,
+                    backgroundOCRProcessor: backgroundOCRProcessor,
+                    backgroundSemanticProcessor: backgroundSemanticProcessor,
+                    modelContext: modelContext
                 )
             } else if isSearchActive {
                 ScreenshotGridView(
                     screenshots: filteredScreenshots,
                     photoLibraryService: photoLibraryService,
-                    isRefreshing: $isRefreshing
+                    isRefreshing: $isRefreshing,
+                    backgroundOCRProcessor: backgroundOCRProcessor,
+                    backgroundSemanticProcessor: backgroundSemanticProcessor,
+                    modelContext: modelContext
                 )
             } else {
                 ScreenshotGridView(
                     screenshots: screenshots,
                     photoLibraryService: photoLibraryService,
-                    isRefreshing: $isRefreshing
+                    isRefreshing: $isRefreshing,
+                    backgroundOCRProcessor: backgroundOCRProcessor,
+                    backgroundSemanticProcessor: backgroundSemanticProcessor,
+                    modelContext: modelContext
                 )
             }
         }
@@ -347,6 +358,11 @@ struct ContentView: View {
                 
                 // Schedule periodic background processing
                 backgroundVisionProcessor.scheduleBackgroundVisionProcessing()
+                
+                // Initialize enhanced semantic processing (entity extraction + AI tagging)
+                Task {
+                    await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+                }
             }
             .onDisappear {
                 // 🔧 Sprint 5.2.4: Cleanup search task to prevent memory leaks
@@ -395,6 +411,14 @@ struct ContentView: View {
         
         try? modelContext.save()
         isImporting = false
+        
+        // Trigger OCR processing for newly imported screenshots
+        backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
+        
+        // Trigger semantic processing for newly imported screenshots
+        Task {
+            await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+        }
     }
     
     // MARK: - Entity-Based Search Helpers (Sub-Sprint 5.1.2)
@@ -593,6 +617,9 @@ struct EmptyStateView: View {
     let onImportTapped: () -> Void
     let photoLibraryService: PhotoLibraryService
     @Binding var isRefreshing: Bool
+    let backgroundOCRProcessor: BackgroundOCRProcessor
+    let backgroundSemanticProcessor: BackgroundSemanticProcessor
+    let modelContext: ModelContext
     
     var body: some View {
         ScrollView {
@@ -667,6 +694,16 @@ struct EmptyStateView: View {
         
         print("📸 Pull-to-refresh import completed: \(result.imported) imported, \(result.skipped) skipped")
         
+        // Trigger OCR processing for newly imported screenshots if any were imported
+        if result.imported > 0 {
+            backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
+            
+            // Trigger semantic processing for newly imported screenshots
+            Task {
+                await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+            }
+        }
+        
         isRefreshing = false
     }
 }
@@ -675,6 +712,9 @@ struct ScreenshotGridView: View {
     let screenshots: [Screenshot]
     let photoLibraryService: PhotoLibraryService
     @Binding var isRefreshing: Bool
+    let backgroundOCRProcessor: BackgroundOCRProcessor
+    let backgroundSemanticProcessor: BackgroundSemanticProcessor
+    let modelContext: ModelContext
     @State private var selectedScreenshot: Screenshot?
     @Namespace private var heroNamespace
     @StateObject private var performanceMonitor = GalleryPerformanceMonitor.shared
@@ -767,6 +807,16 @@ struct ScreenshotGridView: View {
         }
         
         print("📸 Pull-to-refresh import completed: \(result.imported) imported, \(result.skipped) skipped")
+        
+        // Trigger OCR processing for newly imported screenshots if any were imported
+        if result.imported > 0 {
+            backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
+            
+            // Trigger semantic processing for newly imported screenshots
+            Task {
+                await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+            }
+        }
         
         isRefreshing = false
     }
