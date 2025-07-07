@@ -10,6 +10,7 @@ protocol PhotoLibraryServiceProtocol {
     func requestPhotoLibraryPermission() async -> PHAuthorizationStatus
     func isAutomaticImportEnabled() -> Bool
     func setAutomaticImportEnabled(_ enabled: Bool)
+    func importAllPastScreenshots() async -> (imported: Int, skipped: Int)
 }
 
 @MainActor
@@ -132,6 +133,115 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
             print("📸 Stopping monitoring - enabled: \(enabled), authorized: \(authorizationStatus == .authorized)")
             stopMonitoring()
         }
+    }
+    
+    func importAllPastScreenshots() async -> (imported: Int, skipped: Int) {
+        guard authorizationStatus == .authorized else {
+            print("❌ Photo library access not authorized")
+            return (imported: 0, skipped: 0)
+        }
+        
+        guard let modelContext = modelContext else {
+            print("❌ Model context not available")
+            return (imported: 0, skipped: 0)
+        }
+        
+        print("📸 Starting manual import of all past screenshots...")
+        
+        // Fetch all screenshots from Photos app
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.predicate = NSPredicate(format: "mediaSubtype & %d != 0", PHAssetMediaSubtype.photoScreenshot.rawValue)
+        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        
+        let allScreenshots = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+        print("📸 Found \(allScreenshots.count) total screenshots in Photo Library")
+        
+        var importedCount = 0
+        var skippedCount = 0
+        
+        let imageManager = PHImageManager.default()
+        let requestOptions = PHImageRequestOptions()
+        requestOptions.isSynchronous = false
+        requestOptions.deliveryMode = .highQualityFormat
+        requestOptions.resizeMode = .exact
+        requestOptions.isNetworkAccessAllowed = true
+        
+        // Process screenshots in batches to avoid memory issues
+        let batchSize = 10
+        for i in stride(from: 0, to: allScreenshots.count, by: batchSize) {
+            let endIndex = min(i + batchSize, allScreenshots.count)
+            
+            for j in i..<endIndex {
+                let asset = allScreenshots.object(at: j)
+                
+                // Check if already imported
+                let assetId = asset.localIdentifier
+                let existingScreenshots = try? modelContext.fetch(
+                    FetchDescriptor<Screenshot>(
+                        predicate: #Predicate<Screenshot> { screenshot in
+                            screenshot.assetIdentifier == assetId
+                        }
+                    )
+                )
+                
+                if existingScreenshots?.isEmpty == false {
+                    skippedCount += 1
+                    continue // Already imported
+                }
+                
+                // Import the screenshot
+                await withCheckedContinuation { continuation in
+                    imageManager.requestImage(
+                        for: asset,
+                        targetSize: PHImageManagerMaximumSize,
+                        contentMode: .aspectFit,
+                        options: requestOptions
+                    ) { [weak self] image, _ in
+                        guard let image = image, let self = self else {
+                            continuation.resume()
+                            return
+                        }
+                        
+                        Task {
+                            do {
+                                let imageData = try await self.imageStorageService.saveImage(
+                                    image,
+                                    filename: "screenshot_\(asset.localIdentifier)"
+                                )
+                                
+                                let screenshot = Screenshot(
+                                    imageData: imageData,
+                                    filename: "screenshot_\(asset.creationDate?.timeIntervalSince1970 ?? Date().timeIntervalSince1970)",
+                                    timestamp: asset.creationDate ?? Date(),
+                                    assetIdentifier: asset.localIdentifier
+                                )
+                                
+                                await MainActor.run {
+                                    modelContext.insert(screenshot)
+                                    importedCount += 1
+                                    print("📸 Imported screenshot \(importedCount): \(asset.localIdentifier)")
+                                }
+                            } catch {
+                                print("❌ Failed to import screenshot: \(error)")
+                            }
+                            continuation.resume()
+                        }
+                    }
+                }
+            }
+            
+            // Save progress after each batch
+            try? modelContext.save()
+            
+            // Add small delay to prevent overwhelming the system
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        }
+        
+        // Final save
+        try? modelContext.save()
+        
+        print("📸 Manual import completed: \(importedCount) imported, \(skippedCount) skipped")
+        return (imported: importedCount, skipped: skippedCount)
     }
     
     private func importScreenshots(_ screenshots: [PHAsset]) async {

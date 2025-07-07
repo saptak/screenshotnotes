@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var enhancedSearchResult: EnhancedSearchResult?
     @State private var showingSearchSuggestions = false
     @State private var searchTask: Task<Void, Never>?
+    @State private var isRefreshing = false
     
     // 🎯 Sprint 5.4.1: Glass Search Bar State
     @StateObject private var searchOrchestrator: GlassConversationalSearchOrchestrator
@@ -100,13 +101,25 @@ struct ContentView: View {
     private var mainContentArea: some View {
         Group {
             if screenshots.isEmpty && !isImporting {
-                EmptyStateView(onImportTapped: {
-                    showingImportSheet = true
-                })
+                EmptyStateView(
+                    onImportTapped: {
+                        showingImportSheet = true
+                    },
+                    photoLibraryService: photoLibraryService,
+                    isRefreshing: $isRefreshing
+                )
             } else if isSearchActive {
-                ScreenshotGridView(screenshots: filteredScreenshots)
+                ScreenshotGridView(
+                    screenshots: filteredScreenshots,
+                    photoLibraryService: photoLibraryService,
+                    isRefreshing: $isRefreshing
+                )
             } else {
-                ScreenshotGridView(screenshots: screenshots)
+                ScreenshotGridView(
+                    screenshots: screenshots,
+                    photoLibraryService: photoLibraryService,
+                    isRefreshing: $isRefreshing
+                )
             }
         }
         .padding(.bottom, 100) // Space for Glass search bar
@@ -578,50 +591,90 @@ struct ContentView: View {
 
 struct EmptyStateView: View {
     let onImportTapped: () -> Void
+    let photoLibraryService: PhotoLibraryService
+    @Binding var isRefreshing: Bool
     
     var body: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "photo.stack")
-                .font(.system(size: 64, weight: .ultraLight))
-                .foregroundColor(.secondary)
-            
-            VStack(spacing: 8) {
-                Text("No Screenshots Yet")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                
-                Text("Import your first screenshot to get started organizing your visual notes")
-                    .font(.body)
+        ScrollView {
+            VStack(spacing: 24) {
+                Image(systemName: "photo.stack")
+                    .font(.system(size: 64, weight: .ultraLight))
                     .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-            
-            Button(action: {
-                onImportTapped()
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus")
+                
+                VStack(spacing: 8) {
+                    Text("No Screenshots Yet")
+                        .font(.title2)
                         .fontWeight(.semibold)
-                    Text("Import Photos")
-                        .fontWeight(.semibold)
+                    
+                    Text("Import your first screenshot to get started organizing your visual notes")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    
+                    Text("Pull down to import all past screenshots from Apple Photos")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                        .padding(.top, 4)
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(.tint)
-                )
+                
+                Button(action: {
+                    onImportTapped()
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                            .fontWeight(.semibold)
+                        Text("Import Photos")
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(.tint)
+                    )
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding()
+        .refreshable {
+            await refreshScreenshots()
+        }
+    }
+    
+    private func refreshScreenshots() async {
+        isRefreshing = true
+        
+        // Provide haptic feedback for pull-to-refresh
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // Import all past screenshots from Photo Library
+        let result = await photoLibraryService.importAllPastScreenshots()
+        
+        // Provide success haptic feedback
+        let notificationFeedback = UINotificationFeedbackGenerator()
+        if result.imported > 0 {
+            notificationFeedback.notificationOccurred(.success)
+        } else {
+            notificationFeedback.notificationOccurred(.warning)
+        }
+        
+        print("📸 Pull-to-refresh import completed: \(result.imported) imported, \(result.skipped) skipped")
+        
+        isRefreshing = false
     }
 }
 
 struct ScreenshotGridView: View {
     let screenshots: [Screenshot]
+    let photoLibraryService: PhotoLibraryService
+    @Binding var isRefreshing: Bool
     @State private var selectedScreenshot: Screenshot?
     @Namespace private var heroNamespace
     
@@ -645,6 +698,9 @@ struct ScreenshotGridView: View {
             .padding(.top, 20)
             .padding(.bottom, 16)
         }
+        .refreshable {
+            await refreshScreenshots()
+        }
         .fullScreenCover(item: $selectedScreenshot) { screenshot in
             ScreenshotDetailView(
                 screenshot: screenshot,
@@ -653,6 +709,29 @@ struct ScreenshotGridView: View {
                 onDelete: nil
             )
         }
+    }
+    
+    private func refreshScreenshots() async {
+        isRefreshing = true
+        
+        // Provide haptic feedback for pull-to-refresh
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // Import all past screenshots from Photo Library
+        let result = await photoLibraryService.importAllPastScreenshots()
+        
+        // Provide success haptic feedback
+        let notificationFeedback = UINotificationFeedbackGenerator()
+        if result.imported > 0 {
+            notificationFeedback.notificationOccurred(.success)
+        } else {
+            notificationFeedback.notificationOccurred(.warning)
+        }
+        
+        print("📸 Pull-to-refresh import completed: \(result.imported) imported, \(result.skipped) skipped")
+        
+        isRefreshing = false
     }
 }
 
