@@ -163,7 +163,7 @@ struct MindMapView: View {
             .onAppear {
                 viewSize = geometry.size
             }
-            .onChange(of: geometry.size) { newSize in
+            .onChange(of: geometry.size) { _, newSize in
                 viewSize = newSize
             }
         }
