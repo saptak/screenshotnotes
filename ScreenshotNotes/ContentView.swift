@@ -677,26 +677,49 @@ struct ScreenshotGridView: View {
     @Binding var isRefreshing: Bool
     @State private var selectedScreenshot: Screenshot?
     @Namespace private var heroNamespace
+    @StateObject private var performanceMonitor = GalleryPerformanceMonitor.shared
+    @StateObject private var thumbnailService = ThumbnailService.shared
     
     private let columns = [
         GridItem(.adaptive(minimum: 160), spacing: 16)
     ]
     
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 16) {
-                ForEach(screenshots, id: \.id) { screenshot in
-                    ScreenshotThumbnailView(
+        Group {
+            if screenshots.count > 100 {
+                // Use virtualized grid for large collections
+                VirtualizedGridView(
+                    items: screenshots,
+                    columns: columns,
+                    itemHeight: 180 // Height including thumbnail + text + spacing
+                ) { screenshot in
+                    OptimizedThumbnailView(
                         screenshot: screenshot,
+                        size: ThumbnailService.listThumbnailSize,
                         onTap: {
                             selectedScreenshot = screenshot
                         }
                     )
                 }
+            } else {
+                // Use regular LazyVGrid for smaller collections
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: 16) {
+                        ForEach(screenshots, id: \.id) { screenshot in
+                            OptimizedThumbnailView(
+                                screenshot: screenshot,
+                                size: ThumbnailService.listThumbnailSize,
+                                onTap: {
+                                    selectedScreenshot = screenshot
+                                }
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 16)
+                }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 16)
         }
         .refreshable {
             await refreshScreenshots()
@@ -708,6 +731,20 @@ struct ScreenshotGridView: View {
                 allScreenshots: screenshots,
                 onDelete: nil
             )
+        }
+        .onAppear {
+            performanceMonitor.startMonitoring()
+            
+            // Preload thumbnails for better scrolling performance
+            if screenshots.count <= 100 {
+                thumbnailService.preloadThumbnails(for: Array(screenshots.prefix(20)))
+            }
+        }
+        .onDisappear {
+            performanceMonitor.stopMonitoring()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .performanceOptimizationNeeded)) { notification in
+            handlePerformanceOptimization(notification)
         }
     }
     
@@ -733,60 +770,31 @@ struct ScreenshotGridView: View {
         
         isRefreshing = false
     }
-}
-
-struct ScreenshotThumbnailView: View {
-    let screenshot: Screenshot
-    let onTap: () -> Void
     
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ZStack {
-                if let uiImage = UIImage(data: screenshot.imageData) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(height: 140)
-                        .clipped()
-                } else {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.15))
-                        .frame(height: 140)
-                        .overlay {
-                            VStack(spacing: 6) {
-                                Image(systemName: "exclamationmark.triangle")
-                                    .font(.title3)
-                                    .foregroundColor(.orange)
-                                Text("Unable to load")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(UIColor.systemBackground))
-                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.primary.opacity(0.15), lineWidth: 0.5)
-            )
+    private func handlePerformanceOptimization(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let type = userInfo["type"] as? String else { return }
+        
+        switch type {
+        case "lowFPS":
+            print("🐌 Optimizing for low FPS")
+            // Already using optimized thumbnails, could reduce quality further if needed
             
-            Text(screenshot.timestamp.formatted(date: .abbreviated, time: .shortened))
-                .font(.caption2)
-                .fontWeight(.medium)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            onTap()
+        case "highMemory":
+            print("🧠 Optimizing for high memory usage")
+            thumbnailService.clearCache()
+            
+        case "thermal":
+            print("🔥 Optimizing for thermal pressure")
+            thumbnailService.clearCache()
+            // Could pause thumbnail generation temporarily
+            
+        default:
+            break
         }
     }
 }
+
 
 
 struct ImportProgressOverlay: View {

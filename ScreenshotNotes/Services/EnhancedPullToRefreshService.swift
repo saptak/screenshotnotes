@@ -231,13 +231,7 @@ struct EnhancedPullToRefresh: ViewModifier {
     }
 }
 
-// MARK: - Preference Key
-private struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
+// ScrollOffsetPreferenceKey is defined in VirtualizedGridView.swift
 
 // MARK: - Pull To Refresh Indicator
 private struct PullToRefreshIndicator: View {
