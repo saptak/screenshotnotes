@@ -76,12 +76,24 @@ struct MindMapView: View {
                 }
             }
             .task {
-                let isFirstTime = mindMapService.isFirstTimeGeneration
-                await mindMapService.refreshMindMapIfNeeded(screenshots: screenshots)
-                // Set animation progress after loading from cache
-                if mindMapService.hasNodes && animationProgress == 0.0 && !isFirstTime {
+                // First, try to load from cache for instant display
+                await mindMapService.loadFromCache()
+                
+                if mindMapService.hasNodes {
+                    // Data loaded from cache - show immediately
                     withAnimation(.easeInOut(duration: 0.5)) {
                         animationProgress = 1.0
+                    }
+                    print("🧠 Mind map loaded from cache instantly")
+                } else {
+                    // No cached data - check if background generation is in progress
+                    print("🧠 No cached mind map data, checking for background generation")
+                    await mindMapService.refreshMindMapIfNeeded(screenshots: screenshots)
+                    
+                    if mindMapService.hasNodes {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            animationProgress = 1.0
+                        }
                     }
                 }
             }

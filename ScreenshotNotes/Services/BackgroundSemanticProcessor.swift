@@ -13,6 +13,7 @@ final class BackgroundSemanticProcessor: ObservableObject {
     private let semanticTaggingService: SemanticTaggingService
     private let enhancedVisionService: EnhancedVisionService
     private let ocrService: OCRServiceProtocol
+    private let mindMapService: MindMapService
     private let batchSize = 3 // Smaller batch size for AI processing
     private let processingDelay: TimeInterval = 1.0 // Longer delay for AI processing
     
@@ -21,6 +22,7 @@ final class BackgroundSemanticProcessor: ObservableObject {
         case ocr = "Text Extraction"
         case vision = "Vision Analysis"
         case semanticTagging = "Semantic Analysis"
+        case mindMapGeneration = "Mind Map Generation"
         case completing = "Finalizing"
         
         var description: String {
@@ -31,11 +33,13 @@ final class BackgroundSemanticProcessor: ObservableObject {
     init(
         semanticTaggingService: SemanticTaggingService? = nil,
         enhancedVisionService: EnhancedVisionService? = nil,
-        ocrService: OCRServiceProtocol = OCRService()
+        ocrService: OCRServiceProtocol = OCRService(),
+        mindMapService: MindMapService? = nil
     ) {
         self.semanticTaggingService = semanticTaggingService ?? SemanticTaggingService()
         self.enhancedVisionService = enhancedVisionService ?? EnhancedVisionService()
         self.ocrService = ocrService
+        self.mindMapService = mindMapService ?? MindMapService.shared
     }
     
     /// Process screenshots that need semantic analysis
@@ -71,6 +75,10 @@ final class BackgroundSemanticProcessor: ObservableObject {
                 // Delay between batches to prevent overwhelming the system
                 try? await Task.sleep(nanoseconds: UInt64(processingDelay * 1_000_000_000))
             }
+            
+            // Generate mind map after all screenshots have been processed
+            await updatePhase(.mindMapGeneration)
+            await generateMindMapInBackground(in: modelContext)
             
             await MainActor.run {
                 self.isProcessing = false
@@ -160,6 +168,47 @@ final class BackgroundSemanticProcessor: ObservableObject {
         }
     }
     
+    /// Generate mind map in background after semantic processing
+    private func generateMindMapInBackground(in modelContext: ModelContext) async {
+        do {
+            // Fetch all screenshots with semantic data for mind map generation
+            let descriptor = FetchDescriptor<Screenshot>(
+                sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+            )
+            
+            let allScreenshots = try modelContext.fetch(descriptor)
+            
+            // Only generate if we have sufficient screenshots with semantic data
+            let screenshotsWithSemanticData = allScreenshots.filter { screenshot in
+                screenshot.semanticTags != nil || screenshot.extractedText != nil
+            }
+            
+            guard screenshotsWithSemanticData.count >= 3 else {
+                print("🧠 Skipping mind map generation: insufficient semantic data (\(screenshotsWithSemanticData.count) screenshots)")
+                return
+            }
+            
+            print("🧠 Generating mind map for \(screenshotsWithSemanticData.count) screenshots with semantic data")
+            
+            // Generate mind map using the service
+            await mindMapService.generateMindMap(from: screenshotsWithSemanticData)
+            
+            print("🧠 Mind map generation completed in background")
+            
+        } catch {
+            print("❌ Failed to generate mind map in background: \(error)")
+        }
+    }
+    
+    /// Trigger mind map regeneration for incremental updates
+    func triggerMindMapRegeneration(in modelContext: ModelContext) async {
+        // Only trigger if we're not already processing
+        guard !isProcessing else { return }
+        
+        print("🧠 Triggering incremental mind map regeneration")
+        await generateMindMapInBackground(in: modelContext)
+    }
+    
     /// Get processing progress as percentage
     var progress: Double {
         guard totalCount > 0 else { return 0.0 }
@@ -176,17 +225,29 @@ final class BackgroundSemanticProcessor: ObservableObject {
     }
 }
 
-// MARK: - Supporting Types
+// MARK: - Processing Errors
 
 enum ProcessingError: LocalizedError {
     case invalidImageData
+    case ocrFailed
+    case visionAnalysisFailed
+    case semanticTaggingFailed
+    case mindMapGenerationFailed
     case analysisTimeout
     case insufficientMemory
     
     var errorDescription: String? {
         switch self {
         case .invalidImageData:
-            return "Invalid image data for processing"
+            return "Invalid image data provided"
+        case .ocrFailed:
+            return "OCR text extraction failed"
+        case .visionAnalysisFailed:
+            return "Vision analysis failed"
+        case .semanticTaggingFailed:
+            return "Semantic tagging failed"
+        case .mindMapGenerationFailed:
+            return "Mind map generation failed"
         case .analysisTimeout:
             return "Processing timed out"
         case .insufficientMemory:

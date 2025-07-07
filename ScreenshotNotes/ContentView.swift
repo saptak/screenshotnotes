@@ -418,6 +418,9 @@ struct ContentView: View {
         // Trigger semantic processing for newly imported screenshots
         Task {
             await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+            
+            // Trigger mind map regeneration after semantic processing completes
+            await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
         }
     }
     
@@ -701,6 +704,9 @@ struct EmptyStateView: View {
             // Trigger semantic processing for newly imported screenshots
             Task {
                 await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+                
+                // Trigger mind map regeneration after semantic processing completes
+                await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
             }
         }
         
@@ -815,6 +821,9 @@ struct ScreenshotGridView: View {
             // Trigger semantic processing for newly imported screenshots
             Task {
                 await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+                
+                // Trigger mind map regeneration after semantic processing completes
+                await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
             }
         }
         
