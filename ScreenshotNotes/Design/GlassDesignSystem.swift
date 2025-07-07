@@ -192,6 +192,204 @@ class GlassDesignSystem: ObservableObject {
         static let minimumTouchTarget: CGFloat = 44
     }
     
+    // MARK: - Responsive Layout System
+    
+    /// Responsive layout system for iOS devices with size classes and dynamic spacing
+    struct ResponsiveLayout {
+        let horizontalSizeClass: UserInterfaceSizeClass?
+        let verticalSizeClass: UserInterfaceSizeClass?
+        let screenWidth: CGFloat
+        let screenHeight: CGFloat
+        
+        /// Device type classification
+        enum DeviceType {
+            case iPhoneSE          // 320-375pt width
+            case iPhoneStandard    // 375-414pt width
+            case iPhoneMax         // 414-430pt width
+            case iPadMini          // 768pt width
+            case iPad              // 834pt width
+            case iPadPro           // 1024pt+ width
+        }
+        
+        /// Current device type based on screen dimensions
+        var deviceType: DeviceType {
+            switch screenWidth {
+            case 0..<375:
+                return .iPhoneSE
+            case 375..<414:
+                return .iPhoneStandard
+            case 414..<500:
+                return .iPhoneMax
+            case 500..<834:
+                return .iPadMini
+            case 834..<1024:
+                return .iPad
+            default:
+                return .iPadPro
+            }
+        }
+        
+        /// Responsive spacing system
+        var spacing: ResponsiveSpacing {
+            ResponsiveSpacing(deviceType: deviceType, sizeClass: horizontalSizeClass)
+        }
+        
+        /// Responsive typography system
+        var typography: ResponsiveTypography {
+            ResponsiveTypography(deviceType: deviceType, sizeClass: horizontalSizeClass)
+        }
+        
+        /// Responsive glass materials
+        var materials: ResponsiveMaterials {
+            ResponsiveMaterials(deviceType: deviceType, sizeClass: horizontalSizeClass)
+        }
+    }
+    
+    /// Responsive spacing values for different device types
+    struct ResponsiveSpacing {
+        let deviceType: ResponsiveLayout.DeviceType
+        let sizeClass: UserInterfaceSizeClass?
+        
+        /// Extra small spacing (2-4pt)
+        var xs: CGFloat {
+            switch deviceType {
+            case .iPhoneSE: return 2
+            case .iPhoneStandard, .iPhoneMax: return 3
+            case .iPadMini, .iPad, .iPadPro: return 4
+            }
+        }
+        
+        /// Small spacing (4-8pt)
+        var small: CGFloat {
+            switch deviceType {
+            case .iPhoneSE: return 4
+            case .iPhoneStandard, .iPhoneMax: return 6
+            case .iPadMini, .iPad, .iPadPro: return 8
+            }
+        }
+        
+        /// Medium spacing (8-16pt)
+        var medium: CGFloat {
+            switch deviceType {
+            case .iPhoneSE: return 8
+            case .iPhoneStandard, .iPhoneMax: return 12
+            case .iPadMini, .iPad, .iPadPro: return 16
+            }
+        }
+        
+        /// Large spacing (16-32pt)
+        var large: CGFloat {
+            switch deviceType {
+            case .iPhoneSE: return 16
+            case .iPhoneStandard, .iPhoneMax: return 20
+            case .iPadMini, .iPad, .iPadPro: return 24
+            }
+        }
+        
+        /// Extra large spacing (24-48pt)
+        var xl: CGFloat {
+            switch deviceType {
+            case .iPhoneSE: return 24
+            case .iPhoneStandard, .iPhoneMax: return 32
+            case .iPadMini, .iPad, .iPadPro: return 48
+            }
+        }
+        
+        /// Horizontal padding for content
+        var horizontalPadding: CGFloat {
+            switch deviceType {
+            case .iPhoneSE: return 16
+            case .iPhoneStandard, .iPhoneMax: return 20
+            case .iPadMini, .iPad: return 24
+            case .iPadPro: return 32
+            }
+        }
+        
+        /// Vertical padding for content
+        var verticalPadding: CGFloat {
+            switch deviceType {
+            case .iPhoneSE: return 12
+            case .iPhoneStandard, .iPhoneMax: return 16
+            case .iPadMini, .iPad, .iPadPro: return 20
+            }
+        }
+    }
+    
+    /// Responsive typography system
+    struct ResponsiveTypography {
+        let deviceType: ResponsiveLayout.DeviceType
+        let sizeClass: UserInterfaceSizeClass?
+        
+        /// Title font size
+        var title: Font {
+            switch deviceType {
+            case .iPhoneSE: return .title2
+            case .iPhoneStandard, .iPhoneMax: return .title
+            case .iPadMini, .iPad, .iPadPro: return .largeTitle
+            }
+        }
+        
+        /// Body font size
+        var body: Font {
+            switch deviceType {
+            case .iPhoneSE: return .footnote
+            case .iPhoneStandard, .iPhoneMax: return .body
+            case .iPadMini, .iPad, .iPadPro: return .body
+            }
+        }
+        
+        /// Caption font size
+        var caption: Font {
+            switch deviceType {
+            case .iPhoneSE: return .caption2
+            case .iPhoneStandard, .iPhoneMax: return .caption
+            case .iPadMini, .iPad, .iPadPro: return .caption
+            }
+        }
+    }
+    
+    /// Responsive glass materials
+    struct ResponsiveMaterials {
+        let deviceType: ResponsiveLayout.DeviceType
+        let sizeClass: UserInterfaceSizeClass?
+        
+        /// Primary material for surfaces
+        var primary: GlassMaterial {
+            switch deviceType {
+            case .iPhoneSE: return .thin
+            case .iPhoneStandard, .iPhoneMax: return .regular
+            case .iPadMini, .iPad, .iPadPro: return .regular
+            }
+        }
+        
+        /// Secondary material for backgrounds
+        var secondary: GlassMaterial {
+            switch deviceType {
+            case .iPhoneSE: return .ultraThin
+            case .iPhoneStandard, .iPhoneMax: return .thin
+            case .iPadMini, .iPad, .iPadPro: return .thin
+            }
+        }
+        
+        /// Accent material for highlights
+        var accent: GlassMaterial {
+            switch deviceType {
+            case .iPhoneSE: return .regular
+            case .iPhoneStandard, .iPhoneMax: return .thick
+            case .iPadMini, .iPad, .iPadPro: return .thick
+            }
+        }
+        
+        /// Corner radius for materials
+        var cornerRadius: CGFloat {
+            switch deviceType {
+            case .iPhoneSE: return 8
+            case .iPhoneStandard, .iPhoneMax: return 12
+            case .iPadMini, .iPad, .iPadPro: return 16
+            }
+        }
+    }
+    
     // MARK: - Public Interface
     
     @Published var accessibilityConfiguration = GlassAccessibilityConfiguration()
@@ -248,13 +446,18 @@ struct GlassBackgroundModifier: ViewModifier {
         let adaptedMaterial = glassSystem.accessibilityConfiguration.adaptedMaterial(for: material)
         
         if glassSystem.accessibilityConfiguration.reduceTransparency {
-            // High contrast fallback
+            // High contrast fallback that properly adapts to dark mode
             Color(.systemBackground)
                 .opacity(0.95)
         } else {
-            // Standard Glass implementation
+            // Standard Glass implementation with dark mode support
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(adaptedMaterial)
+                .background(
+                    // Ensure base background adapts to dark mode
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(Color(.systemBackground).opacity(0.1))
+                )
         }
     }
 }
@@ -291,9 +494,113 @@ extension View {
         ))
     }
     
+    /// Applies responsive Glass background based on device size
+    func responsiveGlassBackground(
+        layout: GlassDesignSystem.ResponsiveLayout,
+        materialType: ResponsiveMaterialType = .primary,
+        shadow: Bool = true
+    ) -> some View {
+        let material = materialType.material(for: layout)
+        let cornerRadius = layout.materials.cornerRadius
+        
+        return modifier(GlassBackgroundModifier(
+            material: material,
+            cornerRadius: cornerRadius,
+            shadow: shadow
+        ))
+    }
+    
+    /// Applies responsive padding based on device size
+    func responsivePadding(
+        _ layout: GlassDesignSystem.ResponsiveLayout,
+        edge: Edge.Set = .all,
+        size: ResponsivePaddingSize = .medium
+    ) -> some View {
+        let padding = size.padding(for: layout)
+        return self.padding(edge, padding)
+    }
+    
     /// Applies Glass spring animation
     func glassAnimation(_ animation: GlassDesignSystem.GlassAnimation) -> some View {
         self.animation(GlassDesignSystem.glassSpring(animation), value: UUID())
+    }
+}
+
+/// Responsive material type selector
+enum ResponsiveMaterialType {
+    case primary
+    case secondary
+    case accent
+    
+    func material(for layout: GlassDesignSystem.ResponsiveLayout) -> GlassDesignSystem.GlassMaterial {
+        switch self {
+        case .primary: return layout.materials.primary
+        case .secondary: return layout.materials.secondary
+        case .accent: return layout.materials.accent
+        }
+    }
+}
+
+/// Responsive padding size
+enum ResponsivePaddingSize {
+    case xs
+    case small
+    case medium
+    case large
+    case xl
+    
+    func padding(for layout: GlassDesignSystem.ResponsiveLayout) -> CGFloat {
+        switch self {
+        case .xs: return layout.spacing.xs
+        case .small: return layout.spacing.small
+        case .medium: return layout.spacing.medium
+        case .large: return layout.spacing.large
+        case .xl: return layout.spacing.xl
+        }
+    }
+}
+
+/// Responsive layout modifier that provides layout information to child views
+struct ResponsiveLayoutModifier: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    
+    func body(content: Content) -> some View {
+        GeometryReader { geometry in
+            content
+                .environment(\.glassResponsiveLayout, 
+                    GlassDesignSystem.ResponsiveLayout(
+                        horizontalSizeClass: horizontalSizeClass,
+                        verticalSizeClass: verticalSizeClass,
+                        screenWidth: geometry.size.width,
+                        screenHeight: geometry.size.height
+                    )
+                )
+        }
+    }
+}
+
+/// Environment key for responsive layout
+private struct ResponsiveLayoutKey: EnvironmentKey {
+    static let defaultValue: GlassDesignSystem.ResponsiveLayout = GlassDesignSystem.ResponsiveLayout(
+        horizontalSizeClass: .regular,
+        verticalSizeClass: .regular,
+        screenWidth: 390,
+        screenHeight: 844
+    )
+}
+
+extension EnvironmentValues {
+    var glassResponsiveLayout: GlassDesignSystem.ResponsiveLayout {
+        get { self[ResponsiveLayoutKey.self] }
+        set { self[ResponsiveLayoutKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// Enables responsive layout for child views
+    func responsiveLayout() -> some View {
+        modifier(ResponsiveLayoutModifier())
     }
 }
 

@@ -7,8 +7,11 @@ struct MindMapView: View {
     @Query(sort: \Screenshot.timestamp, order: .reverse) private var screenshots: [Screenshot]
     
     @StateObject private var mindMapService = MindMapService.shared
-    @StateObject private var materialSystem = MaterialDesignSystem.shared
+    @StateObject private var glassSystem = GlassDesignSystem.shared
     private let hapticService = HapticService.shared
+    
+    // Responsive layout
+    @Environment(\.glassResponsiveLayout) private var layout
     
     // View state
     @State private var zoomScale: CGFloat = 1.0
@@ -29,21 +32,31 @@ struct MindMapView: View {
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                // Background
-                backgroundView
-                // Main mind map canvas
-                mindMapCanvas
-                // Overlay controls
-                overlayControls
-                // Generation progress
-                if mindMapService.isGenerating {
-                    generationProgressView
+            GeometryReader { geometry in
+                let responsiveLayout = GlassDesignSystem.ResponsiveLayout(
+                    horizontalSizeClass: nil,
+                    verticalSizeClass: nil,
+                    screenWidth: geometry.size.width,
+                    screenHeight: geometry.size.height
+                )
+                
+                ZStack {
+                    // Background
+                    backgroundView
+                    // Main mind map canvas
+                    mindMapCanvas
+                    // Overlay controls
+                    overlayControls
+                    // Generation progress
+                    if mindMapService.isGenerating {
+                        generationProgressView
+                    }
+                    // Statistics panel
+                    if showingStats {
+                        statisticsPanel
+                    }
                 }
-                // Statistics panel
-                if showingStats {
-                    statisticsPanel
-                }
+                .environment(\.glassResponsiveLayout, responsiveLayout)
             }
             .navigationTitle("Mind Map")
             .navigationBarTitleDisplayMode(.inline)
@@ -120,13 +133,13 @@ struct MindMapView: View {
     
     private var backgroundView: some View {
         ZStack {
-            // Base background
+            // Base background that adapts to dark mode
             Color(UIColor.systemBackground)
                 .ignoresSafeArea()
             
-            // Glass material background
+            // Glass material overlay with proper dark mode support
             Rectangle()
-                .fill(materialSystem.material(for: .background))
+                .fill(.regularMaterial.opacity(0.3))
                 .ignoresSafeArea()
             
             // Subtle grid pattern
@@ -369,7 +382,11 @@ struct MindMapView: View {
                     .frame(width: 44, height: 44)
                     .background(
                         Circle()
-                            .fill(materialSystem.material(for: .overlay))
+                            .glassBackground(
+                                material: layout.materials.accent,
+                                cornerRadius: 22,
+                                shadow: true
+                            )
                     )
             }
             .accessibilityLabel("Zoom in")
@@ -382,7 +399,11 @@ struct MindMapView: View {
                     .frame(width: 44, height: 44)
                     .background(
                         Circle()
-                            .fill(materialSystem.material(for: .overlay))
+                            .glassBackground(
+                                material: layout.materials.accent,
+                                cornerRadius: 22,
+                                shadow: true
+                            )
                     )
             }
             .accessibilityLabel("Zoom out")
@@ -395,7 +416,11 @@ struct MindMapView: View {
                     .frame(width: 44, height: 44)
                     .background(
                         Circle()
-                            .fill(materialSystem.material(for: .overlay))
+                            .glassBackground(
+                                material: layout.materials.accent,
+                                cornerRadius: 22,
+                                shadow: true
+                            )
                     )
             }
             .accessibilityLabel("Reset view")
@@ -412,7 +437,11 @@ struct MindMapView: View {
                     .frame(width: 44, height: 44)
                     .background(
                         Circle()
-                            .fill(materialSystem.material(for: .overlay))
+                            .glassBackground(
+                                material: layout.materials.accent,
+                                cornerRadius: 22,
+                                shadow: true
+                            )
                     )
             }
             
@@ -423,7 +452,11 @@ struct MindMapView: View {
                     .frame(width: 44, height: 44)
                     .background(
                         Circle()
-                            .fill(materialSystem.material(for: .overlay))
+                            .glassBackground(
+                                material: layout.materials.accent,
+                                cornerRadius: 22,
+                                shadow: true
+                            )
                     )
             }
         }
@@ -471,7 +504,11 @@ struct MindMapView: View {
             .padding(32)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(materialSystem.material(for: .overlay))
+                    .glassBackground(
+                        material: layout.materials.primary,
+                        cornerRadius: 20,
+                        shadow: true
+                    )
             )
             .scaleEffect(mindMapService.isGenerating ? 1.0 : 0.9)
             .opacity(mindMapService.isGenerating ? 1.0 : 0.0)
@@ -526,8 +563,12 @@ struct MindMapView: View {
         }
         .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(materialSystem.material(for: .surface))
+            RoundedRectangle(cornerRadius: layout.materials.cornerRadius)
+                .glassBackground(
+                    material: layout.materials.primary,
+                    cornerRadius: layout.materials.cornerRadius,
+                    shadow: true
+                )
         )
         .padding(20)
         .transition(.move(edge: .top).combined(with: .opacity))
@@ -719,13 +760,18 @@ struct NodeView: View {
     let isHovered: Bool
     let animationProgress: Double
     
-    @StateObject private var materialSystem = MaterialDesignSystem.shared
+    @StateObject private var glassSystem = GlassDesignSystem.shared
+    @Environment(\.glassResponsiveLayout) private var layout
     
     var body: some View {
         ZStack {
             // Node background with glass material
             Circle()
-                .fill(materialSystem.material(for: .surface))
+                .glassBackground(
+                    material: layout.materials.primary,
+                    cornerRadius: 25,
+                    shadow: true
+                )
                 .frame(width: node.radius * 2, height: node.radius * 2)
                 .overlay(
                     Circle()
@@ -770,7 +816,8 @@ struct StatCard: View {
     let value: String
     let icon: String
     
-    @StateObject private var materialSystem = MaterialDesignSystem.shared
+    @StateObject private var glassSystem = GlassDesignSystem.shared
+    @Environment(\.glassResponsiveLayout) private var layout
     
     var body: some View {
         VStack(spacing: 8) {
@@ -789,8 +836,12 @@ struct StatCard: View {
         }
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(materialSystem.material(for: .background))
+            RoundedRectangle(cornerRadius: layout.materials.cornerRadius)
+                .glassBackground(
+                    material: layout.materials.secondary,
+                    cornerRadius: layout.materials.cornerRadius,
+                    shadow: false
+                )
         )
     }
 }

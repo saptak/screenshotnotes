@@ -511,7 +511,7 @@ struct BatchSelectionToolbar: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 12)
-            .surfaceMaterial(cornerRadius: 12)
+            .glassBackground(material: .regular, cornerRadius: 12, shadow: true)
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
@@ -558,7 +558,7 @@ struct ContextualMenuTestView: View {
                     .buttonStyle(.bordered)
                 }
                 .padding()
-                .surfaceMaterial(cornerRadius: 12)
+                .glassBackground(material: .regular, cornerRadius: 12, shadow: true)
                 
                 // Batch Selection Testing
                 VStack(alignment: .leading, spacing: 12) {
@@ -585,7 +585,7 @@ struct ContextualMenuTestView: View {
                         .foregroundColor(.secondary)
                 }
                 .padding()
-                .surfaceMaterial(cornerRadius: 12)
+                .glassBackground(material: .regular, cornerRadius: 12, shadow: true)
                 
                 Spacer()
             }

@@ -4,7 +4,7 @@ This file contains development context and guidelines for Claude Code when worki
 
 ## Project Overview
 
-ScreenshotNotes is an iOS app for intelligent screenshot organization with OCR capabilities. The project follows a sprint-based development approach with focus on Material Design principles and high-performance animations.
+ScreenshotNotes is an iOS app for intelligent screenshot organization with OCR capabilities. The project follows a sprint-based development approach with focus on Glass Design principles and high-performance animations.
 
 ### Architecture Foundation
 - **MVVM Pattern**: Clear separation with Views/, ViewModels/, Models/, Services/
@@ -21,7 +21,7 @@ ScreenshotNotes is an iOS app for intelligent screenshot organization with OCR c
 - **Sprint 1**: Manual Import MVP ✅ (PhotosPicker integration, thumbnail grid, detail view)
 - **Sprint 2**: Automatic Screenshot Detection Engine ✅ (Background detection, settings, duplicate prevention)
 - **Sprint 3**: OCR & Intelligence Engine ✅ (Vision Framework OCR, advanced search, Glass UX)
-- **Sprint 4 Sub-Sprint 4.1**: Material Design System ✅ (8 depth tokens, accessibility compliance)
+- **Sprint 4 Sub-Sprint 4.1**: Glass Design System Migration ✅ (Complete Material→Glass migration, responsive layout)
 - **Sprint 4 Sub-Sprint 4.2**: Hero Animation System ✅ (matchedGeometryEffect infrastructure)
 - **Sprint 4 Sub-Sprint 4.3**: Contextual Menu System ✅ (Long-press menus, haptic feedback)
 - **Sprint 4 Sub-Sprint 4.4**: Advanced Gestures ✅ (Enhanced gestures, accessibility integration)
@@ -35,6 +35,7 @@ ScreenshotNotes is an iOS app for intelligent screenshot organization with OCR c
 - **Sprint 5 Sub-Sprint 5.4.3**: Glass Design System & Performance Optimization ✅ (120fps ProMotion, GPU acceleration, intelligent caching, memory management)
 - **Sprint 6 Sub-Sprint 6.5.1**: Comprehensive Semantic Processing Pipeline ✅ (Complete OCR, entity extraction, semantic tagging integration)
 - **Sprint 6 Sub-Sprint 6.5.2**: Background Mind Map Generation ✅ (Automated mind map pipeline, instant cache-based loading)
+- **Sprint 6 Sub-Sprint 6.6**: Glass Design System Unification ✅ (Complete Material→Glass migration, responsive layout for all iOS devices, dark mode fixes)
 
 ### Project Health Metrics
 - **App Stability**: 100% - No crashes or critical bugs
@@ -47,12 +48,31 @@ ScreenshotNotes is an iOS app for intelligent screenshot organization with OCR c
 - **Accessibility**: WCAG AA compliant across all implemented features
 - **Semantic Processing**: 5-phase pipeline (OCR → Vision → Semantic → Mind Map → Completion) with intelligent redundancy prevention
 - **Mind Map Performance**: Instant loading (<0.5s) from cache, background generation, automatic updates
-- **Development Progress**: 93.75% complete (6.5.2/8 sprints)
+- **Development Progress**: 95% complete (6.6/8 sprints)
+- **Design System**: Unified Glass Design with responsive layout (iPhone SE → iPad Pro)
+- **Dark Mode Support**: Complete dark/light theme adaptation across all views
 
 ### Current Sprint
-**Sprint 6: Advanced Intelligence & Visualization** (Phase 6.5.2 Complete, Phase 6.6+ Available)
+**Sprint 6: Advanced Intelligence & Visualization** (Phase 6.6 Complete, Phase 6.7+ Available)
 
 ## Key Technical Decisions
+
+### Glass Design System Unification (Sub-Sprint 6.6)
+- **Implementation**: Complete migration from Material Design to Glass Design system
+- **Status**: Fully implemented with responsive layout support
+- **Architecture**: Comprehensive responsive layout system with device-specific adaptations
+- **Performance**: Maintained 120fps ProMotion with optimized Glass effects
+- **Features**:
+  - **Responsive Layout**: iPhone SE (320pt) → iPad Pro (1024pt+) with adaptive spacing/typography
+  - **Device Classification**: 6 device types with specific material/spacing configurations
+  - **Dark Mode Support**: Complete light/dark theme adaptation across all Glass components
+  - **Material Hierarchy**: 5 Glass materials (.ultraThin → .chrome) with accessibility support
+  - **Performance Optimization**: Efficient layout calculations with environment-based responsive design
+- **Files**:
+  - `Design/GlassDesignSystem.swift` (enhanced with responsive system)
+  - `Views/SearchView.swift` (migrated to responsive Glass design)
+  - `Views/MindMapView.swift` (migrated to responsive Glass design)
+  - All service files updated to use Glass backgrounds
 
 ### Hero Animation System (Sub-Sprint 4.2)
 - **Implementation**: Complete infrastructure using matchedGeometryEffect
@@ -391,8 +411,16 @@ xcodebuild test -project ScreenshotNotes.xcodeproj -scheme ScreenshotNotes -dest
 - **User Experience Optimization**: Background generation with instant view loading
 - **Files**: `MindMapService.swift`, `MindMapView.swift` (enhanced), `ContentView.swift` (triggers)
 
-### 📋 Remaining Sub-Sprints 6.6-6.8
-- **6.6**: Enhanced Relationship Discovery (2 days) - Advanced semantic relationship mapping
+### ✅ Sub-Sprint 6.6: Glass Design System Unification (2 days) - COMPLETED
+- **Complete Material→Glass Migration**: Migrated all views from Material Design to Glass Design system
+- **Responsive Layout System**: Comprehensive device-specific adaptations (iPhone SE → iPad Pro)
+- **Device Classification**: 6 device types with adaptive spacing, typography, and materials
+- **Dark Mode Support**: Complete light/dark theme adaptation with proper Glass material rendering
+- **Performance Optimization**: Maintained 120fps ProMotion with efficient responsive calculations
+- **Accessibility Integration**: WCAG compliance with reduced transparency and motion support
+- **Files**: `Design/GlassDesignSystem.swift` (enhanced), `Views/SearchView.swift`, `Views/MindMapView.swift`, service files
+
+### 📋 Remaining Sub-Sprints 6.7-6.8
 - **6.7**: Interactive Mind Map Features (3 days) - Node clustering, filtering, search integration
 - **6.8**: Production Optimization (2 days) - Performance validation, memory optimization
 
@@ -552,14 +580,21 @@ ScreenshotNotes/
 
 ---
 
-**Last Updated**: Sprint 6 Sub-Sprint 6.5.2 Complete - Background Mind Map Generation Pipeline  
-**Next Milestone**: Phase 6.6 - Enhanced Relationship Discovery & Interactive Mind Map Features  
-**Recent Achievement**: Comprehensive 5-phase semantic processing pipeline with automated mind map generation and instant cache-based loading  
+**Last Updated**: Sprint 6 Sub-Sprint 6.6 Complete - Glass Design System Unification  
+**Next Milestone**: Phase 6.7 - Interactive Mind Map Features & Node Clustering  
+**Recent Achievement**: Complete Material→Glass migration with responsive layout system for all iOS devices and dark mode support  
 **Critical Issues**: Hero animation navigation timing (workaround in place)
 
 ## Recent Enhancements
 
-### Swipe Navigation System (Latest)
+### Glass Design System Unification (Latest)
+- **Complete Migration**: All views migrated from Material Design to Glass Design system
+- **Responsive Layout**: iPhone SE (320pt) → iPad Pro (1024pt+) with device-specific adaptations
+- **Dark Mode Support**: Fixed white background issue in MindMapView and all Glass components
+- **Performance Optimization**: Maintained 120fps ProMotion with efficient responsive calculations
+- **Accessibility Integration**: WCAG compliance with reduced transparency and motion support
+
+### Swipe Navigation System
 - **Swipe down**: Dismiss full screen view
 - **Swipe left/right**: Navigate between screenshots  
 - **Swipe up**: Show share/delete action sheet
@@ -569,7 +604,7 @@ ScreenshotNotes/
 - **Accessibility support**: Compatible with VoiceOver and assistive technologies
 
 ### Key Features Completed
-- ✅ **Material Design System**: Complete design token system with performance testing
+- ✅ **Glass Design System**: Complete Glass design with responsive layout and dark mode support
 - ✅ **Hero Animation Infrastructure**: Comprehensive animation system (temporarily disabled)
 - ✅ **Contextual Menu System**: Long-press menus with haptic feedback and batch selection
 - ✅ **Advanced Haptic Feedback**: Sophisticated haptic patterns for all interactions
@@ -587,3 +622,4 @@ ScreenshotNotes/
 - ✅ **Glass Performance Optimization**: 120fps ProMotion with GPU acceleration, intelligent caching, and memory management
 - ✅ **Comprehensive Semantic Processing Pipeline**: 5-phase background processing with intelligent redundancy prevention
 - ✅ **Background Mind Map Generation**: Automated pipeline with instant cache-based loading and automatic updates
+- ✅ **Glass Design System Unification**: Complete Material→Glass migration with responsive layout for all iOS devices

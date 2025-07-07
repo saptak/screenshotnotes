@@ -101,6 +101,10 @@ struct SearchView: View {
     @State private var showingFilters = false
     @State private var detectedIntent: SimpleQueryIntent = .unknown
     
+    // Glass Design System
+    @Environment(\.glassResponsiveLayout) private var layout
+    @StateObject private var glassSystem = GlassDesignSystem.shared
+    
     private var hasActiveFilters: Bool {
         searchFilters.dateRange != .all || 
         searchFilters.hasText != nil || 
@@ -108,93 +112,103 @@ struct SearchView: View {
     }
     
     var body: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 8) {
-                // 🎯 Sub-Sprint 5.1.1: Dynamic intent-based search icon
-                Image(systemName: detectedIntent.icon)
-                    .foregroundStyle(detectedIntent.color)
-                    .font(.system(size: 16, weight: .medium))
-                    .scaleEffect(isSearchActive ? 1.1 : 1.0)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSearchActive)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: detectedIntent)
-                
-                TextField("Search screenshots...", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 16, weight: .medium, design: .default))
-                    .focused($isSearchFieldFocused)
-                    .onSubmit {
-                        isSearchFieldFocused = false
-                    }
-                    .onChange(of: searchText) { _, newValue in
-                        withAnimation(.spring(response: 0.2, dampingFraction: 1.0)) {
-                            isSearchActive = !newValue.isEmpty
-                            // 🎯 Sub-Sprint 5.1.1: Detect intent as user types
-                            detectedIntent = SimpleQueryParser.parseIntent(from: newValue)
+        GeometryReader { geometry in
+            let responsiveLayout = GlassDesignSystem.ResponsiveLayout(
+                horizontalSizeClass: nil,
+                verticalSizeClass: nil,
+                screenWidth: geometry.size.width,
+                screenHeight: geometry.size.height
+            )
+            
+            HStack(spacing: responsiveLayout.spacing.medium) {
+                HStack(spacing: responsiveLayout.spacing.small) {
+                    // 🎯 Sub-Sprint 5.1.1: Dynamic intent-based search icon
+                    Image(systemName: detectedIntent.icon)
+                        .foregroundStyle(detectedIntent.color)
+                        .font(.system(size: 16, weight: .medium))
+                        .scaleEffect(isSearchActive ? 1.1 : 1.0)
+                        .glassAnimation(.responsive)
+                        .animation(glassSystem.adaptedGlassSpring(.responsive), value: detectedIntent)
+                    
+                    TextField("Search screenshots...", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .font(responsiveLayout.typography.body)
+                        .focused($isSearchFieldFocused)
+                        .onSubmit {
+                            isSearchFieldFocused = false
                         }
+                        .onChange(of: searchText) { _, newValue in
+                            withAnimation(glassSystem.adaptedGlassSpring(.gentle)) {
+                                isSearchActive = !newValue.isEmpty
+                                // 🎯 Sub-Sprint 5.1.1: Detect intent as user types
+                                detectedIntent = SimpleQueryParser.parseIntent(from: newValue)
+                            }
+                        }
+                    
+                    if !searchText.isEmpty {
+                        Button(action: {
+                            withAnimation(glassSystem.adaptedGlassSpring(.responsive)) {
+                                searchText = ""
+                                isSearchActive = false
+                                detectedIntent = .unknown
+                                onClear()
+                            }
+                            isSearchFieldFocused = false
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .transition(.scale.combined(with: .opacity))
                     }
-                
-                if !searchText.isEmpty {
+                }
+                .padding(.horizontal, responsiveLayout.spacing.horizontalPadding)
+                .padding(.vertical, responsiveLayout.spacing.verticalPadding)
+                .glassBackground(
+                    material: responsiveLayout.materials.primary,
+                    cornerRadius: responsiveLayout.materials.cornerRadius,
+                    shadow: true
+                )
+                .scaleEffect(isSearchFieldFocused ? 1.02 : 1.0)
+                .animation(glassSystem.adaptedGlassSpring(.conversational), value: isSearchFieldFocused)
+            
+                if isSearchActive {
                     Button(action: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            searchText = ""
-                            isSearchActive = false
-                            detectedIntent = .unknown
-                            onClear()
-                        }
-                        isSearchFieldFocused = false
+                        showingFilters = true
                     }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+                        Image(systemName: "slider.horizontal.3")
                             .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(hasActiveFilters ? .accentColor : .secondary)
+                            .scaleEffect(hasActiveFilters ? 1.1 : 1.0)
+                            .animation(glassSystem.adaptedGlassSpring(.responsive), value: hasActiveFilters)
                     }
                     .transition(.scale.combined(with: .opacity))
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(UIColor.systemBackground))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
-                    )
-            )
-            .scaleEffect(isSearchFieldFocused ? 1.02 : 1.0)
-            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isSearchFieldFocused)
-            
-            if isSearchActive {
-                Button(action: {
-                    showingFilters = true
-                }) {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(hasActiveFilters ? .accentColor : .secondary)
-                        .scaleEffect(hasActiveFilters ? 1.1 : 1.0)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: hasActiveFilters)
-                }
-                .transition(.scale.combined(with: .opacity))
-                
-                Button("Cancel") {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        searchText = ""
-                        isSearchActive = false
-                        isSearchFieldFocused = false
-                        onClear()
+                    
+                    Button("Cancel") {
+                        withAnimation(glassSystem.adaptedGlassSpring(.responsive)) {
+                            searchText = ""
+                            isSearchActive = false
+                            isSearchFieldFocused = false
+                            onClear()
+                        }
                     }
+                    .font(responsiveLayout.typography.body)
+                    .foregroundStyle(.primary)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(.primary)
-                .transition(.move(edge: .trailing).combined(with: .opacity))
             }
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .frame(minHeight: 44)
-        .background {
-            Rectangle()
-                .materialBackground(depth: .navigation)
-                .ignoresSafeArea()
+            .padding(.horizontal, responsiveLayout.spacing.horizontalPadding)
+            .padding(.top, responsiveLayout.spacing.small)
+            .frame(minHeight: GlassDesignSystem.GlassLayout.minimumTouchTarget)
+            .background {
+                Rectangle()
+                    .glassBackground(
+                        material: .chrome,
+                        cornerRadius: 0,
+                        shadow: false
+                    )
+                    .ignoresSafeArea()
+            }
         }
         .onTapGesture {
             isSearchFieldFocused = true
@@ -284,11 +298,12 @@ struct SearchResultCard: View {
     @State private var isPressed = false
     @State private var image: UIImage?
     @StateObject private var heroService = HeroAnimationService.shared
+    @Environment(\.glassResponsiveLayout) private var layout
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: layout.spacing.small) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: layout.materials.cornerRadius, style: .continuous)
                     .fill(.quaternary.opacity(0.3))
                     .aspectRatio(3/4, contentMode: .fit)
                 
@@ -297,7 +312,7 @@ struct SearchResultCard: View {
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: layout.materials.cornerRadius, style: .continuous))
                         .heroSource(
                             id: "search_result_\(screenshot.id)",
                             in: heroNamespace,
@@ -310,27 +325,31 @@ struct SearchResultCard: View {
                 }
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: layout.materials.cornerRadius, style: .continuous)
                     .stroke(.quaternary, lineWidth: 0.5)
             }
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: layout.spacing.xs) {
                 if let extractedText = screenshot.extractedText, !extractedText.isEmpty {
                     HighlightedText(
                         text: String(extractedText.prefix(100)),
                         searchText: searchText
                     )
-                    .font(.caption)
+                    .font(layout.typography.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
                 }
                 
                 Text(screenshot.timestamp, style: .date)
-                    .font(.caption2)
+                    .font(layout.typography.caption)
                     .foregroundStyle(.tertiary)
             }
         }
-        .surfaceMaterial(cornerRadius: 16, stroke: nil)
+        .responsiveGlassBackground(
+            layout: layout,
+            materialType: .primary,
+            shadow: true
+        )
         .shadow(
             color: .black.opacity(isPressed ? 0.15 : 0.08),
             radius: isPressed ? 2 : 6,
@@ -338,14 +357,14 @@ struct SearchResultCard: View {
             y: isPressed ? 1 : 3
         )
         .scaleEffect(isPressed ? 0.95 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+        .animation(GlassDesignSystem.glassSpring(.responsive), value: isPressed)
         .onTapGesture {
             onTap()
         }
         .onLongPressGesture(minimumDuration: 0) {
             // Handle press state
         } onPressingChanged: { pressing in
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+            withAnimation(GlassDesignSystem.glassSpring(.microphone)) {
                 isPressed = pressing
             }
         }
@@ -411,5 +430,6 @@ struct HighlightedText: View {
         
         Spacer()
     }
-    .background(.regularMaterial)
+    .responsiveLayout()
+    .background(Color(.systemBackground))
 }

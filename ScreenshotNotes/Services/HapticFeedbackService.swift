@@ -522,7 +522,7 @@ struct HapticFeedbackTestView: View {
                         }
                     }
                     .padding()
-                    .surfaceMaterial(cornerRadius: 12)
+                    .glassBackground(material: .regular, cornerRadius: 12, shadow: true)
                     
                     // Test Patterns Section
                     VStack(alignment: .leading, spacing: 12) {
@@ -552,14 +552,14 @@ struct HapticFeedbackTestView: View {
                                     .padding(.vertical, 8)
                                     .padding(.horizontal, 12)
                                     .frame(maxWidth: .infinity)
-                                    .surfaceMaterial(cornerRadius: 8)
+                                    .glassBackground(material: .regular, cornerRadius: 8, shadow: true)
                                 }
                                 .buttonStyle(.plain)
                             }
                         }
                     }
                     .padding()
-                    .surfaceMaterial(cornerRadius: 12)
+                    .glassBackground(material: .regular, cornerRadius: 12, shadow: true)
                     
                     // Sequence Test Section
                     VStack(alignment: .leading, spacing: 12) {
@@ -598,7 +598,7 @@ struct HapticFeedbackTestView: View {
                         .buttonStyle(.bordered)
                     }
                     .padding()
-                    .surfaceMaterial(cornerRadius: 12)
+                    .glassBackground(material: .regular, cornerRadius: 12, shadow: true)
                 }
                 .padding()
             }

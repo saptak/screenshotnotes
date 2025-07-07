@@ -28,7 +28,7 @@ final class QuickActionService: ObservableObject {
     // MARK: - Dependencies
     
     private let hapticService = HapticFeedbackService.shared
-    private let materialSystem = MaterialDesignSystem.shared
+    private let glassSystem = GlassDesignSystem.shared
     
     // MARK: - Action History
     
