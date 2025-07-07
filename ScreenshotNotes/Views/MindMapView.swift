@@ -32,18 +32,14 @@ struct MindMapView: View {
             ZStack {
                 // Background
                 backgroundView
-                
                 // Main mind map canvas
                 mindMapCanvas
-                
                 // Overlay controls
                 overlayControls
-                
                 // Generation progress
                 if mindMapService.isGenerating {
                     generationProgressView
                 }
-                
                 // Statistics panel
                 if showingStats {
                     statisticsPanel
@@ -57,7 +53,6 @@ struct MindMapView: View {
                         dismiss()
                     }
                 }
-                
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button(action: {
                         showingStats.toggle()
@@ -66,7 +61,6 @@ struct MindMapView: View {
                         Image(systemName: "chart.bar")
                             .foregroundColor(.primary)
                     }
-                    
                     Button(action: {
                         showingControls.toggle()
                         hapticService.impact(.light)
@@ -74,7 +68,6 @@ struct MindMapView: View {
                         Image(systemName: showingControls ? "eye.slash" : "eye")
                             .foregroundColor(.primary)
                     }
-                    
                     Button(action: regenerateMindMap) {
                         Image(systemName: "arrow.clockwise")
                             .foregroundColor(.primary)
@@ -85,7 +78,6 @@ struct MindMapView: View {
             .task {
                 let isFirstTime = mindMapService.isFirstTimeGeneration
                 await mindMapService.refreshMindMapIfNeeded(screenshots: screenshots)
-                
                 // Set animation progress after loading from cache
                 if mindMapService.hasNodes && animationProgress == 0.0 && !isFirstTime {
                     withAnimation(.easeInOut(duration: 0.5)) {
@@ -107,6 +99,9 @@ struct MindMapView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.clear)
+        .ignoresSafeArea()
     }
     
     // MARK: - Background
@@ -152,10 +147,8 @@ struct MindMapView: View {
             ZStack {
                 // Connections
                 connectionsView
-                
                 // Cluster backgrounds
                 clustersView
-                
                 // Nodes
                 nodesView
             }
@@ -169,6 +162,9 @@ struct MindMapView: View {
             )
             .onAppear {
                 viewSize = geometry.size
+            }
+            .onChange(of: geometry.size) { newSize in
+                viewSize = newSize
             }
         }
         .clipped()
@@ -596,26 +592,35 @@ struct MindMapView: View {
     private func adjustPositionForView(_ position: CGPoint, in size: CGSize) -> CGPoint {
         // Adaptive coordinate transformation based on screen size
         // Scale positions relative to screen dimensions for better layout
-        let scaleX = size.width / 800.0  // Base reference width
-        let scaleY = size.height / 800.0 // Base reference height
-        let scale = min(scaleX, scaleY)  // Use smaller scale to maintain aspect ratio
+        let baseReference: CGFloat = 600.0
+        let scaleX = size.width / baseReference
+        let scaleY = size.height / baseReference
+        let scale = min(scaleX, scaleY) * 0.8 // Add some margin
+        
+        // Center the coordinate system and apply transformations
+        let centerX = size.width / 2
+        let centerY = size.height / 2
         
         return CGPoint(
-            x: position.x * scale * zoomScale + offset.width + size.width / 2,
-            y: position.y * scale * zoomScale + offset.height + size.height / 2
+            x: centerX + (position.x * scale * zoomScale) + offset.width,
+            y: centerY + (position.y * scale * zoomScale) + offset.height
         )
     }
     
     private func convertGlobalToNodePosition(_ globalPosition: CGPoint) -> CGPoint {
         // Convert global screen position back to node coordinate system
         // Reverse the adaptive transformations from adjustPositionForView
-        let scaleX = viewSize.width / 800.0
-        let scaleY = viewSize.height / 800.0
-        let scale = min(scaleX, scaleY)
+        let baseReference: CGFloat = 600.0
+        let scaleX = viewSize.width / baseReference
+        let scaleY = viewSize.height / baseReference
+        let scale = min(scaleX, scaleY) * 0.8 // Match the margin from adjustPositionForView
+        
+        let centerX = viewSize.width / 2
+        let centerY = viewSize.height / 2
         
         return CGPoint(
-            x: (globalPosition.x - offset.width - viewSize.width / 2) / (scale * zoomScale),
-            y: (globalPosition.y - offset.height - viewSize.height / 2) / (scale * zoomScale)
+            x: (globalPosition.x - centerX - offset.width) / (scale * zoomScale),
+            y: (globalPosition.y - centerY - offset.height) / (scale * zoomScale)
         )
     }
     
