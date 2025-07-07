@@ -2,9 +2,9 @@
 
 **Version:** 1.5
 
-**Date:** July 5, 2025
+**Date:** July 7, 2025
 
-**Status:** Sprint 5 Sub-Sprint 5.4.3 Complete - Glass Design System & Performance Optimization with 120fps ProMotion Support
+**Status:** Sprint 6.5.0 Complete - Enhanced Manual Import with Pull-to-Refresh Integration
 
 ---
 
@@ -640,6 +640,33 @@ Each sprint must meet the following criteria before proceeding:
 
         *   **Deliverable Status:** ✅ Production-ready mind map visualization exceeding original 3D requirements with 2D excellence
 
+    *   **Sub-Sprint 6.5.0: Enhanced Manual Import with Pull-to-Refresh** ✅ **COMPLETED**
+        *   **Goal:** Improve manual import capabilities with pull-to-refresh functionality for complete screenshot history import
+        *   **Status:** ✅ **IMPLEMENTATION COMPLETE** - Pull-to-refresh functionality fully integrated with batch processing and performance optimization
+        *   **Completed Features:**
+            *   ✅ **Pull-to-Refresh Integration:** Implemented `.refreshable` modifier on main gallery screen for automatic past screenshot import
+            *   ✅ **Comprehensive Photo Library Import:** Added `importAllPastScreenshots()` method to PhotoLibraryService for complete screenshot history import
+            *   ✅ **Smart Duplicate Detection:** Asset identifier-based deduplication prevents importing already processed screenshots
+            *   ✅ **Batch Processing Optimization:** Process screenshots in batches of 10 to prevent memory issues and system overload
+            *   ✅ **Enhanced User Experience:** Works on both empty state and populated gallery with contextual hint text
+            *   ✅ **Haptic Feedback Integration:** Comprehensive haptic feedback for user interactions and success/warning states
+            *   ✅ **Performance Optimization:** Non-blocking operations with 0.1s delays between batches and progress reporting
+        *   **Technical Implementation:**
+            *   **PhotoLibraryService Enhancement:** Extended protocol with `importAllPastScreenshots()` returning (imported: Int, skipped: Int) tuple
+            *   **ContentView Updates:** Enhanced both `ScreenshotGridView` and `EmptyStateView` with `.refreshable` modifier support
+            *   **Memory Management:** Efficient batch processing using PHImageManager with high-quality delivery mode
+            *   **Error Handling:** Comprehensive error handling with fallback mechanisms and user feedback
+            *   **User Interface:** Added helpful hint text "Pull down to import all past screenshots from Apple Photos" in empty state
+        *   **Files Created/Updated:**
+            *   `Services/PhotoLibraryService.swift` - Added importAllPastScreenshots() method with batch processing
+            *   `ContentView.swift` - Enhanced ScreenshotGridView and EmptyStateView with refreshable support and isRefreshing state
+        *   **Performance Metrics:**
+            *   **Memory Efficiency:** Batch processing prevents memory spikes during large imports
+            *   **User Experience:** Immediate haptic feedback with success/warning states based on import results
+            *   **System Integration:** Seamless integration with existing automatic import monitoring
+            *   **Reliability:** Comprehensive duplicate detection using Photos Framework asset identifiers
+        *   **Definition of Done:** ✅ Users can pull down on gallery to import entire screenshot history from Apple Photos with smooth UX and efficient performance
+
     *   **Sub-Sprint 6.5: Essential Copy/Edit Functionality** ⏳ **PRIORITY FOR COMPLETION**
         *   **Goal:** Complete core text extraction and copy capabilities (excluding advanced batch operations)
         *   **Status:** Ready for Implementation - Foundation services in place, focused on essential user functionality
@@ -714,6 +741,7 @@ Each sprint must meet the following criteria before proceeding:
             *   ✅ Interactive node exploration with gesture controls and detail views (Sprint 6.2)
             *   ✅ Performance optimization with efficient memory management and 60fps rendering (Sprint 6.2)
             *   ✅ Glass UX integration with translucent materials and accessibility support (Sprint 6.2)
+            *   ✅ Enhanced manual import with pull-to-refresh functionality for complete screenshot history import (Sprint 6.5.0)
         *   **Priority Copy/Edit Integration (Sprint 6.5):**
             *   ⏳ Enhanced ScreenshotDetailView with comprehensive text extraction display (Sprint 6.5.1)
             *   ⏳ Complete QuickActionService TODO implementations (Sprint 6.5.2)
