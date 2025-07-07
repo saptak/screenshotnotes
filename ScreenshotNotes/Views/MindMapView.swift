@@ -825,18 +825,19 @@ struct NodeDetailView: View {
                         }
                         
                         if let extractedText = screenshot.extractedText, !extractedText.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Extracted Text:")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                
-                                Text(extractedText)
-                                    .font(.body)
-                                    .foregroundColor(.secondary)
-                                    .padding(12)
-                                    .background(Color(UIColor.secondarySystemBackground))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            }
+                            ExtractedTextView(
+                                text: extractedText,
+                                mode: .standard,
+                                theme: .adaptive,
+                                showHeader: true,
+                                editable: false,
+                                onCopy: { copiedText in
+                                    // Provide haptic feedback for copy actions
+                                    let impact = UIImpactFeedbackGenerator(style: .light)
+                                    impact.impactOccurred()
+                                }
+                            )
+                            .frame(maxHeight: 400) // Limit height to prevent sizing issues
                         }
                         
                         if let objectTags = screenshot.objectTags, !objectTags.isEmpty {

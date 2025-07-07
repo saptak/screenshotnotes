@@ -79,10 +79,22 @@ struct ScreenshotDetailView: View {
                 }
                 // --- Extracted Text Display ---
                 if let extractedText = currentScreenshot.extractedText, !extractedText.isEmpty {
-                    ExtractedTextSection(text: extractedText)
-                        .padding(.top, 0)
-                        .padding(.bottom, 8)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    ExtractedTextView(
+                        text: extractedText,
+                        mode: .standard,
+                        theme: .glass,
+                        editable: true,
+                        onTextChanged: { newText in
+                            // Update the screenshot's extracted text
+                            currentScreenshot.extractedText = newText
+                        },
+                        onCopy: { copiedText in
+                            addHapticFeedback(.light)
+                        }
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             // Navigation bar overlay

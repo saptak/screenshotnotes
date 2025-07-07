@@ -44,9 +44,15 @@ final class BackgroundSemanticProcessor: ObservableObject {
     
     /// Process screenshots that need semantic analysis
     func processScreenshotsNeedingAnalysis(in modelContext: ModelContext) async {
+        // Calculate 30 days ago for semantic analysis staleness check
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date.distantPast
+        
         let descriptor = FetchDescriptor<Screenshot>(
             predicate: #Predicate<Screenshot> { screenshot in
-                screenshot.needsSemanticAnalysis || screenshot.extractedText == nil
+                // Need semantic analysis if never analyzed or analysis is stale (older than 30 days)
+                screenshot.lastSemanticAnalysis == nil || 
+                screenshot.lastSemanticAnalysis! < thirtyDaysAgo ||
+                screenshot.extractedText == nil
             }
         )
         
