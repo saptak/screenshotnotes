@@ -557,7 +557,7 @@ private extension VisualSimilarityService {
                 guard offset + bytesPerPixel < CFDataGetLength(data) else { continue }
                 
                 // Get grayscale value (using green channel for simplicity)
-                let center = Int(bytes[offset + 1])
+                let _ = Int(bytes[offset + 1]) // Center pixel (not used in current calculation)
                 let left = Int(bytes[offset - bytesPerPixel + 1])
                 let right = Int(bytes[offset + bytesPerPixel + 1])
                 let top = Int(bytes[(y - 1) * bytesPerRow + x * bytesPerPixel + 1])

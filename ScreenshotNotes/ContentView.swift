@@ -25,6 +25,8 @@ struct ContentView: View {
     @State private var showingSearchSuggestions = false
     @State private var searchTask: Task<Void, Never>?
     @State private var isRefreshing = false
+    @State private var bulkImportProgress: (current: Int, total: Int) = (0, 0)
+    
     
     // 🎯 Sprint 5.4.1: Glass Search Bar State
     @StateObject private var searchOrchestrator: GlassConversationalSearchOrchestrator
@@ -109,6 +111,7 @@ struct ContentView: View {
                     },
                     photoLibraryService: photoLibraryService,
                     isRefreshing: $isRefreshing,
+                    bulkImportProgress: $bulkImportProgress,
                     backgroundOCRProcessor: backgroundOCRProcessor,
                     backgroundSemanticProcessor: backgroundSemanticProcessor,
                     modelContext: modelContext
@@ -118,6 +121,7 @@ struct ContentView: View {
                     screenshots: filteredScreenshots,
                     photoLibraryService: photoLibraryService,
                     isRefreshing: $isRefreshing,
+                    bulkImportProgress: $bulkImportProgress,
                     backgroundOCRProcessor: backgroundOCRProcessor,
                     backgroundSemanticProcessor: backgroundSemanticProcessor,
                     modelContext: modelContext
@@ -127,6 +131,7 @@ struct ContentView: View {
                     screenshots: screenshots,
                     photoLibraryService: photoLibraryService,
                     isRefreshing: $isRefreshing,
+                    bulkImportProgress: $bulkImportProgress,
                     backgroundOCRProcessor: backgroundOCRProcessor,
                     backgroundSemanticProcessor: backgroundSemanticProcessor,
                     modelContext: modelContext
@@ -620,6 +625,7 @@ struct EmptyStateView: View {
     let onImportTapped: () -> Void
     let photoLibraryService: PhotoLibraryService
     @Binding var isRefreshing: Bool
+    @Binding var bulkImportProgress: (current: Int, total: Int)
     let backgroundOCRProcessor: BackgroundOCRProcessor
     let backgroundSemanticProcessor: BackgroundSemanticProcessor
     let modelContext: ModelContext
@@ -648,6 +654,20 @@ struct EmptyStateView: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                         .padding(.top, 4)
+                    
+                    // Progressive import progress indicator
+                    if isRefreshing && bulkImportProgress.total > 0 {
+                        VStack(spacing: 8) {
+                            Text("Importing \(bulkImportProgress.current) of \(bulkImportProgress.total) screenshots")
+                                .font(.caption2)
+                                .foregroundColor(.blue)
+                            
+                            ProgressView(value: Double(bulkImportProgress.current), total: Double(bulkImportProgress.total))
+                                .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                                .frame(width: 200)
+                        }
+                        .padding(.top, 8)
+                    }
                 }
                 
                 Button(action: {
@@ -695,17 +715,31 @@ struct EmptyStateView: View {
             totalSkipped += result.skipped
             batchIndex += 1
             hasMore = result.hasMore
+            
+            // Update progress for UI feedback
+            bulkImportProgress = (current: totalImported, total: totalImported + totalSkipped)
 
-            // Trigger OCR/semantic processing for this batch sequentially to avoid race conditions
+            // Allow UI to update immediately after each batch import
             if result.imported > 0 {
-                backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
-                // Wait for OCR to complete before starting semantic processing
-                await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
-                await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
+                // Schedule background processing (rate-limited to prevent overlapping tasks)
+                Task {
+                    // Small delay to allow UI update
+                    try? await Task.sleep(nanoseconds: 50_000_000) // 0.05s
+                    
+                    backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
+                    
+                    // Wait briefly for OCR to initialize  
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+                    
+                    await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+                    await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
+                    
+                    print("✅ Background processing completed for batch")
+                }
             }
 
-            // Yield to UI so user can scroll/interact
-            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s between batches
+            // Shorter yield for more responsive UI updates
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s between batches
         }
 
         let notificationFeedback = UINotificationFeedbackGenerator()
@@ -716,6 +750,7 @@ struct EmptyStateView: View {
         }
         print("📸 Pull-to-refresh import completed: \(totalImported) imported, \(totalSkipped) skipped")
         isRefreshing = false
+        bulkImportProgress = (0, 0) // Reset progress
     }
 }
 
@@ -723,6 +758,7 @@ struct ScreenshotGridView: View {
     let screenshots: [Screenshot]
     let photoLibraryService: PhotoLibraryService
     @Binding var isRefreshing: Bool
+    @Binding var bulkImportProgress: (current: Int, total: Int)
     let backgroundOCRProcessor: BackgroundOCRProcessor
     let backgroundSemanticProcessor: BackgroundSemanticProcessor
     let modelContext: ModelContext
@@ -820,17 +856,31 @@ struct ScreenshotGridView: View {
             totalSkipped += result.skipped
             batchIndex += 1
             hasMore = result.hasMore
+            
+            // Update progress for UI feedback
+            bulkImportProgress = (current: totalImported, total: totalImported + totalSkipped)
 
-            // Trigger OCR/semantic processing for this batch sequentially to avoid race conditions
+            // Allow UI to update immediately after each batch import
             if result.imported > 0 {
-                backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
-                // Wait for OCR to complete before starting semantic processing
-                await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
-                await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
+                // Schedule background processing (rate-limited to prevent overlapping tasks)
+                Task {
+                    // Small delay to allow UI update
+                    try? await Task.sleep(nanoseconds: 50_000_000) // 0.05s
+                    
+                    backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
+                    
+                    // Wait briefly for OCR to initialize  
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+                    
+                    await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+                    await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
+                    
+                    print("✅ Background processing completed for batch")
+                }
             }
 
-            // Yield to UI so user can scroll/interact
-            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s between batches
+            // Shorter yield for more responsive UI updates
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s between batches
         }
 
         let notificationFeedback = UINotificationFeedbackGenerator()
@@ -841,6 +891,7 @@ struct ScreenshotGridView: View {
         }
         print("📸 Pull-to-refresh import completed: \(totalImported) imported, \(totalSkipped) skipped")
         isRefreshing = false
+        bulkImportProgress = (0, 0) // Reset progress
     }
     
     private func handlePerformanceOptimization(_ notification: Notification) {
@@ -1026,3 +1077,4 @@ struct SearchSuggestionsView: View {
     ContentView()
         .modelContainer(for: Screenshot.self, inMemory: true)
 }
+

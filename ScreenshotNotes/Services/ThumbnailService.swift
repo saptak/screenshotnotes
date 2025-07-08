@@ -171,3 +171,49 @@ class ThumbnailService: ObservableObject {
         return (memoryCount: memoryCount, diskCount: diskCount)
     }
 }
+
+// MARK: - Thumbnail Task Coordination Actor
+
+/// Actor to provide async-safe coordination for thumbnail generation tasks
+actor ThumbnailTaskCoordinator {
+    private var activeTasks: [String: Task<UIImage?, Never>] = [:]
+    
+    /// Get or create a task for thumbnail generation
+    /// - Parameters:
+    ///   - cacheKey: Unique cache key for the thumbnail
+    ///   - taskFactory: Closure that creates the thumbnail generation task
+    /// - Returns: The thumbnail image or nil if generation failed
+    func getOrCreateTask(
+        for cacheKey: String,
+        taskFactory: @escaping () -> Task<UIImage?, Never>
+    ) async -> UIImage? {
+        // If there's already a task for this cache key, await it
+        if let existingTask = activeTasks[cacheKey] {
+            return await existingTask.value
+        }
+        
+        // Create a new task and store it
+        let newTask = taskFactory()
+        activeTasks[cacheKey] = newTask
+        
+        let result = await newTask.value
+        
+        // Clean up completed task
+        activeTasks.removeValue(forKey: cacheKey)
+        
+        return result
+    }
+    
+    /// Cancel all active tasks and clear the task registry
+    func cancelAllTasks() {
+        for (_, task) in activeTasks {
+            task.cancel()
+        }
+        activeTasks.removeAll()
+    }
+    
+    /// Get count of currently active tasks
+    var activeTaskCount: Int {
+        return activeTasks.count
+    }
+}

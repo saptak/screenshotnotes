@@ -25,9 +25,8 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     @Published var authorizationStatus: PHAuthorizationStatus = .notDetermined
     @Published var automaticImportEnabled = true
     
-    // Race condition protection
-    private var isImporting = false
-    private let importLock = NSLock()
+    // Race condition protection using async-safe actor
+    private let importCoordinator = ImportCoordinator()
 
     init(imageStorageService: ImageStorageServiceProtocol = ImageStorageService(),
          hapticService: HapticFeedbackService? = nil) {
@@ -46,16 +45,14 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     ///   - batchSize: The number of screenshots to import per batch
     /// - Returns: (imported: Int, skipped: Int, hasMore: Bool)
     func importPastScreenshotsBatch(batch: Int, batchSize: Int) async -> (imported: Int, skipped: Int, hasMore: Bool) {
-        // Prevent concurrent imports
-        importLock.lock()
-        defer { importLock.unlock() }
-        
-        if isImporting {
+        // Attempt to start import operation with async-safe coordination
+        guard let importId = await importCoordinator.startImport() else {
             print("⚠️ Import already in progress, skipping batch \(batch)")
             return (imported: 0, skipped: 0, hasMore: false)
         }
-        isImporting = true
-        defer { isImporting = false }
+        defer { 
+            Task { await importCoordinator.endImport(importId: importId) }
+        }
         
         guard authorizationStatus == .authorized else {
             print("❌ Photo library access not authorized")
@@ -122,6 +119,8 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
                             )
                             await MainActor.run {
                                 modelContext.insert(screenshot)
+                                // Save immediately for progressive UI updates
+                                try? modelContext.save()
                                 importedCount += 1
                                 print("📸 Batch imported screenshot \(importedCount): \(asset.localIdentifier)")
                             }
@@ -133,10 +132,7 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
                 }
             }
         }
-        // Save once per batch to avoid UI thrashing
-        await MainActor.run {
-            try? modelContext.save()
-        }
+        // Individual saves are now handled per screenshot for progressive updates
         let hasMore = end < total
         return (imported: importedCount, skipped: skippedCount, hasMore: hasMore)
     }
@@ -237,16 +233,14 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     }
     
     func importAllPastScreenshots() async -> (imported: Int, skipped: Int) {
-        // Prevent concurrent imports
-        importLock.lock()
-        defer { importLock.unlock() }
-        
-        if isImporting {
+        // Attempt to start import operation with async-safe coordination
+        guard let importId = await importCoordinator.startImport() else {
             print("⚠️ Import already in progress, aborting new import request")
             return (imported: 0, skipped: 0)
         }
-        isImporting = true
-        defer { isImporting = false }
+        defer { 
+            Task { await importCoordinator.endImport(importId: importId) }
+        }
         
         guard authorizationStatus == .authorized else {
             print("❌ Photo library access not authorized")
@@ -474,5 +468,46 @@ extension PhotoLibraryService: @preconcurrency PHPhotoLibraryChangeObserver {
                 print("📸 No change details available for stored screenshot collection")
             }
         }
+    }
+}
+
+// MARK: - Import Coordination Actor
+
+/// Actor to provide async-safe coordination for import operations
+actor ImportCoordinator {
+    private var isImporting = false
+    private var currentImportId: UUID?
+    
+    /// Attempt to start an import operation
+    /// - Returns: Import session ID if successful, nil if import already in progress
+    func startImport() -> UUID? {
+        guard !isImporting else {
+            print("⚠️ Import already in progress with ID: \(currentImportId?.uuidString ?? "unknown")")
+            return nil
+        }
+        
+        let importId = UUID()
+        isImporting = true
+        currentImportId = importId
+        print("🚀 Starting import with ID: \(importId.uuidString)")
+        return importId
+    }
+    
+    /// End an import operation
+    /// - Parameter importId: The import session ID returned by startImport()
+    func endImport(importId: UUID) {
+        guard currentImportId == importId else {
+            print("⚠️ Attempting to end import with mismatched ID: \(importId.uuidString)")
+            return
+        }
+        
+        isImporting = false
+        currentImportId = nil
+        print("✅ Ended import with ID: \(importId.uuidString)")
+    }
+    
+    /// Check if an import is currently in progress
+    var importInProgress: Bool {
+        return isImporting
     }
 }
