@@ -24,6 +24,10 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     private var screenshotsFetchResult: PHFetchResult<PHAsset>?
     @Published var authorizationStatus: PHAuthorizationStatus = .notDetermined
     @Published var automaticImportEnabled = true
+    
+    // Race condition protection
+    private var isImporting = false
+    private let importLock = NSLock()
 
     init(imageStorageService: ImageStorageServiceProtocol = ImageStorageService(),
          hapticService: HapticFeedbackService? = nil) {
@@ -42,6 +46,17 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     ///   - batchSize: The number of screenshots to import per batch
     /// - Returns: (imported: Int, skipped: Int, hasMore: Bool)
     func importPastScreenshotsBatch(batch: Int, batchSize: Int) async -> (imported: Int, skipped: Int, hasMore: Bool) {
+        // Prevent concurrent imports
+        importLock.lock()
+        defer { importLock.unlock() }
+        
+        if isImporting {
+            print("⚠️ Import already in progress, skipping batch \(batch)")
+            return (imported: 0, skipped: 0, hasMore: false)
+        }
+        isImporting = true
+        defer { isImporting = false }
+        
         guard authorizationStatus == .authorized else {
             print("❌ Photo library access not authorized")
             return (imported: 0, skipped: 0, hasMore: false)
@@ -118,7 +133,10 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
                 }
             }
         }
-        try? modelContext.save()
+        // Save once per batch to avoid UI thrashing
+        await MainActor.run {
+            try? modelContext.save()
+        }
         let hasMore = end < total
         return (imported: importedCount, skipped: skippedCount, hasMore: hasMore)
     }
@@ -219,6 +237,17 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     }
     
     func importAllPastScreenshots() async -> (imported: Int, skipped: Int) {
+        // Prevent concurrent imports
+        importLock.lock()
+        defer { importLock.unlock() }
+        
+        if isImporting {
+            print("⚠️ Import already in progress, aborting new import request")
+            return (imported: 0, skipped: 0)
+        }
+        isImporting = true
+        defer { isImporting = false }
+        
         guard authorizationStatus == .authorized else {
             print("❌ Photo library access not authorized")
             return (imported: 0, skipped: 0)

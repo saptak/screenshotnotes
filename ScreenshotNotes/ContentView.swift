@@ -696,13 +696,12 @@ struct EmptyStateView: View {
             batchIndex += 1
             hasMore = result.hasMore
 
-            // Trigger OCR/semantic processing for this batch
+            // Trigger OCR/semantic processing for this batch sequentially to avoid race conditions
             if result.imported > 0 {
                 backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
-                Task {
-                    await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
-                    await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
-                }
+                // Wait for OCR to complete before starting semantic processing
+                await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+                await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
             }
 
             // Yield to UI so user can scroll/interact
@@ -822,13 +821,12 @@ struct ScreenshotGridView: View {
             batchIndex += 1
             hasMore = result.hasMore
 
-            // Trigger OCR/semantic processing for this batch
+            // Trigger OCR/semantic processing for this batch sequentially to avoid race conditions
             if result.imported > 0 {
                 backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
-                Task {
-                    await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
-                    await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
-                }
+                // Wait for OCR to complete before starting semantic processing
+                await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+                await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
             }
 
             // Yield to UI so user can scroll/interact

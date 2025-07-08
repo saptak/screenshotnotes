@@ -10,7 +10,7 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
     @State private var containerHeight: CGFloat = 0
     @State private var scrollOffset: CGFloat = 0
     
-    private let overscanBuffer: Int = 10 // Render extra items above/below visible area
+    private let overscanBuffer: Int = 5 // Render extra items above/below visible area (reduced for performance)
     
     init(
         items: [Item],
@@ -35,15 +35,15 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
                             .frame(height: CGFloat(visibleRange.lowerBound / columns.count) * (itemHeight + 16))
                     }
                     
-                    // Visible items
-                    ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
-                        LazyVGrid(columns: columns, spacing: 16) {
+                    // Visible items in a single grid
+                    LazyVGrid(columns: columns, spacing: 16) {
+                        ForEach(Array(visibleItems), id: \.id) { item in
                             content(item)
                                 .frame(height: itemHeight)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
                     
                     // Bottom spacer for items below visible area
                     if visibleRange.upperBound < items.count {
@@ -82,7 +82,7 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
     }
     
     private func updateVisibleRange(containerHeight: CGFloat) {
-        let itemsPerRow = columns.count
+        let itemsPerRow = max(1, columns.count) // Ensure at least 1 item per row
         let rowHeight = itemHeight + 16 // Include spacing
         
         let visibleRows = Int(ceil(containerHeight / rowHeight))
@@ -97,6 +97,7 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
         
         let newRange = newStart..<newEnd
         
+        // Only update if range actually changed to avoid unnecessary redraws
         if newRange != visibleRange {
             visibleRange = newRange
         }

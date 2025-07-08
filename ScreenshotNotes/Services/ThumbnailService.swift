@@ -10,6 +10,7 @@ class ThumbnailService: ObservableObject {
     private let thumbnailCache = NSCache<NSString, UIImage>()
     private let fileManager = FileManager.default
     private let thumbnailsDirectory: URL
+    private var activeTasks: [String: Task<UIImage?, Never>] = [:]
     
     // Thumbnail specifications
     nonisolated static let thumbnailSize = CGSize(width: 200, height: 200)
@@ -40,6 +41,12 @@ class ThumbnailService: ObservableObject {
             return cachedImage
         }
         
+        // If there's already a task generating this thumbnail, await it to prevent duplicate work
+        if let existingTask = activeTasks[cacheKey] {
+            logger.debug("Awaiting existing thumbnail task for: \(cacheKey)")
+            return await existingTask.value
+        }
+        
         // Check disk cache
         let thumbnailURL = thumbnailsDirectory.appendingPathComponent("\(cacheKey).jpg")
         if fileManager.fileExists(atPath: thumbnailURL.path),
@@ -50,8 +57,20 @@ class ThumbnailService: ObservableObject {
             return diskImage
         }
         
-        // Generate thumbnail from original data
-        return await generateThumbnail(imageData: imageData, size: size, cacheKey: cacheKey, thumbnailURL: thumbnailURL)
+        // Create a new task for generating the thumbnail
+        let task = Task {
+            await generateThumbnail(imageData: imageData, size: size, cacheKey: cacheKey, thumbnailURL: thumbnailURL)
+        }
+        
+        // Store the task to avoid duplicate work
+        activeTasks[cacheKey] = task
+        
+        let result = await task.value
+        
+        // Clean up the task reference
+        activeTasks.removeValue(forKey: cacheKey)
+        
+        return result
     }
     
     private func generateThumbnail(imageData: Data, size: CGSize, cacheKey: String, thumbnailURL: URL) async -> UIImage? {
@@ -109,6 +128,13 @@ class ThumbnailService: ObservableObject {
     /// Clear thumbnail cache to free memory
     func clearCache() {
         thumbnailCache.removeAllObjects()
+        
+        // Cancel any active tasks
+        for (_, task) in activeTasks {
+            task.cancel()
+        }
+        activeTasks.removeAll()
+        
         logger.info("Thumbnail cache cleared")
     }
     

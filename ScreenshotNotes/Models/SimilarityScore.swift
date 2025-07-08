@@ -4,7 +4,7 @@ import SwiftData
 /// Comprehensive similarity score model for multi-modal content analysis
 /// Sprint 7.1.1: Content Similarity Engine - Production-ready similarity detection
 @Model
-final class SimilarityScore {
+final class SimilarityScore: @unchecked Sendable {
     
     // MARK: - Core Properties
     
