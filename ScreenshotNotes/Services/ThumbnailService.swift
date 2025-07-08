@@ -71,8 +71,8 @@ class ThumbnailService: ObservableObject {
     
     private init() {
         // Set up cache configuration
-        thumbnailCache.countLimit = 200 // Keep 200 thumbnails in memory
-        thumbnailCache.totalCostLimit = 50 * 1024 * 1024 // 50MB memory limit
+        thumbnailCache.countLimit = 500 // Keep 500 thumbnails in memory (increased for bulk imports)
+        thumbnailCache.totalCostLimit = 100 * 1024 * 1024 // 100MB memory limit (increased for bulk imports)
         
         // Create thumbnails directory
         let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!

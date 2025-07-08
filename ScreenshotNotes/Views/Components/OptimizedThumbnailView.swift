@@ -104,11 +104,13 @@ struct OptimizedThumbnailView: View {
         
         // Check cache first to avoid unnecessary loading states
         if let cachedThumbnail = thumbnailService.getCachedThumbnail(for: screenshot.id, size: size) {
+            print("✅ Cache hit for thumbnail: \(screenshot.id)")
             thumbnailImage = cachedThumbnail
             isLoading = false
             return
         }
         
+        print("🔍 Cache miss for thumbnail: \(screenshot.id), starting generation")
         // Only show loading if we need to actually load
         isLoading = true
         
