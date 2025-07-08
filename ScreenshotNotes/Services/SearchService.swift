@@ -4,13 +4,15 @@ import SwiftData
 protocol SearchServiceProtocol {
     func searchScreenshots(query: String, in screenshots: [Screenshot]) -> [Screenshot]
     func highlightText(in text: String, matching query: String) -> [(range: NSRange, text: String)]
+    func findSimilarScreenshots(to screenshot: Screenshot, in screenshots: [Screenshot], limit: Int) async throws -> [Screenshot]
 }
 
 final class SearchService: ObservableObject, SearchServiceProtocol {
-    
+
     private let debounceInterval: TimeInterval = 0.1
     private let searchCache = SearchCache()
     private var searchTask: Task<Void, Never>?
+    @MainActor private static let similarityEngine = SimilarityEngine.shared
     
     func searchScreenshots(query: String, in screenshots: [Screenshot]) -> [Screenshot] {
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -219,5 +221,87 @@ final class SearchService: ObservableObject, SearchServiceProtocol {
         }
         
         return results.isEmpty ? [(range: NSRange(location: 0, length: text.count), text: text)] : results
+    }
+    
+    /// Finds similar screenshots using the Content Similarity Engine
+    /// - Parameters:
+    ///   - screenshot: Reference screenshot to find similarities for
+    ///   - screenshots: Pool of screenshots to search in
+    ///   - limit: Maximum number of results to return
+    /// - Returns: Array of similar screenshots sorted by similarity score
+    func findSimilarScreenshots(to screenshot: Screenshot, in screenshots: [Screenshot], limit: Int = 10) async throws -> [Screenshot] {
+        // Only get IDs from the engine, then map to screenshots
+        let similarScores = try await SearchService.similarityEngine.findSimilarScreenshots(
+            for: screenshot,
+            in: screenshots,
+            limit: limit
+        )
+        let similarScoreIds = similarScores.map { $0.targetScreenshotId }
+        return similarScoreIds.compactMap { id in
+            screenshots.first { $0.id == id }
+        }
+    }
+    
+    /// Enhanced search with similarity-based results
+    /// - Parameters:
+    ///   - query: Search query
+    ///   - screenshots: Screenshots to search in
+    ///   - includeSimilar: Whether to include similar results
+    /// - Returns: Enhanced search results with similarity suggestions
+    func enhancedSearch(query: String, in screenshots: [Screenshot], includeSimilar: Bool = true) async throws -> EnhancedSearchResults {
+        // Perform traditional text-based search
+        let textResults = searchScreenshots(query: query, in: screenshots)
+        
+        guard includeSimilar && !textResults.isEmpty else {
+            return EnhancedSearchResults(
+                textResults: textResults,
+                similarResults: [],
+                searchQuery: query,
+                totalResults: textResults.count
+            )
+        }
+        
+        // Find similar screenshots to the top results
+        let topResults = Array(textResults.prefix(3))
+        var similarResults: [Screenshot] = []
+        
+        for topResult in topResults {
+            let similar = try await findSimilarScreenshots(
+                to: topResult,
+                in: screenshots.filter { !textResults.contains($0) }, // Exclude already found results
+                limit: 5
+            )
+            similarResults.append(contentsOf: similar)
+        }
+        
+        // Remove duplicates and limit results
+        let uniqueSimilarResults = Array(Set(similarResults)).prefix(10)
+        
+        return EnhancedSearchResults(
+            textResults: textResults,
+            similarResults: Array(uniqueSimilarResults),
+            searchQuery: query,
+            totalResults: textResults.count + uniqueSimilarResults.count
+        )
+    }
+}
+
+/// Enhanced search results with similarity-based suggestions
+struct EnhancedSearchResults {
+    let textResults: [Screenshot]
+    let similarResults: [Screenshot]
+    let searchQuery: String
+    let totalResults: Int
+    
+    var allResults: [Screenshot] {
+        return textResults + similarResults
+    }
+    
+    var hasResults: Bool {
+        return totalResults > 0
+    }
+    
+    var hasSimilarResults: Bool {
+        return !similarResults.isEmpty
     }
 }

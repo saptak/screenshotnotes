@@ -679,37 +679,43 @@ struct EmptyStateView: View {
     
     private func refreshScreenshots() async {
         isRefreshing = true
-        
-        // Provide haptic feedback for pull-to-refresh
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
-        
-        // Import all past screenshots from Photo Library
-        let result = await photoLibraryService.importAllPastScreenshots()
-        
-        // Provide success haptic feedback
+
+        // Extremely lazy, incremental import in batches
+        let batchSize = 10
+        var totalImported = 0
+        var totalSkipped = 0
+        var hasMore = true
+        var batchIndex = 0
+
+        while hasMore {
+            let result = await photoLibraryService.importPastScreenshotsBatch(batch: batchIndex, batchSize: batchSize)
+            totalImported += result.imported
+            totalSkipped += result.skipped
+            batchIndex += 1
+            hasMore = result.hasMore
+
+            // Trigger OCR/semantic processing for this batch
+            if result.imported > 0 {
+                backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
+                Task {
+                    await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+                    await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
+                }
+            }
+
+            // Yield to UI so user can scroll/interact
+            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s between batches
+        }
+
         let notificationFeedback = UINotificationFeedbackGenerator()
-        if result.imported > 0 {
+        if totalImported > 0 {
             notificationFeedback.notificationOccurred(.success)
         } else {
             notificationFeedback.notificationOccurred(.warning)
         }
-        
-        print("📸 Pull-to-refresh import completed: \(result.imported) imported, \(result.skipped) skipped")
-        
-        // Trigger OCR processing for newly imported screenshots if any were imported
-        if result.imported > 0 {
-            backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
-            
-            // Trigger semantic processing for newly imported screenshots
-            Task {
-                await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
-                
-                // Trigger mind map regeneration after semantic processing completes
-                await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
-            }
-        }
-        
+        print("📸 Pull-to-refresh import completed: \(totalImported) imported, \(totalSkipped) skipped")
         isRefreshing = false
     }
 }
@@ -726,8 +732,9 @@ struct ScreenshotGridView: View {
     @StateObject private var performanceMonitor = GalleryPerformanceMonitor.shared
     @StateObject private var thumbnailService = ThumbnailService.shared
     
+    // Lower minimum to allow more columns on large screens
     private let columns = [
-        GridItem(.adaptive(minimum: 160), spacing: 16)
+        GridItem(.adaptive(minimum: 120), spacing: 16)
     ]
     
     var body: some View {
@@ -747,6 +754,7 @@ struct ScreenshotGridView: View {
                         }
                     )
                 }
+                .frame(maxWidth: .infinity)
             } else {
                 // Use regular LazyVGrid for smaller collections
                 ScrollView {
@@ -761,6 +769,7 @@ struct ScreenshotGridView: View {
                             )
                         }
                     }
+                    .frame(maxWidth: .infinity)
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
                     .padding(.bottom, 16)
@@ -796,37 +805,43 @@ struct ScreenshotGridView: View {
     
     private func refreshScreenshots() async {
         isRefreshing = true
-        
-        // Provide haptic feedback for pull-to-refresh
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
-        
-        // Import all past screenshots from Photo Library
-        let result = await photoLibraryService.importAllPastScreenshots()
-        
-        // Provide success haptic feedback
+
+        // Extremely lazy, incremental import in batches
+        let batchSize = 10
+        var totalImported = 0
+        var totalSkipped = 0
+        var hasMore = true
+        var batchIndex = 0
+
+        while hasMore {
+            let result = await photoLibraryService.importPastScreenshotsBatch(batch: batchIndex, batchSize: batchSize)
+            totalImported += result.imported
+            totalSkipped += result.skipped
+            batchIndex += 1
+            hasMore = result.hasMore
+
+            // Trigger OCR/semantic processing for this batch
+            if result.imported > 0 {
+                backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
+                Task {
+                    await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+                    await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
+                }
+            }
+
+            // Yield to UI so user can scroll/interact
+            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s between batches
+        }
+
         let notificationFeedback = UINotificationFeedbackGenerator()
-        if result.imported > 0 {
+        if totalImported > 0 {
             notificationFeedback.notificationOccurred(.success)
         } else {
             notificationFeedback.notificationOccurred(.warning)
         }
-        
-        print("📸 Pull-to-refresh import completed: \(result.imported) imported, \(result.skipped) skipped")
-        
-        // Trigger OCR processing for newly imported screenshots if any were imported
-        if result.imported > 0 {
-            backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
-            
-            // Trigger semantic processing for newly imported screenshots
-            Task {
-                await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
-                
-                // Trigger mind map regeneration after semantic processing completes
-                await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
-            }
-        }
-        
+        print("📸 Pull-to-refresh import completed: \(totalImported) imported, \(totalSkipped) skipped")
         isRefreshing = false
     }
     

@@ -1,3 +1,26 @@
+
+*   **Sprint 0: Foundation & Setup** ✅ **COMPLETED**
+    *   **Goal:** Prepare the project environment and architecture.
+    *   **Tasks:**
+        *   ✅ Initialize a private Git repository.
+        *   ✅ Set up Xcode project with Swift Package Manager for dependencies.
+        *   ✅ Define basic project structure: Views, ViewModels, Models, Services.
+        *   ✅ Establish a basic SwiftUI view hierarchy.
+        *   ✅ Set up data persistence using SwiftData with initial schema for a "Screenshot" entity (image data, timestamp).
+    *   **Implementation Notes:**
+        *   Created GitHub repository: `screenshotnotes` (private)
+        *   Xcode project configured for iOS 17+ with SwiftUI and SwiftData
+        *   MVVM architecture established with organized folder structure
+        *   Screenshot model includes all properties for future sprints (extractedText, objectTags, userNotes, userTags)
+        *   Basic ContentView with EmptyStateView and ScreenshotListView components
+        *   Asset catalog configured with app icon and accent color placeholders
+    *   **Files Created:**
+        *   `ScreenshotNotesApp.swift` - Main app entry point with SwiftData container
+        *   `Models/Screenshot.swift` - SwiftData model with comprehensive schema
+        *   `Views/ContentView.swift` - Main view with list and empty state
+        *   Xcode project structure and asset catalogs
+
+
 *   **Sprint 1: The MVP - Manual & Functional** ✅ **COMPLETED**
     *   **Goal:** A user can manually import a photo and see it in a list.
     *   **Features:**
@@ -614,3 +637,93 @@
             *   **System Integration:** Seamless integration with existing automatic import monitoring
             *   **Reliability:** Comprehensive duplicate detection using Photos Framework asset identifiers
         *   **Definition of Done:** ✅ Users can pull down on gallery to import entire screenshot history from Apple Photos with smooth UX and efficient performance
+
+
+    *   **Sub-Sprint 6.5: Essential Copy/Edit Functionality** ✅ **COMPLETED**
+    *   **Sub-Sprint 6.6: Glass Design System Unification** ✅ **COMPLETED**
+        *   **Goal:** Complete core text extraction and copy capabilities (excluding advanced batch operations)
+        *   **Status:** Ready for Implementation - Foundation services in place, focused on essential user functionality
+        *   **Atomic Units:**
+            *   **6.5.1: Smart Text Extraction & Display Integration** ✅ **COMPLETED**
+                *   **Deliverable:** Interactive text view integrated in ScreenshotDetailView and mind map node details
+                *   **Tasks:**
+                    *   ✅ Enhance ScreenshotDetailView with selectable, copyable extracted text display
+                    *   ✅ Add syntax highlighting for different data types (URLs, phone numbers, emails)
+                    *   ✅ Implement smart text selection with entity recognition boundaries
+                    *   ✅ Create editing interface for text correction in detail views
+                    *   ✅ Integrate with existing OCR service and extracted text display
+                *   **Integration Test:** ✅ Screenshot detail view → formatted text display with copy buttons for URLs, phone numbers
+                *   **Functional Test:** ✅ Users can copy extracted text with 95% accuracy, edits persist across sessions
+                *   **Files:** `Views/ExtractedTextView.swift`, `ScreenshotDetailView.swift` (enhanced), `Services/SmartTextDisplayService.swift`
+
+            *   **6.5.2: Contextual Copy Actions & Quick Actions Enhancement** ⏳ **PRIORITY IMPLEMENTATION**
+                *   **Deliverable:** Complete QuickActionService TODO items with smart data recognition
+                *   **Tasks:**
+                    *   Complete TODO implementations in QuickActionService.swift (tagging, favorites, export, metadata editing)
+                    *   Implement pattern recognition for URLs, phone numbers, emails, addresses, dates, prices
+                    *   Add QR code detection and automatic action buttons in detail views
+                    *   Build smart clipboard management with multiple copy formats
+                    *   Complete contextual menu integration with copy actions
+                *   **Integration Test:** Business card screenshot → detect and copy phone number with one tap from contextual menu
+                *   **Functional Test:** All TODO items in QuickActionService completed with 95% accuracy for data detection
+                *   **Files:** `Services/QuickActionService.swift` (complete TODOs), `Services/SmartDataRecognitionService.swift`, `Views/SmartActionButtons.swift`
+
+            *   **6.5.3: Mind Map Text Display Optimization** ✅ **COMPLETED**
+                *   **Deliverable:** Optimized text extraction display in mind map with proper sizing and duplicate elimination
+                *   **Tasks:**
+                    *   ✅ Fix NodeDetailView ExtractedTextView sizing issues
+                    *   ✅ Implement deduplication logic for entity display
+                    *   ✅ Optimize display mode selection for mind map context
+                    *   ✅ Enhance text readability with proper spacing and height constraints
+                *   **Integration Test:** ✅ Mind map node detail view displays text at appropriate size without duplicates
+                *   **Functional Test:** ✅ Text extraction view properly sized and readable in mind map context
+                *   **Files:** `Views/MindMapView.swift` (NodeDetailView enhanced), `Services/SmartTextDisplayService.swift` (deduplication), `Views/ExtractedTextView.swift` (sizing optimization)
+
+    *   **Technical Specifications:**
+        *   SwiftData: Add `Connection`, `Entity`, `Topic` models with relationship mapping
+        *   NLP: Core ML models for named entity recognition and topic modeling
+        *   Algorithm: Advanced similarity algorithms (semantic embeddings, TF-IDF, cosine similarity)
+        *   Visualization: SwiftUI Canvas with 3D transforms and physics simulation
+        *   Gestures: Complex multi-touch interactions with haptic feedback
+        *   Performance: Efficient graph algorithms with dynamic LOD (Level of Detail)
+        *   ML Pipeline: On-device processing with incremental learning capabilities
+        *   **Mind Map Performance & Data Consistency:**
+            *   **Layout Caching:** Mind map positions cached in SwiftData with automatic persistence
+            *   **Incremental Updates:** Graph algorithms designed for localized recalculation when data changes
+            *   **Change Detection:** Efficient diffing system to identify which nodes/relationships need recalculation
+            *   **Data Versioning:** Track AI analysis versions and user edit timestamps for conflict resolution
+            *   **Edge Case Handling:** Robust systems for screenshot deletion, annotation changes, and AI re-analysis
+            *   **Performance Targets:** <100ms for single node updates, <500ms for localized region updates
+            *   **Asynchronous Layout Updates:** Mind map layout updated in background during screenshot import/OCR processing
+            *   **Progressive Enhancement:** Layout calculations performed incrementally as new data becomes available
+            *   **Background Processing:** Non-blocking layout updates ensure instant mind map view switching
+
+    *   **Overall Sprint Definition of Done:**
+        *   ✅ Semantic relationship discovery with 90% accuracy for obvious connections (ACHIEVED - Sprint 6.1.1)
+        *   ✅ Mind map visualization maintaining 60fps on target devices (ACHIEVED - Sprint 6.2)
+        *   ✅ Interactive node selection with 95% touch accuracy (ACHIEVED - Sprint 6.2)
+        *   ✅ Memory usage <200MB with progressive loading (ACHIEVED - Sprint 6.2)
+        *   ✅ Full accessibility support with VoiceOver compatibility (ACHIEVED - Sprint 6.2)
+        *   ✅ Complete text extraction and copy functionality in detail views (ACHIEVED - Sprint 6.5.1)
+        *   ⏳ Smart data recognition and contextual copy actions (PRIORITY - Sprint 6.5.2)
+        *   ✅ Mind map text display optimization with proper sizing and deduplication (ACHIEVED - Sprint 6.5.3)
+        *   📋 Advanced batch export and 3D visualization features (DEPRIORITIZED - Sprint 9+)
+        *   **Sprint 6 Core Achievements:**
+            *   ✅ Entity Relationship Mapping with 90%+ accuracy and multi-modal analysis (Sprint 6.1.1)
+            *   ✅ Professional 2D mind map visualization with Canvas rendering and physics simulation (Sprint 6.2)
+            *   ✅ Interactive node exploration with gesture controls and detail views (Sprint 6.2)
+            *   ✅ Performance optimization with efficient memory management and 60fps rendering (Sprint 6.2)
+            *   ✅ Glass UX integration with translucent materials and accessibility support (Sprint 6.2)
+            *   ✅ Enhanced manual import with pull-to-refresh functionality for complete screenshot history import (Sprint 6.5.0)
+            *   ✅ Gallery Performance Optimization with virtual scrolling, thumbnail caching, and Swift 6 compliance (Sprint 6.5.1)
+            *   ✅ Glass Design System Unification with responsive layout for all iOS devices and dark mode fixes (Sprint 6.6)
+        *   **Priority Copy/Edit Integration (Sprint 6.5):**
+            *   ✅ Enhanced ScreenshotDetailView with comprehensive text extraction display (Sprint 6.5.1)
+            *   ⏳ Complete QuickActionService TODO implementations (Sprint 6.5.2)
+            *   ⏳ Smart data recognition for URLs, phone numbers, emails, QR codes (Sprint 6.5.2)
+            *   ✅ Mind map text display optimization with proper sizing and deduplication (Sprint 6.5.3)
+            *   ✅ Glass Design System unification with responsive layout and dark mode support (Sprint 6.6)
+
+    *   **UX Focus:** Immersive 3D mind map with Apple Glass UX principles, featuring translucent materials, physics-based animations, adaptive layouts, and premium haptic feedback throughout the conversational AI interaction.
+    *   **Glass UX Integration:** Bottom Glass search bar drives all mind map discovery through conversational queries, with state-aware visual effects synchronized to user voice input and seamless transitions between 2D search results and 3D relationship visualization.
+    *   **Definition of Done:** AI-powered mind map with Glass design language, conversational search integration, and smooth 3D interactions maintaining Apple's premium interaction standards
