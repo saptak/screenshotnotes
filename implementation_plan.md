@@ -10,6 +10,7 @@
 - **Thumbnail Task Deduplication**: Enhanced ThumbnailService with async-safe task coordination to prevent duplicate thumbnail generation requests.
 - **Memory Optimization**: Reduced overscan buffer and optimized task management for better performance with large screenshot collections.
 - **User Experience**: Gallery now progressively displays thumbnails with real-time progress feedback during bulk imports (e.g., "Importing 23 of 450 screenshots").
+- **Scrolling Race Condition Fix**: Resolved thumbnail loading animation race condition during bulk import scrolling by implementing cache-first approach in OptimizedThumbnailView with `getCachedThumbnail()` method and proper task management to prevent unnecessary loading states when thumbnails are already cached.
 
 ## Sprint 6.5.1: Gallery Performance Optimization & Swift 6 Compliance
 

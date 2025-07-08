@@ -32,6 +32,28 @@ class ThumbnailService: ObservableObject {
         logger.info("ThumbnailService initialized with cache limit: \(self.thumbnailCache.countLimit) items")
     }
     
+    /// Check if thumbnail is already cached (memory or disk) without generating
+    func getCachedThumbnail(for screenshotId: UUID, size: CGSize = thumbnailSize) -> UIImage? {
+        let cacheKey = "\(screenshotId.uuidString)_\(Int(size.width))x\(Int(size.height))"
+        
+        // Check memory cache first
+        if let cachedImage = thumbnailCache.object(forKey: cacheKey as NSString) {
+            return cachedImage
+        }
+        
+        // Check disk cache
+        let thumbnailURL = thumbnailsDirectory.appendingPathComponent("\(cacheKey).jpg")
+        if fileManager.fileExists(atPath: thumbnailURL.path),
+           let diskImage = UIImage(contentsOfFile: thumbnailURL.path) {
+            
+            // Cache in memory for faster subsequent access
+            thumbnailCache.setObject(diskImage, forKey: cacheKey as NSString, cost: Int(size.width * size.height * 4))
+            return diskImage
+        }
+        
+        return nil
+    }
+    
     /// Generate and cache thumbnail for a screenshot
     func getThumbnail(for screenshotId: UUID, from imageData: Data, size: CGSize = thumbnailSize) async -> UIImage? {
         let cacheKey = "\(screenshotId.uuidString)_\(Int(size.width))x\(Int(size.height))"

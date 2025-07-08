@@ -8,7 +8,8 @@ struct OptimizedThumbnailView: View {
     
     @StateObject private var thumbnailService = ThumbnailService.shared
     @State private var thumbnailImage: UIImage?
-    @State private var isLoading = true
+    @State private var isLoading = false // Start as false, only set true when actually loading
+    @State private var loadingTask: Task<Void, Never>?
     
     private let cornerRadius: CGFloat = 14
     
@@ -45,16 +46,16 @@ struct OptimizedThumbnailView: View {
         .onTapGesture {
             onTap()
         }
-        .task {
-            await loadThumbnail()
-        }
         .onAppear {
-            // Preload if not already loaded
-            if thumbnailImage == nil && !isLoading {
-                Task {
-                    await loadThumbnail()
-                }
+            // Check cache first to avoid unnecessary loading states
+            if thumbnailImage == nil {
+                checkCacheAndLoad()
             }
+        }
+        .onDisappear {
+            // Cancel any ongoing loading task when view disappears
+            loadingTask?.cancel()
+            loadingTask = nil
         }
     }
     
@@ -93,6 +94,37 @@ struct OptimizedThumbnailView: View {
                 Text("Unable to load")
                     .font(.caption2)
                     .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    private func checkCacheAndLoad() {
+        // Cancel any existing loading task
+        loadingTask?.cancel()
+        
+        // Check cache first to avoid unnecessary loading states
+        if let cachedThumbnail = thumbnailService.getCachedThumbnail(for: screenshot.id, size: size) {
+            thumbnailImage = cachedThumbnail
+            isLoading = false
+            return
+        }
+        
+        // Only show loading if we need to actually load
+        isLoading = true
+        
+        loadingTask = Task {
+            let thumbnail = await thumbnailService.getThumbnail(
+                for: screenshot.id,
+                from: screenshot.imageData,
+                size: size
+            )
+            
+            await MainActor.run {
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    self.thumbnailImage = thumbnail
+                    self.isLoading = false
+                }
             }
         }
     }
