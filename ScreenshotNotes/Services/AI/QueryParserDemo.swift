@@ -11,7 +11,7 @@ class QueryParserDemo {
         print("🎯 Sub-Sprint 5.1.1: Query Parser Foundation Demo")
         print("==================================================")
         
-        let parser = QueryParserService()
+        let parser = await QueryParserService()
         
         // Test the main integration requirement: "find blue dress"
         let testQuery = "find blue dress"

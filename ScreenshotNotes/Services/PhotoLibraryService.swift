@@ -139,6 +139,9 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
                                     )
                                 }
                             }
+                            
+                            // Add small delay between imports to prevent resource starvation
+                            try? await Task.sleep(nanoseconds: 100_000_000) // 100ms delay
                         } catch {
                             print("❌ Failed to batch import screenshot: \(error)")
                         }

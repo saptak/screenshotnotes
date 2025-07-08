@@ -9,14 +9,23 @@ final class BackgroundOCRProcessor: ObservableObject {
     @Published var totalCount = 0
     
     private let ocrService: OCRServiceProtocol
-    private let batchSize = 5
-    private let processingDelay: TimeInterval = 0.5
+    private let batchSize = 2 // Reduced from 5 to 2 for better performance during bulk imports
+    private let processingDelay: TimeInterval = 1.0 // Increased from 0.5 to 1.0 seconds
     
     init(ocrService: OCRServiceProtocol = OCRService()) {
         self.ocrService = ocrService
     }
     
     func processExistingScreenshots(in modelContext: ModelContext) async {
+        // Set bulk import state during background processing
+        await MainActor.run {
+            GalleryPerformanceMonitor.shared.setBulkImportState(true)
+        }
+        defer {
+            Task { @MainActor in
+                GalleryPerformanceMonitor.shared.setBulkImportState(false)
+            }
+        }
         let descriptor = FetchDescriptor<Screenshot>(
             predicate: #Predicate<Screenshot> { screenshot in
                 screenshot.extractedText == nil || screenshot.extractedText?.isEmpty == true
@@ -61,12 +70,11 @@ final class BackgroundOCRProcessor: ObservableObject {
     }
     
     private func processBatch(_ screenshots: [Screenshot], in modelContext: ModelContext) async {
-        await withTaskGroup(of: Void.self) { group in
-            for screenshot in screenshots {
-                group.addTask {
-                    await self.processScreenshot(screenshot, in: modelContext)
-                }
-            }
+        // Process screenshots sequentially instead of concurrently during bulk imports
+        for screenshot in screenshots {
+            await processScreenshot(screenshot, in: modelContext)
+            // Add small delay between individual screenshots to prevent resource starvation
+            try? await Task.sleep(nanoseconds: 200_000_000) // 200ms delay
         }
     }
     

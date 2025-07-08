@@ -4,6 +4,7 @@ import NaturalLanguage
 /// Integration tests for Sub-Sprint 5.1.2: Entity Extraction Engine
 /// This file validates the integration between QueryParserService and EntityExtractionService
 @available(iOS 17.0, *)
+@MainActor
 public class EntityExtractionIntegrationTests {
     
     private let queryParser = QueryParserService()

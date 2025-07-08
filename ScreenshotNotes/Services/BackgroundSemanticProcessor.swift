@@ -14,8 +14,10 @@ final class BackgroundSemanticProcessor: ObservableObject {
     private let enhancedVisionService: EnhancedVisionService
     private let ocrService: OCRServiceProtocol
     private let mindMapService: MindMapService
-    private let batchSize = 3 // Smaller batch size for AI processing
-    private let processingDelay: TimeInterval = 1.0 // Longer delay for AI processing
+    private let batchSize = 1 // Reduced to 1 for minimal resource usage during bulk imports
+    private let processingDelay: TimeInterval = 2.0 // Increased to 2.0 seconds for better user experience
+    private let mindMapRegenerationDelay: TimeInterval = 5.0 // Debounce mind map regeneration
+    private var lastMindMapRegenerationTime: Date = Date.distantPast
     
     enum ProcessingPhase: String, CaseIterable {
         case idle = "idle"
@@ -44,6 +46,15 @@ final class BackgroundSemanticProcessor: ObservableObject {
     
     /// Process screenshots that need semantic analysis
     func processScreenshotsNeedingAnalysis(in modelContext: ModelContext) async {
+        // Set bulk import state during background processing
+        await MainActor.run {
+            GalleryPerformanceMonitor.shared.setBulkImportState(true)
+        }
+        defer {
+            Task { @MainActor in
+                GalleryPerformanceMonitor.shared.setBulkImportState(false)
+            }
+        }
         // Calculate 30 days ago for semantic analysis staleness check
         let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date.distantPast
         
@@ -211,7 +222,17 @@ final class BackgroundSemanticProcessor: ObservableObject {
         // Only trigger if we're not already processing
         guard !isProcessing else { return }
         
+        // Debounce mind map regeneration during bulk imports
+        let now = Date()
+        let timeSinceLastRegeneration = now.timeIntervalSince(lastMindMapRegenerationTime)
+        
+        if timeSinceLastRegeneration < mindMapRegenerationDelay {
+            print("🧠 Skipping mind map regeneration (debounced) - last regeneration was \(String(format: "%.1f", timeSinceLastRegeneration))s ago")
+            return
+        }
+        
         print("🧠 Triggering incremental mind map regeneration")
+        lastMindMapRegenerationTime = now
         await generateMindMapInBackground(in: modelContext)
     }
     

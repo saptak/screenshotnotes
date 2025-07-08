@@ -3,6 +3,7 @@ import NaturalLanguage
 
 /// Enhanced query parser for Sub-Sprint 5.1.2 with entity extraction
 /// Integrates SimpleQueryParser with EntityExtractionService
+@MainActor
 public final class QueryParserService: ObservableObject {
     
     private let languageRecognizer = NLLanguageRecognizer()

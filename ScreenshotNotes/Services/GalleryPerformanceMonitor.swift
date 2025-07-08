@@ -22,8 +22,8 @@ class GalleryPerformanceMonitor: ObservableObject {
     
     // Performance thresholds
     private let lowFPSThreshold: Double = 45
-    private let highMemoryThreshold: Double = 200 // MB
-    private let bulkImportMemoryThreshold: Double = 400 // MB - Higher threshold during bulk imports
+    private let highMemoryThreshold: Double = 150 // MB - Reduced from 200 for better performance
+    private let bulkImportMemoryThreshold: Double = 250 // MB - Reduced from 400 for better performance
     
     private init() {
         // Monitor thermal state changes
@@ -167,9 +167,14 @@ class GalleryPerformanceMonitor: ObservableObject {
     }
     
     private func optimizeForHighMemory() {
-        // Only clear cache if not bulk importing or if memory usage is extremely high
-        if !isBulkImporting || memoryUsage > bulkImportMemoryThreshold + 100 {
+        // More aggressive memory management during scrolling
+        if !isBulkImporting {
+            // If not bulk importing, clear cache more aggressively
             logger.info("Thumbnail cache cleared (bulk importing: \(self.isBulkImporting))")
+            ThumbnailService.shared.clearCache()
+        } else if memoryUsage > bulkImportMemoryThreshold + 50 {
+            // During bulk import, only clear if memory usage is critically high
+            logger.info("🧠 Critical memory pressure - clearing cache during bulk import")
             ThumbnailService.shared.clearCache()
         } else {
             logger.info("🧠 Optimizing for high memory usage - cache clearing suspended during bulk import")

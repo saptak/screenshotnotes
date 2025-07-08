@@ -61,8 +61,8 @@ class ThumbnailService: ObservableObject {
     private let thumbnailsDirectory: URL
     private var activeTasks: [String: Task<UIImage?, Never>] = [:]
     
-    // Use async semaphore for proper concurrency control
-    private let semaphore = AsyncSemaphore(value: 8)
+    // Use async semaphore for proper concurrency control - reduced for better user experience
+    private let semaphore = AsyncSemaphore(value: 2) // Significantly reduced from 8 to prevent resource starvation
     
     // Thumbnail specifications
     nonisolated static let thumbnailSize = CGSize(width: 200, height: 200)
@@ -237,11 +237,11 @@ class ThumbnailService: ObservableObject {
     /// Preload thumbnails for a batch of screenshots
     func preloadThumbnails(for screenshots: [Screenshot], size: CGSize = thumbnailSize) {
         Task {
-            for screenshot in screenshots.prefix(20) { // Preload first 20
+            for screenshot in screenshots.prefix(10) { // Reduced from 20 to 10 for better performance
                 _ = await getThumbnail(for: screenshot.id, from: screenshot.imageData, size: size)
                 
-                // Small delay to prevent overwhelming the system
-                try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+                // Increased delay to prevent overwhelming the system during bulk imports
+                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms (increased from 10ms)
             }
         }
     }
