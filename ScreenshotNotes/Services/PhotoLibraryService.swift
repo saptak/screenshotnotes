@@ -54,6 +54,12 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
             Task { await importCoordinator.endImport(importId: importId) }
         }
         
+        // Set bulk import state to prevent aggressive cache clearing
+        GalleryPerformanceMonitor.shared.setBulkImportState(true)
+        defer {
+            GalleryPerformanceMonitor.shared.setBulkImportState(false)
+        }
+        
         guard authorizationStatus == .authorized else {
             print("❌ Photo library access not authorized")
             return (imported: 0, skipped: 0, hasMore: false)
@@ -250,6 +256,12 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
         guard let modelContext = modelContext else {
             print("❌ Model context not available")
             return (imported: 0, skipped: 0)
+        }
+        
+        // Set bulk import state to prevent aggressive cache clearing
+        GalleryPerformanceMonitor.shared.setBulkImportState(true)
+        defer {
+            GalleryPerformanceMonitor.shared.setBulkImportState(false)
         }
         
         print("📸 Starting manual import of all past screenshots...")

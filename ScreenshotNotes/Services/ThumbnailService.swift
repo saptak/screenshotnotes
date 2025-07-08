@@ -2,6 +2,55 @@ import UIKit
 import SwiftData
 import OSLog
 
+// MARK: - AsyncSemaphore for concurrency control
+
+actor AsyncSemaphore {
+    private var count: Int
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    
+    init(value: Int) {
+        self.count = value
+    }
+    
+    func wait() async {
+        if count > 0 {
+            count -= 1
+            return
+        }
+        
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+    
+    func signal() {
+        if waiters.isEmpty {
+            count += 1
+        } else {
+            let waiter = waiters.removeFirst()
+            waiter.resume()
+        }
+    }
+}
+
+// MARK: - Timeout helper
+
+func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async -> T?) async -> T? {
+    return await withTaskGroup(of: T?.self, returning: T?.self) { group in
+        group.addTask {
+            await operation()
+        }
+        
+        group.addTask {
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            return nil
+        }
+        
+        defer { group.cancelAll() }
+        return await group.next() ?? nil
+    }
+}
+
 @MainActor
 class ThumbnailService: ObservableObject {
     static let shared = ThumbnailService()
@@ -11,6 +60,9 @@ class ThumbnailService: ObservableObject {
     private let fileManager = FileManager.default
     private let thumbnailsDirectory: URL
     private var activeTasks: [String: Task<UIImage?, Never>] = [:]
+    
+    // Use async semaphore for proper concurrency control
+    private let semaphore = AsyncSemaphore(value: 8)
     
     // Thumbnail specifications
     nonisolated static let thumbnailSize = CGSize(width: 200, height: 200)
@@ -79,31 +131,62 @@ class ThumbnailService: ObservableObject {
             return diskImage
         }
         
+        // Wait for semaphore to control concurrency
+        await semaphore.wait()
+        
         // Create a new task for generating the thumbnail
         let task = Task {
-            await generateThumbnail(imageData: imageData, size: size, cacheKey: cacheKey, thumbnailURL: thumbnailURL)
+            defer {
+                // Always signal the semaphore when done
+                Task {
+                    await self.semaphore.signal()
+                }
+            }
+            
+            let result = await generateThumbnail(imageData: imageData, size: size, cacheKey: cacheKey, thumbnailURL: thumbnailURL)
+            
+            // Clean up task reference when done
+            await MainActor.run {
+                self.activeTasks.removeValue(forKey: cacheKey)
+                if result != nil {
+                    self.logger.debug("✅ Successfully completed thumbnail generation for \(cacheKey)")
+                } else {
+                    self.logger.error("❌ Failed to generate thumbnail for \(cacheKey)")
+                }
+            }
+            
+            return result
         }
         
         // Store the task to avoid duplicate work
         activeTasks[cacheKey] = task
         
-        let result = await task.value
+        logger.debug("🔄 Awaiting thumbnail generation for \(cacheKey)")
         
-        // Clean up the task reference
-        activeTasks.removeValue(forKey: cacheKey)
+        // Add timeout to prevent hanging tasks
+        let result = await withTimeout(seconds: 30) {
+            await task.value
+        }
         
+        logger.debug("🎯 Thumbnail generation returned for \(cacheKey): \(result != nil ? "SUCCESS" : "TIMEOUT/FAILED")")
         return result
     }
     
     private func generateThumbnail(imageData: Data, size: CGSize, cacheKey: String, thumbnailURL: URL) async -> UIImage? {
+        logger.debug("Starting thumbnail generation for \(cacheKey)")
+        
         // Create UIImage from data (can be done off main thread)
         guard let originalImage = UIImage(data: imageData) else {
-            logger.error("Failed to create UIImage from data")
+            logger.error("Failed to create UIImage from data for \(cacheKey)")
             return nil
         }
         
+        logger.debug("Original image created for \(cacheKey), size: \(String(describing: originalImage.size))")
+        
         // Resize image off main thread using nonisolated method
         let thumbnail = await resizeImage(originalImage, to: size)
+        
+        logger.debug("Thumbnail resized for \(cacheKey), final size: \(String(describing: thumbnail.size))")
         
         // Cache on main actor
         let memoryCost = Int(size.width * size.height * 4)
@@ -112,6 +195,7 @@ class ThumbnailService: ObservableObject {
         // Save to disk on main actor
         await saveThumbnailToDisk(thumbnail, at: thumbnailURL)
         
+        logger.debug("Thumbnail generation completed for \(cacheKey)")
         return thumbnail
     }
     

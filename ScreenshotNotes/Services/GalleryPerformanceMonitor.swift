@@ -12,6 +12,7 @@ class GalleryPerformanceMonitor: ObservableObject {
     @Published var currentFPS: Double = 0
     @Published var memoryUsage: Double = 0 // In MB
     @Published var thermalState: ProcessInfo.ThermalState = .nominal
+    @Published var isBulkImporting = false // Track bulk import state
     
     private var displayLink: CADisplayLink?
     private var frameCount = 0
@@ -22,6 +23,7 @@ class GalleryPerformanceMonitor: ObservableObject {
     // Performance thresholds
     private let lowFPSThreshold: Double = 45
     private let highMemoryThreshold: Double = 200 // MB
+    private let bulkImportMemoryThreshold: Double = 400 // MB - Higher threshold during bulk imports
     
     private init() {
         // Monitor thermal state changes
@@ -138,9 +140,10 @@ class GalleryPerformanceMonitor: ObservableObject {
             optimizeForLowFPS()
         }
         
-        // Check for high memory usage
-        if memoryUsage > highMemoryThreshold {
-            logger.warning("High memory usage detected: \(self.memoryUsage, format: .fixed(precision: 1))MB")
+        // Check for high memory usage with different thresholds for bulk import
+        let currentThreshold = isBulkImporting ? bulkImportMemoryThreshold : highMemoryThreshold
+        if memoryUsage > currentThreshold {
+            logger.warning("High memory usage detected: \(self.memoryUsage, format: .fixed(precision: 1))MB (threshold: \(currentThreshold)MB, bulk importing: \(self.isBulkImporting))")
             optimizeForHighMemory()
         }
     }
@@ -164,13 +167,19 @@ class GalleryPerformanceMonitor: ObservableObject {
     }
     
     private func optimizeForHighMemory() {
-        // Clear thumbnail cache
-        ThumbnailService.shared.clearCache()
+        // Only clear cache if not bulk importing or if memory usage is extremely high
+        if !isBulkImporting || memoryUsage > bulkImportMemoryThreshold + 100 {
+            logger.info("Thumbnail cache cleared (bulk importing: \(self.isBulkImporting))")
+            ThumbnailService.shared.clearCache()
+        } else {
+            logger.info("🧠 Optimizing for high memory usage - cache clearing suspended during bulk import")
+        }
         
         // Post notification for other components to optimize
         NotificationCenter.default.post(name: .performanceOptimizationNeeded, object: nil, userInfo: [
             "type": "highMemory",
-            "memoryMB": memoryUsage
+            "memoryMB": memoryUsage,
+            "isBulkImporting": isBulkImporting
         ])
     }
     
@@ -182,6 +191,12 @@ class GalleryPerformanceMonitor: ObservableObject {
             "type": "thermal",
             "thermalState": thermalState
         ])
+    }
+    
+    // Bulk import state management
+    func setBulkImportState(_ isImporting: Bool) {
+        isBulkImporting = isImporting
+        logger.info("Bulk import state changed: \(isImporting)")
     }
     
     // Performance metrics for debugging
