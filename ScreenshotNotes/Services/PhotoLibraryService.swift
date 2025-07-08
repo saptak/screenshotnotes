@@ -129,6 +129,15 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
                                 try? modelContext.save()
                                 importedCount += 1
                                 print("📸 Batch imported screenshot \(importedCount): \(asset.localIdentifier)")
+                                
+                                // Proactively generate thumbnail for better UX
+                                Task.detached { [screenshot] in
+                                    _ = await ThumbnailService.shared.getThumbnail(
+                                        for: screenshot.id,
+                                        from: screenshot.imageData,
+                                        size: ThumbnailService.listThumbnailSize
+                                    )
+                                }
                             }
                         } catch {
                             print("❌ Failed to batch import screenshot: \(error)")
@@ -338,6 +347,15 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
                                     modelContext.insert(screenshot)
                                     importedCount += 1
                                     print("📸 Imported screenshot \(importedCount): \(asset.localIdentifier)")
+                                    
+                                    // Proactively generate thumbnail for better UX
+                                    Task.detached { [screenshot] in
+                                        _ = await ThumbnailService.shared.getThumbnail(
+                                            for: screenshot.id,
+                                            from: screenshot.imageData,
+                                            size: ThumbnailService.listThumbnailSize
+                                        )
+                                    }
                                 }
                             } catch {
                                 print("❌ Failed to import screenshot: \(error)")

@@ -90,6 +90,7 @@ class ThumbnailService: ObservableObject {
         
         // Check memory cache first
         if let cachedImage = thumbnailCache.object(forKey: cacheKey as NSString) {
+            logger.debug("🎯 Memory cache HIT for: \(cacheKey)")
             return cachedImage
         }
         
@@ -98,9 +99,23 @@ class ThumbnailService: ObservableObject {
         if fileManager.fileExists(atPath: thumbnailURL.path),
            let diskImage = UIImage(contentsOfFile: thumbnailURL.path) {
             
+            logger.debug("💾 Disk cache HIT for: \(cacheKey), loading to memory")
             // Cache in memory for faster subsequent access
             thumbnailCache.setObject(diskImage, forKey: cacheKey as NSString, cost: Int(size.width * size.height * 4))
             return diskImage
+        }
+        
+        logger.debug("❌ Cache MISS for: \(cacheKey), checking disk files...")
+        
+        // Debug: List available files in thumbnail directory
+        do {
+            let files = try fileManager.contentsOfDirectory(at: thumbnailsDirectory, includingPropertiesForKeys: nil)
+            let matchingFiles = files.filter { $0.lastPathComponent.contains(screenshotId.uuidString) }
+            if !matchingFiles.isEmpty {
+                logger.debug("🔍 Found related files: \(matchingFiles.map { $0.lastPathComponent })")
+            }
+        } catch {
+            logger.error("Failed to list thumbnail directory: \(error)")
         }
         
         return nil
