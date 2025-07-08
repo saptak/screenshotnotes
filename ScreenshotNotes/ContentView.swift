@@ -632,65 +632,62 @@ struct EmptyStateView: View {
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                Image(systemName: "photo.stack")
-                    .font(.system(size: 64, weight: .ultraLight))
-                    .foregroundColor(.secondary)
+            VStack {
+                Spacer()
                 
-                VStack(spacing: 8) {
-                    Text("No Screenshots Yet")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                    
-                    Text("Import your first screenshot to get started organizing your visual notes")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                    
-                    Text("Pull down to import all past screenshots from Apple Photos")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                        .padding(.top, 4)
-                    
-                    // Progressive import progress indicator
-                    if isRefreshing && bulkImportProgress.total > 0 {
-                        VStack(spacing: 8) {
-                            Text("Importing \(bulkImportProgress.current) of \(bulkImportProgress.total) screenshots")
-                                .font(.caption2)
-                                .foregroundColor(.blue)
-                            
-                            ProgressView(value: Double(bulkImportProgress.current), total: Double(bulkImportProgress.total))
-                                .progressViewStyle(LinearProgressViewStyle(tint: .blue))
-                                .frame(width: 200)
-                        }
-                        .padding(.top, 8)
+                // Progressive import progress indicator
+                if isRefreshing && bulkImportProgress.total > 0 {
+                    VStack(spacing: 16) {
+                        Text("Importing \(bulkImportProgress.current) of \(bulkImportProgress.total) screenshots")
+                            .font(.title3)
+                            .fontWeight(.medium)
+                            .foregroundColor(.blue)
+                        
+                        ProgressView(value: Double(bulkImportProgress.current), total: Double(bulkImportProgress.total))
+                            .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                            .frame(width: 280)
+                            .scaleEffect(1.2)
+                    }
+                    .padding(.horizontal, 40)
+                } else if isRefreshing {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .controlSize(.large)
+                        
+                        Text("Importing screenshots...")
+                            .font(.title3)
+                            .fontWeight(.medium)
+                            .foregroundColor(.blue)
+                    }
+                } else {
+                    // Main empty state content - focused on pull-to-refresh
+                    VStack(spacing: 24) {
+                        Image(systemName: "arrow.down")
+                            .font(.system(size: 72, weight: .thin))
+                            .foregroundColor(.blue)
+                            .symbolEffect(.bounce, options: .repeating)
+                        
+                        Text("Pull down to import screenshots")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.primary)
+                            .padding(.horizontal, 20)
+                        
+                        Text("Import all your past screenshots from Apple Photos")
+                            .font(.title3)
+                            .fontWeight(.medium)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 30)
                     }
                 }
                 
-                Button(action: {
-                    onImportTapped()
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus")
-                            .fontWeight(.semibold)
-                        Text("Import Photos")
-                            .fontWeight(.semibold)
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(.tint)
-                    )
-                }
-                .buttonStyle(.plain)
+                Spacer()
             }
-            .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(minHeight: 500) // Ensure enough space for pull gesture
         }
         .refreshable {
             await refreshScreenshots()
@@ -701,6 +698,23 @@ struct EmptyStateView: View {
         isRefreshing = true
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
+
+        // Check and request photo permission if needed
+        let currentStatus = photoLibraryService.authorizationStatus
+        if currentStatus != .authorized {
+            print("📸 Photo permission not granted (\(currentStatus)), requesting permission...")
+            let newStatus = await photoLibraryService.requestPhotoLibraryPermission()
+            
+            if newStatus != .authorized {
+                print("📸 Photo permission denied, cannot import screenshots")
+                let notificationFeedback = UINotificationFeedbackGenerator()
+                notificationFeedback.notificationOccurred(.error)
+                isRefreshing = false
+                return
+            }
+            
+            print("📸 Photo permission granted, proceeding with import")
+        }
 
         // Extremely lazy, incremental import in batches
         let batchSize = 10
@@ -842,6 +856,23 @@ struct ScreenshotGridView: View {
         isRefreshing = true
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
+
+        // Check and request photo permission if needed
+        let currentStatus = photoLibraryService.authorizationStatus
+        if currentStatus != .authorized {
+            print("📸 Photo permission not granted (\(currentStatus)), requesting permission...")
+            let newStatus = await photoLibraryService.requestPhotoLibraryPermission()
+            
+            if newStatus != .authorized {
+                print("📸 Photo permission denied, cannot import screenshots")
+                let notificationFeedback = UINotificationFeedbackGenerator()
+                notificationFeedback.notificationOccurred(.error)
+                isRefreshing = false
+                return
+            }
+            
+            print("📸 Photo permission granted, proceeding with import")
+        }
 
         // Extremely lazy, incremental import in batches
         let batchSize = 10
