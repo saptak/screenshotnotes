@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import PhotosUI
+import UniformTypeIdentifiers
 
 /// Quick action service for executing contextual menu actions with sophisticated animations and feedback
 /// Provides implementation for share, copy, delete, tag, and other quick actions
@@ -68,50 +69,49 @@ final class QuickActionService: ObservableObject {
         // Prepare haptic feedback
         hapticService.prepareHapticGenerators()
         
-            // Execute the specific action
-            switch action {
-            case .share:
-                await executeShareAction(screenshots, from: sourceView)
-                
-            case .copy:
-                await executeCopyAction(screenshots)
-                
-            case .delete:
-                await executeDeleteAction(screenshots)
-                
-            case .tag:
-                await executeTagAction(screenshots)
-                
-            case .favorite:
-                await executeFavoriteAction(screenshots)
-                
-            case .export:
-                await executeExportAction(screenshots)
-                
-            case .duplicate:
-                await executeDuplicateAction(screenshots)
-                
-            case .addToCollection:
-                await executeAddToCollectionAction(screenshots)
-                
-            case .viewDetails:
-                await executeViewDetailsAction(screenshots.first)
-                
-            case .editMetadata:
-                await executeEditMetadataAction(screenshots.first)
-            }
+        // Execute the specific action
+        switch action {
+        case .share:
+            await executeShareAction(screenshots, from: sourceView)
             
-            // Record successful action
-            let duration = Date().timeIntervalSince(startTime)
-            recordAction(action, screenshots: screenshots, duration: duration, success: true, error: nil)
+        case .copy:
+            await executeCopyAction(screenshots)
             
-            await updateActionStatus(.success)
-            hapticService.triggerHaptic(.successFeedback)
+        case .delete:
+            await executeDeleteAction(screenshots)
             
-            // Auto-reset after delay
-            try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
-            await updateActionStatus(.idle)
+        case .tag:
+            await executeTagAction(screenshots)
             
+        case .favorite:
+            await executeFavoriteAction(screenshots)
+            
+        case .export:
+            await executeExportAction(screenshots)
+            
+        case .duplicate:
+            await executeDuplicateAction(screenshots)
+            
+        case .addToCollection:
+            await executeAddToCollectionAction(screenshots)
+            
+        case .viewDetails:
+            await executeViewDetailsAction(screenshots.first)
+            
+        case .editMetadata:
+            await executeEditMetadataAction(screenshots.first)
+        }
+        
+        // Record successful action
+        let duration = Date().timeIntervalSince(startTime)
+        recordAction(action, screenshots: screenshots, duration: duration, success: true, error: nil)
+        
+        await updateActionStatus(.success)
+        hapticService.triggerHaptic(.successFeedback)
+        
+        // Auto-reset after delay
+        try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
+        await updateActionStatus(.idle)
     }
     
     // MARK: - Specific Action Implementations
@@ -162,33 +162,70 @@ final class QuickActionService: ObservableObject {
         await updateActionMessage("Copying to clipboard...")
         await updateProgress(0.3)
         
-        if screenshots.count == 1 {
-            guard let image = UIImage(data: screenshots[0].imageData) else {
-                await updateActionStatus(.failed(QuickActionError.noValidImages))
-                return
+        await MainActor.run {
+            // Clear the pasteboard first to ensure clean state
+            UIPasteboard.general.items = []
+            
+            if screenshots.count == 1 {
+                guard let image = UIImage(data: screenshots[0].imageData) else {
+                    Task {
+                        await updateActionStatus(.failed(QuickActionError.noValidImages))
+                    }
+                    return
+                }
+                
+                // Set multiple representations for better compatibility
+                var items: [String: Any] = [:]
+                
+                // Add image as UIImage (preferred by most apps)
+                items[UTType.image.identifier] = image
+                
+                // Add as PNG data for universal compatibility
+                if let pngData = image.pngData() {
+                    items[UTType.png.identifier] = pngData
+                }
+                
+                // Add as JPEG data as fallback
+                if let jpegData = image.jpegData(compressionQuality: 0.9) {
+                    items[UTType.jpeg.identifier] = jpegData
+                }
+                
+                UIPasteboard.general.items = [items]
+                print("✅ Single image copied to clipboard with \(items.count) representations")
+                
+            } else {
+                let images = screenshots.compactMap { UIImage(data: $0.imageData) }
+                guard !images.isEmpty else {
+                    Task {
+                        await updateActionStatus(.failed(QuickActionError.noValidImages))
+                    }
+                    return
+                }
+                
+                // For multiple images, create separate items
+                var pasteboardItems: [[String: Any]] = []
+                
+                for image in images {
+                    var items: [String: Any] = [:]
+                    
+                    // Add image as UIImage
+                    items[UTType.image.identifier] = image
+                    
+                    // Add as PNG data
+                    if let pngData = image.pngData() {
+                        items[UTType.png.identifier] = pngData
+                    }
+                    
+                    pasteboardItems.append(items)
+                }
+                
+                UIPasteboard.general.items = pasteboardItems
+                print("✅ \(images.count) images copied to clipboard")
             }
-            
-            await MainActor.run {
-                UIPasteboard.general.image = image
-            }
-            
-            await updateActionMessage("Image copied to clipboard")
-        } else {
-            let images = screenshots.compactMap { UIImage(data: $0.imageData) }
-            guard !images.isEmpty else {
-                await updateActionStatus(.failed(QuickActionError.noValidImages))
-                return
-            }
-            
-            await updateProgress(0.7)
-            
-            await MainActor.run {
-                UIPasteboard.general.images = images
-            }
-            
-            await updateActionMessage("\(images.count) images copied to clipboard")
         }
         
+        await updateProgress(0.7)
+        await updateActionMessage(screenshots.count == 1 ? "Image copied to clipboard" : "\(screenshots.count) images copied to clipboard")
         await updateProgress(1.0)
     }
     
@@ -207,9 +244,29 @@ final class QuickActionService: ObservableObject {
         await updateProgress(0.6)
         await updateActionMessage("Deleting screenshots...")
         
-        // TODO: Implement actual deletion through SwiftData model context
-        // For now, simulate the deletion process
-        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        // Delete screenshots from SwiftData model context
+        await MainActor.run {
+            // Get the model context from the first screenshot (they should all share the same context)
+            if let modelContext = screenshots.first?.modelContext {
+                for screenshot in screenshots {
+                    modelContext.delete(screenshot)
+                }
+                
+                do {
+                    try modelContext.save()
+                    print("✅ Successfully deleted \(screenshots.count) screenshot(s)")
+                    
+                    // Trigger mind map regeneration after deletion
+                    Task {
+                        await BackgroundSemanticProcessor().triggerMindMapRegeneration(in: modelContext)
+                    }
+                } catch {
+                    print("❌ Failed to delete screenshots: \(error)")
+                }
+            } else {
+                print("❌ No model context available for screenshot deletion")
+            }
+        }
         
         await updateProgress(1.0)
         await updateActionMessage("Screenshots deleted")
