@@ -238,9 +238,9 @@ struct MindMapView: View {
                     control2: controlPoint2
                 )
                 
-                // Apply connection styling with more visible defaults
+                // Apply connection styling with thin lines
                 let connectionColor = connection.color.opacity(max(0.8, connection.opacity))
-                let connectionThickness = max(2.0, connection.thickness)
+                let connectionThickness: CGFloat = 0.8
                 
                 context.stroke(
                     path,
