@@ -33,6 +33,7 @@ struct GlassSearchBar: View {
     @State private var searchBarHeight: CGFloat = GlassDesignSystem.GlassLayout.searchBarHeight
     @State private var animationTask: Task<Void, Never>?
     
+    
     // MARK: - Environment and System
     
     @Environment(\.colorScheme) private var colorScheme
@@ -60,7 +61,7 @@ struct GlassSearchBar: View {
     }
     
     private var shouldShowClearButton: Bool {
-        !searchText.isEmpty && (isSearchFieldFocused || isActive)
+        !searchText.isEmpty
     }
     
     // MARK: - Main Body
@@ -307,10 +308,8 @@ struct GlassSearchBar: View {
         
         onClearTapped()
         
-        // Refocus on search field for immediate interaction
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            isSearchFieldFocused = true
-        }
+        // Remove focus to dismiss keyboard when clearing
+        isSearchFieldFocused = false
         
         // Provide clear haptic feedback
         GlassAccessibility.accessibleHapticFeedback(for: .conversationTurn, intensity: 0.5)

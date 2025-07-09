@@ -33,6 +33,7 @@ struct ContentView: View {
     
     // 🧠 Sprint 6.1.1: Mind Map Navigation State
     @State private var showingMindMap = false
+    @State private var selectedScreenshot: Screenshot?
 
     init() {
         _searchOrchestrator = StateObject(wrappedValue: GlassConversationalSearchOrchestrator(settingsService: SettingsService.shared))
@@ -124,7 +125,9 @@ struct ContentView: View {
                     bulkImportProgress: $bulkImportProgress,
                     backgroundOCRProcessor: backgroundOCRProcessor,
                     backgroundSemanticProcessor: backgroundSemanticProcessor,
-                    modelContext: modelContext
+                    modelContext: modelContext,
+                    searchOrchestrator: searchOrchestrator,
+                    selectedScreenshot: $selectedScreenshot
                 )
             } else {
                 ScreenshotGridView(
@@ -134,7 +137,9 @@ struct ContentView: View {
                     bulkImportProgress: $bulkImportProgress,
                     backgroundOCRProcessor: backgroundOCRProcessor,
                     backgroundSemanticProcessor: backgroundSemanticProcessor,
-                    modelContext: modelContext
+                    modelContext: modelContext,
+                    searchOrchestrator: searchOrchestrator,
+                    selectedScreenshot: $selectedScreenshot
                 )
             }
         }
@@ -327,6 +332,18 @@ struct ContentView: View {
                     Task {
                         await importImages(from: newItems)
                         selectedItems = []
+                    }
+                }
+            }
+            .onChange(of: selectedScreenshot) { oldValue, newValue in
+                // Reset search bar focus when returning from detail view
+                if oldValue != nil && newValue == nil {
+                    // Reset orchestrator state but preserve search text and results
+                    searchOrchestrator.resetSearchBarFocus()
+                    
+                    // Force dismiss keyboard - most reliable method
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
                 }
             }
@@ -776,7 +793,8 @@ struct ScreenshotGridView: View {
     let backgroundOCRProcessor: BackgroundOCRProcessor
     let backgroundSemanticProcessor: BackgroundSemanticProcessor
     let modelContext: ModelContext
-    @State private var selectedScreenshot: Screenshot?
+    let searchOrchestrator: GlassConversationalSearchOrchestrator
+    @Binding var selectedScreenshot: Screenshot?
     @Namespace private var heroNamespace
     @StateObject private var performanceMonitor = GalleryPerformanceMonitor.shared
     @StateObject private var thumbnailService = ThumbnailService.shared

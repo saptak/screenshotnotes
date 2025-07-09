@@ -229,6 +229,7 @@ struct SearchResultsView: View {
     let searchText: String
     let onScreenshotTap: (Screenshot) -> Void
     let onDelete: ((Screenshot) -> Void)?
+    @Binding var isSearchFieldFocused: Bool
     
     @State private var animateResults = false
     @State private var selectedScreenshot: Screenshot?
@@ -285,6 +286,12 @@ struct SearchResultsView: View {
                 allScreenshots: screenshots,
                 onDelete: onDelete
             )
+        }
+        .onChange(of: selectedScreenshot) { oldValue, newValue in
+            // Clear search bar focus when returning from detail view
+            if oldValue != nil && newValue == nil {
+                isSearchFieldFocused = false
+            }
         }
     }
 }

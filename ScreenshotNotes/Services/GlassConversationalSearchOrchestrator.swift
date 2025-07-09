@@ -77,6 +77,17 @@ class GlassConversationalSearchOrchestrator: ObservableObject {
         isSearchBarActive = false
     }
     
+    /// Resets the search bar focus state when returning from detail views
+    func resetSearchBarFocus() {
+        // Reset the search bar to inactive state
+        isSearchBarActive = false
+        
+        // Ensure we're in a clean state
+        if microphoneState != .ready {
+            transition(to: .ready)
+        }
+    }
+    
     /// Notifies the orchestrator that the voice input view has been dismissed.
     func voiceInputDismissed() {
         if microphoneState == .listening {
