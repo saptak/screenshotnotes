@@ -8,6 +8,7 @@
 
 import SwiftUI
 import Combine
+import AudioToolbox // Add this import for system sound playback
 
 /// Premium bottom-mounted Glass search bar with Apple UX compliance
 /// Serves as the central hub for all conversational search interactions
@@ -272,6 +273,9 @@ struct GlassSearchBar: View {
     // MARK: - Action Handlers
     
     private func handleMicrophoneTapped() {
+        // Play audible alert to indicate readiness for speech input
+        AudioServicesPlaySystemSound(1113) // Short beep sound
+        
         withAnimation(glassSystem.adaptedGlassSpring(.microphone)) {
             isPressed = true
         }
