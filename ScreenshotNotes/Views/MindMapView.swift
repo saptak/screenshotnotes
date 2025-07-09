@@ -851,83 +851,277 @@ struct StatCard: View {
 struct NodeDetailView: View {
     let screenshot: Screenshot
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.glassResponsiveLayout) private var layout
+    @StateObject private var glassSystem = GlassDesignSystem.shared
+    private let hapticService = HapticService.shared
+    
+    // Animation state
+    @State private var isAnimating = false
+    @State private var contentOpacity: Double = 0
+    @State private var contentScale: CGFloat = 0.95
     
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Screenshot image
-                    if let uiImage = UIImage(data: screenshot.imageData) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxHeight: 300)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
+                VStack(alignment: .leading, spacing: layout.spacing.large) {
+                    // Screenshot image with Glass styling and animations
+                    screenshotImageView
                     
-                    // Metadata
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Details")
-                            .font(.headline)
-                        
-                        HStack {
-                            Text("Timestamp:")
-                            Spacer()
-                            Text(screenshot.timestamp.formatted(date: .abbreviated, time: .shortened))
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        if let extractedText = screenshot.extractedText, !extractedText.isEmpty {
-                            ExtractedTextView(
-                                text: extractedText,
-                                mode: .standard,
-                                theme: .adaptive,
-                                showHeader: true,
-                                editable: false,
-                                onCopy: { copiedText in
-                                    // Provide haptic feedback for copy actions
-                                    let impact = UIImpactFeedbackGenerator(style: .light)
-                                    impact.impactOccurred()
-                                }
-                            )
-                            .frame(maxHeight: 400) // Limit height to prevent sizing issues
-                        }
-                        
-                        if let objectTags = screenshot.objectTags, !objectTags.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Object Tags:")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                
-                                LazyVGrid(columns: [
-                                    GridItem(.flexible()),
-                                    GridItem(.flexible())
-                                ], spacing: 8) {
-                                    ForEach(objectTags, id: \.self) { tag in
-                                        Text(tag)
-                                            .font(.caption)
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(Color.blue.opacity(0.1))
-                                            .foregroundColor(.blue)
-                                            .clipShape(Capsule())
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // Metadata with animations
+                    metadataContentView
                 }
-                .padding(20)
+                .responsivePadding(layout, size: .large)
             }
-            .navigationTitle("Node Details")
+            .navigationTitle("Screenshot")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
-                        dismiss()
+                        hapticService.impact(.light)
+                        withAnimation(glassSystem.adaptedGlassSpring(.gentle)) {
+                            contentOpacity = 0
+                            contentScale = 0.95
+                        }
+                        // Slight delay before dismiss to see the animation
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            dismiss()
+                        }
                     }
+                    .font(layout.typography.body)
+                    .fontWeight(.medium)
+                    .scaleEffect(contentScale)
+                    .opacity(contentOpacity)
                 }
             }
+        }
+        .responsiveLayout()
+        .onAppear {
+            // Trigger entrance animations
+            withAnimation(glassSystem.adaptedGlassSpring(.gentle)) {
+                contentOpacity = 1.0
+                contentScale = 1.0
+                isAnimating = true
+            }
+        }
+        .onDisappear {
+            // Reset animation state
+            isAnimating = false
+            contentOpacity = 0
+            contentScale = 0.95
+        }
+    }
+    
+    // MARK: - Helper Views
+    
+    @ViewBuilder
+    private var screenshotImageView: some View {
+        if let uiImage = UIImage(data: screenshot.imageData) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(maxHeight: imageMaxHeight)
+                .clipShape(RoundedRectangle(cornerRadius: layout.materials.cornerRadius, style: .continuous))
+                .responsiveGlassBackground(
+                    layout: layout,
+                    materialType: .primary,
+                    shadow: true
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: layout.materials.cornerRadius, style: .continuous)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                )
+                .scaleEffect(contentScale)
+                .opacity(contentOpacity)
+        }
+    }
+    
+    @ViewBuilder
+    private var metadataContentView: some View {
+        VStack(alignment: .leading, spacing: layout.spacing.medium) {
+            // Header with staggered animation
+            headerView
+            
+            // Extracted text
+            if let extractedText = screenshot.extractedText, !extractedText.isEmpty {
+                extractedTextView(extractedText)
+            }
+            
+            // Object tags
+            if let objectTags = screenshot.objectTags, !objectTags.isEmpty {
+                objectTagsView(objectTags)
+            }
+            
+            // Additional metadata
+            if hasAdditionalMetadata {
+                additionalMetadataView
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var headerView: some View {
+        HStack {
+            Text("Screenshot Details")
+                .font(layout.typography.title)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            Text(formatTimestamp())
+                .font(layout.typography.caption)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, layout.spacing.small)
+                .padding(.vertical, layout.spacing.xs)
+                .responsiveGlassBackground(
+                    layout: layout,
+                    materialType: .secondary,
+                    shadow: false
+                )
+        }
+        .scaleEffect(contentScale)
+        .opacity(contentOpacity)
+    }
+    
+    @ViewBuilder
+    private func extractedTextView(_ text: String) -> some View {
+        VStack(alignment: .leading, spacing: layout.spacing.small) {
+            ExtractedTextView(
+                text: text,
+                mode: .standard,
+                theme: .glass,
+                showHeader: true,
+                editable: false,
+                onCopy: { copiedText in
+                    hapticService.impact(.light)
+                }
+            )
+        }
+        .responsivePadding(layout, size: .medium)
+        .responsiveGlassBackground(
+            layout: layout,
+            materialType: .secondary,
+            shadow: false
+        )
+        .scaleEffect(contentScale)
+        .opacity(contentOpacity)
+    }
+    
+    @ViewBuilder
+    private func objectTagsView(_ tags: [String]) -> some View {
+        VStack(alignment: .leading, spacing: layout.spacing.small) {
+            Text("Detected Objects")
+                .font(layout.typography.body)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+            
+            LazyVGrid(columns: gridColumns, spacing: layout.spacing.xs) {
+                ForEach(tags, id: \.self) { tag in
+                    Text(tag)
+                        .font(layout.typography.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, layout.spacing.small)
+                        .padding(.vertical, layout.spacing.xs)
+                        .background(
+                            Capsule()
+                                .fill(Color.blue.opacity(0.1))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.blue.opacity(0.2), lineWidth: 0.5)
+                                )
+                        )
+                }
+            }
+        }
+        .responsivePadding(layout, size: .medium)
+        .responsiveGlassBackground(
+            layout: layout,
+            materialType: .secondary,
+            shadow: false
+        )
+        .scaleEffect(contentScale)
+        .opacity(contentOpacity)
+    }
+    
+    @ViewBuilder
+    private var additionalMetadataView: some View {
+        VStack(alignment: .leading, spacing: layout.spacing.small) {
+            Text("Additional Information")
+                .font(layout.typography.body)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+            
+            VStack(alignment: .leading, spacing: layout.spacing.xs) {
+                if let semanticTags = screenshot.semanticTags, !semanticTags.tags.isEmpty {
+                    metadataRow(label: "Semantic Tags", value: semanticTags.tags.map { $0.displayName }.joined(separator: ", "))
+                }
+                
+                if !screenshot.dominantColors.isEmpty {
+                    metadataRow(label: "Dominant Colors", value: screenshot.dominantColors.map { $0.colorName }.joined(separator: ", "))
+                }
+            }
+        }
+        .responsivePadding(layout, size: .medium)
+        .responsiveGlassBackground(
+            layout: layout,
+            materialType: .secondary,
+            shadow: false
+        )
+        .scaleEffect(contentScale)
+        .opacity(contentOpacity)
+    }
+    
+    private func metadataRow(label: String, value: String) -> some View {
+        HStack(alignment: .top) {
+            Text(label)
+                .font(layout.typography.caption)
+                .foregroundColor(.secondary)
+                .frame(minWidth: 80, alignment: .leading)
+            
+            Text(value)
+                .font(layout.typography.caption)
+                .foregroundColor(.primary)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+    
+    // MARK: - Computed Properties
+    
+    private var imageMaxHeight: CGFloat {
+        switch layout.deviceType {
+        case .iPhoneSE: return 250
+        case .iPhoneStandard: return 300
+        case .iPhoneMax: return 350
+        case .iPadMini: return 400
+        case .iPad: return 450
+        case .iPadPro: return 500
+        }
+    }
+    
+    private var gridColumns: [GridItem] {
+        let columnCount = layout.deviceType == .iPhoneSE ? 2 : 3
+        return Array(repeating: GridItem(.flexible()), count: columnCount)
+    }
+    
+    private var hasAdditionalMetadata: Bool {
+        (screenshot.semanticTags != nil && !screenshot.semanticTags!.tags.isEmpty) || 
+        !screenshot.dominantColors.isEmpty
+    }
+    
+    private func formatTimestamp() -> String {
+        let now = Date()
+        let calendar = Calendar.current
+        
+        if calendar.isDate(screenshot.timestamp, inSameDayAs: now) {
+            return "Today " + screenshot.timestamp.formatted(date: .omitted, time: .shortened)
+        } else if calendar.isDate(screenshot.timestamp, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: now) ?? now) {
+            return "Yesterday " + screenshot.timestamp.formatted(date: .omitted, time: .shortened)
+        } else if calendar.dateInterval(of: .weekOfYear, for: now)?.contains(screenshot.timestamp) == true {
+            return screenshot.timestamp.formatted(.dateTime.weekday(.wide)) + " " + screenshot.timestamp.formatted(date: .omitted, time: .shortened)
+        } else {
+            return screenshot.timestamp.formatted(date: .abbreviated, time: .shortened)
         }
     }
 }

@@ -2,6 +2,7 @@ import SwiftUI
 import Combine
 import Speech
 import AVFoundation
+import AudioToolbox
 
 /// Voice input view providing speech recognition interface
 struct VoiceInputView: View {
@@ -70,6 +71,14 @@ struct VoiceInputView: View {
         }
         .onAppear {
             requestPermissions()
+        }
+        .onChange(of: isInitialized) { _, newValue in
+            // Automatically start listening when the view appears and permissions are granted
+            if newValue && hasPermissions && !isListening {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    startListening()
+                }
+            }
         }
         .onDisappear {
             stopListening()
@@ -167,6 +176,15 @@ struct VoiceInputView: View {
                 Circle()
                     .fill(isListening ? Color.red : Color.white.opacity(0.2))
                     .frame(width: 120, height: 120)
+                    .scaleEffect(pulseScale)
+                
+                // Add a subtle breathing animation when not listening
+                if !isListening {
+                    Circle()
+                        .stroke(Color.white.opacity(0.4), lineWidth: 2)
+                        .frame(width: 120, height: 120)
+                        .scaleEffect(1.0 + sin(wavePhase) * 0.05)
+                }
                 
                 Image(systemName: isListening ? "mic.fill" : "mic")
                     .font(.system(size: 40, weight: .medium))
@@ -176,6 +194,11 @@ struct VoiceInputView: View {
         .scaleEffect(isListening ? 1.1 : 1.0)
         .disabled(!isInitialized || !isSpeechRecognitionAvailable)
         .opacity((!isInitialized || !isSpeechRecognitionAvailable) ? 0.5 : 1.0)
+        .onReceive(Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()) { _ in
+            if !isListening {
+                wavePhase += 0.1
+            }
+        }
     }
     
     private var audioLevelIndicator: some View {
@@ -425,6 +448,9 @@ struct VoiceInputView: View {
         }
         
         isListening = true
+        
+        // Play audible alert to notify user that listening has started
+        playListeningStartAlert()
     }
     
     private func stopListening() {
@@ -439,6 +465,9 @@ struct VoiceInputView: View {
         
         isListening = false
         audioLevel = 0.0
+        
+        // Play audible alert to notify user that listening has stopped
+        playListeningStopAlert()
         
         // Reset audio session
         do {
@@ -492,9 +521,88 @@ struct VoiceInputView: View {
         } else if !isSpeechRecognitionAvailable {
             return "Speech recognition not available in simulator.\nPlease test on a physical device."
         } else if isListening {
-            return "Listening..."
+            return "Listening... Speak now"
+        } else if !transcribedText.isEmpty {
+            return "Tap microphone to record again or submit your search"
         } else {
-            return "Tap to speak"
+            return "Ready to listen - tap microphone to start"
+        }
+    }
+    
+    /// Plays an audible alert to notify the user that listening has started
+    private func playListeningStartAlert() {
+        // Play a subtle system sound to indicate listening has started
+        AudioServicesPlaySystemSound(1113) // Short beep sound
+        
+        // Add haptic feedback for better user experience
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // Alternative: Play a custom tone (commented out for now)
+        // playCustomListeningTone()
+    }
+    
+    /// Plays an audible alert to notify the user that listening has stopped
+    private func playListeningStopAlert() {
+        // Play a different sound to indicate listening has stopped
+        AudioServicesPlaySystemSound(1114) // Different beep sound
+        
+        // Add haptic feedback for stop action
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+    }
+    
+    /// Optional: Play a custom listening tone (more polished approach)
+    private func playCustomListeningTone() {
+        // Create a brief tone using AVAudioEngine
+        let audioEngine = AVAudioEngine()
+        let playerNode = AVAudioPlayerNode()
+        
+        // Configure audio session for playback
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try audioSession.setActive(true)
+            
+            // Create a simple tone
+            let sampleRate = 44100.0
+            let frequency = 800.0 // 800 Hz tone
+            let duration = 0.2 // 200ms duration
+            let frameCount = AVAudioFrameCount(sampleRate * duration)
+            
+            guard let audioFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else {
+                return
+            }
+            
+            guard let audioBuffer = AVAudioPCMBuffer(pcmFormat: audioFormat, frameCapacity: frameCount) else {
+                return
+            }
+            
+            audioBuffer.frameLength = frameCount
+            
+            // Generate sine wave
+            let channelData = audioBuffer.floatChannelData?[0]
+            for i in 0..<Int(frameCount) {
+                let sample = Float(sin(2.0 * Double.pi * frequency * Double(i) / sampleRate))
+                channelData?[i] = sample * 0.3 // Reduced volume
+            }
+            
+            // Setup audio engine
+            audioEngine.attach(playerNode)
+            audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: audioFormat)
+            
+            // Start engine and play
+            try audioEngine.start()
+            playerNode.scheduleBuffer(audioBuffer, completionHandler: {
+                DispatchQueue.main.async {
+                    audioEngine.stop()
+                }
+            })
+            playerNode.play()
+            
+        } catch {
+            // Fallback to system sound if custom tone fails
+            AudioServicesPlaySystemSound(1113)
         }
     }
 }
