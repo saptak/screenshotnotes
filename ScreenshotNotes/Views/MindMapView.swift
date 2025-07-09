@@ -765,14 +765,16 @@ struct NodeView: View {
     
     var body: some View {
         ZStack {
-            // Node background with glass material
+            // Node background with glass material for circles
             Circle()
-                .glassBackground(
-                    material: layout.materials.primary,
-                    cornerRadius: 25,
-                    shadow: true
-                )
+                .fill(layout.materials.primary.material)
                 .frame(width: node.radius * 2, height: node.radius * 2)
+                .shadow(
+                    color: .black.opacity(layout.materials.primary.shadowConfig.opacity),
+                    radius: layout.materials.primary.shadowConfig.radius,
+                    x: layout.materials.primary.shadowConfig.x,
+                    y: layout.materials.primary.shadowConfig.y
+                )
                 .overlay(
                     Circle()
                         .stroke(node.color, lineWidth: isSelected ? 3 : 1)
