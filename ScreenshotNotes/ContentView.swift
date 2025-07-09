@@ -26,6 +26,7 @@ struct ContentView: View {
     @State private var searchTask: Task<Void, Never>?
     @State private var isRefreshing = false
     @State private var bulkImportProgress: (current: Int, total: Int) = (0, 0)
+    @State private var isBulkImportInProgress = false
     
     
     // 🎯 Sprint 5.4.1: Glass Search Bar State
@@ -113,6 +114,7 @@ struct ContentView: View {
                     photoLibraryService: photoLibraryService,
                     isRefreshing: $isRefreshing,
                     bulkImportProgress: $bulkImportProgress,
+                    isBulkImportInProgress: $isBulkImportInProgress,
                     backgroundOCRProcessor: backgroundOCRProcessor,
                     backgroundSemanticProcessor: backgroundSemanticProcessor,
                     modelContext: modelContext
@@ -123,6 +125,7 @@ struct ContentView: View {
                     photoLibraryService: photoLibraryService,
                     isRefreshing: $isRefreshing,
                     bulkImportProgress: $bulkImportProgress,
+                    isBulkImportInProgress: $isBulkImportInProgress,
                     backgroundOCRProcessor: backgroundOCRProcessor,
                     backgroundSemanticProcessor: backgroundSemanticProcessor,
                     modelContext: modelContext,
@@ -135,6 +138,7 @@ struct ContentView: View {
                     photoLibraryService: photoLibraryService,
                     isRefreshing: $isRefreshing,
                     bulkImportProgress: $bulkImportProgress,
+                    isBulkImportInProgress: $isBulkImportInProgress,
                     backgroundOCRProcessor: backgroundOCRProcessor,
                     backgroundSemanticProcessor: backgroundSemanticProcessor,
                     modelContext: modelContext,
@@ -643,6 +647,7 @@ struct EmptyStateView: View {
     let photoLibraryService: PhotoLibraryService
     @Binding var isRefreshing: Bool
     @Binding var bulkImportProgress: (current: Int, total: Int)
+    @Binding var isBulkImportInProgress: Bool
     let backgroundOCRProcessor: BackgroundOCRProcessor
     let backgroundSemanticProcessor: BackgroundSemanticProcessor
     let modelContext: ModelContext
@@ -692,7 +697,7 @@ struct EmptyStateView: View {
                             .foregroundColor(.primary)
                             .padding(.horizontal, 20)
                         
-                        Text("Import all your past screenshots from Apple Photos")
+                        Text("Import up to 20 latest screenshots from Apple Photos")
                             .font(.title3)
                             .fontWeight(.medium)
                             .foregroundColor(.secondary)
@@ -712,6 +717,13 @@ struct EmptyStateView: View {
     }
     
     private func refreshScreenshots() async {
+        // Prevent concurrent bulk imports
+        if isBulkImportInProgress {
+            print("📸 Bulk import already in progress, skipping")
+            return
+        }
+        
+        isBulkImportInProgress = true
         isRefreshing = true
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
@@ -727,28 +739,35 @@ struct EmptyStateView: View {
                 let notificationFeedback = UINotificationFeedbackGenerator()
                 notificationFeedback.notificationOccurred(.error)
                 isRefreshing = false
+                isBulkImportInProgress = false
                 return
             }
             
             print("📸 Photo permission granted, proceeding with import")
         }
 
-        // Extremely lazy, incremental import in batches
+        // Extremely lazy, incremental import in batches with 20-screenshot limit
         let batchSize = 10
+        let maxImportLimit = 20
         var totalImported = 0
         var totalSkipped = 0
         var hasMore = true
         var batchIndex = 0
 
-        while hasMore {
+        while hasMore && totalImported < maxImportLimit {
             let result = await photoLibraryService.importPastScreenshotsBatch(batch: batchIndex, batchSize: batchSize)
             totalImported += result.imported
             totalSkipped += result.skipped
             batchIndex += 1
             hasMore = result.hasMore
             
+            // Stop if we've reached the import limit
+            if totalImported >= maxImportLimit {
+                hasMore = false
+            }
+            
             // Update progress for UI feedback
-            bulkImportProgress = (current: totalImported, total: totalImported + totalSkipped)
+            bulkImportProgress = (current: totalImported, total: min(totalImported + totalSkipped, maxImportLimit))
 
             // Allow UI to update immediately after each batch import
             if result.imported > 0 {
@@ -779,8 +798,9 @@ struct EmptyStateView: View {
         } else {
             notificationFeedback.notificationOccurred(.warning)
         }
-        print("📸 Pull-to-refresh import completed: \(totalImported) imported, \(totalSkipped) skipped")
+        print("📸 Pull-to-refresh import completed: \(totalImported) imported, \(totalSkipped) skipped (limit: \(maxImportLimit))")
         isRefreshing = false
+        isBulkImportInProgress = false
         bulkImportProgress = (0, 0) // Reset progress
     }
 }
@@ -790,6 +810,7 @@ struct ScreenshotGridView: View {
     let photoLibraryService: PhotoLibraryService
     @Binding var isRefreshing: Bool
     @Binding var bulkImportProgress: (current: Int, total: Int)
+    @Binding var isBulkImportInProgress: Bool
     let backgroundOCRProcessor: BackgroundOCRProcessor
     let backgroundSemanticProcessor: BackgroundSemanticProcessor
     let modelContext: ModelContext
@@ -871,6 +892,13 @@ struct ScreenshotGridView: View {
     }
     
     private func refreshScreenshots() async {
+        // Prevent concurrent bulk imports
+        if isBulkImportInProgress {
+            print("📸 Bulk import already in progress, skipping")
+            return
+        }
+        
+        isBulkImportInProgress = true
         isRefreshing = true
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
@@ -886,28 +914,35 @@ struct ScreenshotGridView: View {
                 let notificationFeedback = UINotificationFeedbackGenerator()
                 notificationFeedback.notificationOccurred(.error)
                 isRefreshing = false
+                isBulkImportInProgress = false
                 return
             }
             
             print("📸 Photo permission granted, proceeding with import")
         }
 
-        // Extremely lazy, incremental import in batches
+        // Extremely lazy, incremental import in batches with 20-screenshot limit
         let batchSize = 10
+        let maxImportLimit = 20
         var totalImported = 0
         var totalSkipped = 0
         var hasMore = true
         var batchIndex = 0
 
-        while hasMore {
+        while hasMore && totalImported < maxImportLimit {
             let result = await photoLibraryService.importPastScreenshotsBatch(batch: batchIndex, batchSize: batchSize)
             totalImported += result.imported
             totalSkipped += result.skipped
             batchIndex += 1
             hasMore = result.hasMore
             
+            // Stop if we've reached the import limit
+            if totalImported >= maxImportLimit {
+                hasMore = false
+            }
+            
             // Update progress for UI feedback
-            bulkImportProgress = (current: totalImported, total: totalImported + totalSkipped)
+            bulkImportProgress = (current: totalImported, total: min(totalImported + totalSkipped, maxImportLimit))
 
             // Allow UI to update immediately after each batch import
             if result.imported > 0 {
@@ -938,8 +973,9 @@ struct ScreenshotGridView: View {
         } else {
             notificationFeedback.notificationOccurred(.warning)
         }
-        print("📸 Pull-to-refresh import completed: \(totalImported) imported, \(totalSkipped) skipped")
+        print("📸 Pull-to-refresh import completed: \(totalImported) imported, \(totalSkipped) skipped (limit: \(maxImportLimit))")
         isRefreshing = false
+        isBulkImportInProgress = false
         bulkImportProgress = (0, 0) // Reset progress
     }
     
