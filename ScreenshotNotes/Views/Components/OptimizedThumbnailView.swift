@@ -4,6 +4,7 @@ import UIKit
 struct OptimizedThumbnailView: View {
     let screenshot: Screenshot
     let size: CGSize
+    let responsiveLayout: GlassDesignSystem.ResponsiveLayout?
     let onTap: () -> Void
     
     @StateObject private var thumbnailService = ThumbnailService.shared
@@ -11,39 +12,66 @@ struct OptimizedThumbnailView: View {
     @State private var isLoading = false // Start as false, only set true when actually loading
     @State private var loadingTask: Task<Void, Never>?
     
-    private let cornerRadius: CGFloat = 14
+    private var cornerRadius: CGFloat {
+        responsiveLayout?.materials.cornerRadius ?? 14
+    }
     
-    init(screenshot: Screenshot, size: CGSize = ThumbnailService.listThumbnailSize, onTap: @escaping () -> Void) {
+    init(screenshot: Screenshot, size: CGSize = ThumbnailService.listThumbnailSize, responsiveLayout: GlassDesignSystem.ResponsiveLayout? = nil, onTap: @escaping () -> Void) {
         self.screenshot = screenshot
         self.size = size
+        self.responsiveLayout = responsiveLayout
         self.onTap = onTap
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let layout = responsiveLayout ?? GlassDesignSystem.ResponsiveLayout(
+            horizontalSizeClass: nil,
+            verticalSizeClass: nil,
+            screenWidth: 430,
+            screenHeight: 932
+        )
+        
+        VStack(alignment: .leading, spacing: layout.spacing.xs) {
             thumbnailContent
                 .frame(width: size.width, height: size.height)
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-                .background(
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .fill(Color(UIColor.systemBackground))
-                        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+                .responsiveGlassBackground(
+                    layout: layout,
+                    materialType: .primary,
+                    shadow: true
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: cornerRadius)
-                        .stroke(Color.primary.opacity(0.15), lineWidth: 0.5)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
                 )
             
-            // Timestamp
-            Text(screenshot.timestamp.formatted(date: .abbreviated, time: .shortened))
-                .font(.caption2)
-                .fontWeight(.medium)
-                .foregroundColor(.secondary)
-                .lineLimit(1)
+            // Cleaner timestamp with better typography
+            if hasExtractedText {
+                Text(formatDateForDisplay())
+                    .font(layout.typography.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            } else {
+                HStack(spacing: layout.spacing.xs) {
+                    Image(systemName: "doc.text")
+                        .font(.caption2)
+                        .foregroundColor(.orange.opacity(0.7))
+                    
+                    Text(formatDateForDisplay())
+                        .font(layout.typography.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture {
+            // Add subtle haptic feedback for interaction
+            let impact = UIImpactFeedbackGenerator(style: .light)
+            impact.impactOccurred()
             onTap()
         }
         .onAppear {
@@ -61,39 +89,96 @@ struct OptimizedThumbnailView: View {
     
     @ViewBuilder
     private var thumbnailContent: some View {
-        if let thumbnailImage = thumbnailImage {
-            Image(uiImage: thumbnailImage)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .transition(.opacity.animation(.easeInOut(duration: 0.2)))
-        } else if isLoading {
-            loadingPlaceholder
-        } else {
-            errorPlaceholder
+        ZStack {
+            if let thumbnailImage = thumbnailImage {
+                Image(uiImage: thumbnailImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .transition(.opacity.animation(.easeInOut(duration: 0.2)))
+                
+                // Subtle overlay for better text visibility on images
+                if !hasExtractedText {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Image(systemName: "doc.text.magnifyingglass")
+                                .font(.caption)
+                                .foregroundColor(.white)
+                                .padding(4)
+                                .background(
+                                    Circle()
+                                        .fill(.black.opacity(0.6))
+                                        .background(.ultraThinMaterial, in: Circle())
+                                )
+                        }
+                        .padding(6)
+                    }
+                }
+            } else if isLoading {
+                loadingPlaceholder
+            } else {
+                errorPlaceholder
+            }
         }
     }
     
     private var loadingPlaceholder: some View {
-        ZStack {
-            Color.gray.opacity(0.1)
+        let layout = responsiveLayout ?? GlassDesignSystem.ResponsiveLayout(
+            horizontalSizeClass: nil,
+            verticalSizeClass: nil,
+            screenWidth: 430,
+            screenHeight: 932
+        )
+        
+        return ZStack {
+            // Glass-style loading background
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .stroke(.quaternary, lineWidth: 0.5)
+                )
             
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: .secondary))
-                .scaleEffect(0.8)
+            VStack(spacing: layout.spacing.xs) {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .secondary))
+                    .scaleEffect(0.7)
+                
+                Text("Loading...")
+                    .font(layout.typography.caption)
+                    .foregroundColor(.secondary)
+            }
         }
+        .animation(.easeInOut(duration: 0.3), value: isLoading)
     }
     
     private var errorPlaceholder: some View {
-        ZStack {
-            Color.gray.opacity(0.15)
+        let layout = responsiveLayout ?? GlassDesignSystem.ResponsiveLayout(
+            horizontalSizeClass: nil,
+            verticalSizeClass: nil,
+            screenWidth: 430,
+            screenHeight: 932
+        )
+        
+        return ZStack {
+            // Glass-style error background
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .fill(.thinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .stroke(.quaternary, lineWidth: 0.5)
+                )
             
-            VStack(spacing: 4) {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundColor(.orange)
+            VStack(spacing: layout.spacing.xs) {
+                Image(systemName: "photo.badge.exclamationmark")
+                    .font(.title3)
+                    .foregroundColor(.orange.opacity(0.7))
+                
                 Text("Unable to load")
-                    .font(.caption2)
+                    .font(layout.typography.caption)
                     .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
             }
         }
     }
@@ -145,6 +230,27 @@ struct OptimizedThumbnailView: View {
                 self.thumbnailImage = thumbnail
                 self.isLoading = false
             }
+        }
+    }
+    
+    // Helper to check if screenshot has extracted text
+    private var hasExtractedText: Bool {
+        screenshot.extractedText?.isEmpty == false
+    }
+    
+    // Format date for cleaner display
+    private func formatDateForDisplay() -> String {
+        let now = Date()
+        let calendar = Calendar.current
+        
+        if calendar.isDate(screenshot.timestamp, inSameDayAs: now) {
+            return screenshot.timestamp.formatted(date: .omitted, time: .shortened)
+        } else if calendar.isDate(screenshot.timestamp, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: now) ?? now) {
+            return "Yesterday"
+        } else if calendar.dateInterval(of: .weekOfYear, for: now)?.contains(screenshot.timestamp) == true {
+            return screenshot.timestamp.formatted(.dateTime.weekday(.wide))
+        } else {
+            return screenshot.timestamp.formatted(date: .abbreviated, time: .omitted)
         }
     }
 }

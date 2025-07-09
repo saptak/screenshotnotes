@@ -820,47 +820,107 @@ struct ScreenshotGridView: View {
     @StateObject private var performanceMonitor = GalleryPerformanceMonitor.shared
     @StateObject private var thumbnailService = ThumbnailService.shared
     
-    // Lower minimum to allow more columns on large screens
-    private let columns = [
-        GridItem(.adaptive(minimum: 120), spacing: 16)
-    ]
+    // Responsive grid configuration for optimal layout
+    private func gridColumns(for layout: GlassDesignSystem.ResponsiveLayout) -> [GridItem] {
+        let minItemWidth: CGFloat
+        let spacing: CGFloat
+        
+        switch layout.deviceType {
+        case .iPhoneSE:
+            minItemWidth = 140
+            spacing = layout.spacing.small
+        case .iPhoneStandard:
+            minItemWidth = 160
+            spacing = layout.spacing.medium
+        case .iPhoneMax:
+            minItemWidth = 180
+            spacing = layout.spacing.medium
+        case .iPadMini:
+            minItemWidth = 200
+            spacing = layout.spacing.large
+        case .iPad:
+            minItemWidth = 220
+            spacing = layout.spacing.large
+        case .iPadPro:
+            minItemWidth = 240
+            spacing = layout.spacing.xl
+        }
+        
+        return [GridItem(.adaptive(minimum: minItemWidth), spacing: spacing)]
+    }
+    
+    // Responsive thumbnail size for different devices
+    private func responsiveThumbnailSize(for layout: GlassDesignSystem.ResponsiveLayout) -> CGSize {
+        switch layout.deviceType {
+        case .iPhoneSE:
+            return CGSize(width: 140, height: 180)
+        case .iPhoneStandard:
+            return CGSize(width: 160, height: 200)
+        case .iPhoneMax:
+            return CGSize(width: 180, height: 220)
+        case .iPadMini:
+            return CGSize(width: 200, height: 240)
+        case .iPad:
+            return CGSize(width: 220, height: 260)
+        case .iPadPro:
+            return CGSize(width: 240, height: 280)
+        }
+    }
+    
+    // Responsive item height for virtualized grid
+    private func responsiveItemHeight(for layout: GlassDesignSystem.ResponsiveLayout) -> CGFloat {
+        let thumbnailSize = responsiveThumbnailSize(for: layout)
+        return thumbnailSize.height + layout.spacing.large // thumbnail + text + spacing
+    }
     
     var body: some View {
-        Group {
-            if screenshots.count > 100 {
-                // Use virtualized grid for large collections
-                VirtualizedGridView(
-                    items: screenshots,
-                    columns: columns,
-                    itemHeight: 180 // Height including thumbnail + text + spacing
-                ) { screenshot in
-                    OptimizedThumbnailView(
-                        screenshot: screenshot,
-                        size: ThumbnailService.listThumbnailSize,
-                        onTap: {
-                            selectedScreenshot = screenshot
-                        }
-                    )
-                }
-                .frame(maxWidth: .infinity)
-            } else {
-                // Use regular LazyVGrid for smaller collections
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(screenshots, id: \.id) { screenshot in
-                            OptimizedThumbnailView(
-                                screenshot: screenshot,
-                                size: ThumbnailService.listThumbnailSize,
-                                onTap: {
-                                    selectedScreenshot = screenshot
-                                }
-                            )
-                        }
+        GeometryReader { geometry in
+            let responsiveLayout = GlassDesignSystem.ResponsiveLayout(
+                horizontalSizeClass: nil,
+                verticalSizeClass: nil,
+                screenWidth: geometry.size.width,
+                screenHeight: geometry.size.height
+            )
+            let columns = gridColumns(for: responsiveLayout)
+            
+            Group {
+                if screenshots.count > 100 {
+                    // Use virtualized grid for large collections
+                    VirtualizedGridView(
+                        items: screenshots,
+                        columns: columns,
+                        itemHeight: responsiveItemHeight(for: responsiveLayout)
+                    ) { screenshot in
+                        OptimizedThumbnailView(
+                            screenshot: screenshot,
+                            size: responsiveThumbnailSize(for: responsiveLayout),
+                            responsiveLayout: responsiveLayout,
+                            onTap: {
+                                selectedScreenshot = screenshot
+                            }
+                        )
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    .padding(.bottom, 16)
+                } else {
+                    // Use regular LazyVGrid for smaller collections
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: responsiveLayout.spacing.medium) {
+                            ForEach(screenshots, id: \.id) { screenshot in
+                                OptimizedThumbnailView(
+                                    screenshot: screenshot,
+                                    size: responsiveThumbnailSize(for: responsiveLayout),
+                                    responsiveLayout: responsiveLayout,
+                                    onTap: {
+                                        selectedScreenshot = screenshot
+                                    }
+                                )
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, responsiveLayout.spacing.horizontalPadding)
+                        .padding(.top, responsiveLayout.spacing.large)
+                        .padding(.bottom, responsiveLayout.spacing.medium)
+                    }
                 }
             }
         }
