@@ -654,7 +654,14 @@ struct EmptyStateView: View {
     
     var body: some View {
         ScrollView {
-            VStack {
+            VStack(spacing: 0) {
+                // Pull-to-import message (shows when user pulls down)
+                if isRefreshing == false && !isBulkImportInProgress {
+                    PullToImportMessageView()
+                        .opacity(0.8)
+                        .padding(.top, -40) // Subtle overlap with top
+                        .padding(.bottom, 8)
+                }
                 Spacer()
                 
                 // Progressive import progress indicator
@@ -819,6 +826,7 @@ struct ScreenshotGridView: View {
     @Namespace private var heroNamespace
     @StateObject private var performanceMonitor = GalleryPerformanceMonitor.shared
     @StateObject private var thumbnailService = ThumbnailService.shared
+    @State private var pullOffset: CGFloat = 0
     
     // Responsive grid configuration for optimal layout
     private func gridColumns(for layout: GlassDesignSystem.ResponsiveLayout) -> [GridItem] {
@@ -885,41 +893,68 @@ struct ScreenshotGridView: View {
             
             Group {
                 if screenshots.count > 100 {
-                    // Use virtualized grid for large collections
-                    VirtualizedGridView(
-                        items: screenshots,
-                        columns: columns,
-                        itemHeight: responsiveItemHeight(for: responsiveLayout)
-                    ) { screenshot in
-                        OptimizedThumbnailView(
-                            screenshot: screenshot,
-                            size: responsiveThumbnailSize(for: responsiveLayout),
-                            responsiveLayout: responsiveLayout,
-                            onTap: {
-                                selectedScreenshot = screenshot
-                            }
-                        )
-                    }
-                    .frame(maxWidth: .infinity)
-                } else {
-                    // Use regular LazyVGrid for smaller collections
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: responsiveLayout.spacing.medium) {
-                            ForEach(screenshots, id: \.id) { screenshot in
-                                OptimizedThumbnailView(
-                                    screenshot: screenshot,
-                                    size: responsiveThumbnailSize(for: responsiveLayout),
-                                    responsiveLayout: responsiveLayout,
-                                    onTap: {
-                                        selectedScreenshot = screenshot
-                                    }
-                                )
-                            }
+                    VStack(spacing: 0) {
+                        UIScrollViewIntrospector(contentOffset: $pullOffset)
+                            .frame(width: 0, height: 0)
+                        if pullOffset > 10 && isRefreshing == false && !isBulkImportInProgress {
+                            PullToImportMessageView()
+                                .opacity(0.8)
+                                .padding(.top, 8)
+                                .padding(.bottom, 4)
+                        }
+                        VirtualizedGridView(
+                            items: screenshots,
+                            columns: columns,
+                            itemHeight: responsiveItemHeight(for: responsiveLayout),
+                            scrollOffset: .constant(0) // Not used for pull offset anymore
+                        ) { screenshot in
+                            OptimizedThumbnailView(
+                                screenshot: screenshot,
+                                size: responsiveThumbnailSize(for: responsiveLayout),
+                                responsiveLayout: responsiveLayout,
+                                onTap: {
+                                    selectedScreenshot = screenshot
+                                }
+                            )
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, responsiveLayout.spacing.horizontalPadding)
-                        .padding(.top, responsiveLayout.spacing.large)
-                        .padding(.bottom, responsiveLayout.spacing.medium)
+                    }
+                    .coordinateSpace(name: "pullArea")
+                    .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
+                        pullOffset = offset
+                    }
+                } else {
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            UIScrollViewIntrospector(contentOffset: $pullOffset)
+                                .frame(width: 0, height: 0)
+                            if pullOffset > 10 && isRefreshing == false && !isBulkImportInProgress {
+                                PullToImportMessageView()
+                                    .opacity(0.8)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 4)
+                            }
+                            LazyVGrid(columns: columns, spacing: responsiveLayout.spacing.medium) {
+                                ForEach(screenshots, id: \.id) { screenshot in
+                                    OptimizedThumbnailView(
+                                        screenshot: screenshot,
+                                        size: responsiveThumbnailSize(for: responsiveLayout),
+                                        responsiveLayout: responsiveLayout,
+                                        onTap: {
+                                            selectedScreenshot = screenshot
+                                        }
+                                    )
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, responsiveLayout.spacing.horizontalPadding)
+                            .padding(.top, responsiveLayout.spacing.large)
+                            .padding(.bottom, responsiveLayout.spacing.medium)
+                        }
+                    }
+                    .coordinateSpace(name: "pullArea")
+                    .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
+                        pullOffset = offset
                     }
                 }
             }
@@ -1218,8 +1253,74 @@ struct SearchSuggestionsView: View {
     }
 }
 
+struct PullToImportMessageView: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "arrow.down.circle")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.accentColor)
+            Text("Pull to import 20 more screenshots")
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(Color(.systemBackground).opacity(0.95))
+                .shadow(color: .black.opacity(0.07), radius: 4, x: 0, y: 2)
+        )
+        .frame(maxWidth: .infinity)
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+}
+
 #Preview {
     ContentView()
         .modelContainer(for: Screenshot.self, inMemory: true)
+}
+
+
+struct UIScrollViewIntrospector: UIViewRepresentable {
+    @Binding var contentOffset: CGFloat
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        DispatchQueue.main.async {
+            if let scrollView = view.enclosingScrollView {
+                scrollView.delegate = context.coordinator
+            }
+        }
+        return view
+    }
+    func updateUIView(_ uiView: UIView, context: Context) {
+        DispatchQueue.main.async {
+            if let scrollView = uiView.enclosingScrollView {
+                scrollView.delegate = context.coordinator
+            }
+        }
+    }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    class Coordinator: NSObject, UIScrollViewDelegate {
+        var parent: UIScrollViewIntrospector
+        init(_ parent: UIScrollViewIntrospector) {
+            self.parent = parent
+        }
+        func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            parent.contentOffset = -scrollView.contentOffset.y
+        }
+    }
+}
+
+private extension UIView {
+    var enclosingScrollView: UIScrollView? {
+        var view: UIView? = self
+        while let v = view {
+            if let scroll = v as? UIScrollView { return scroll }
+            view = v.superview
+        }
+        return nil
+    }
 }
 

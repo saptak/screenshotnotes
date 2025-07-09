@@ -5,10 +5,10 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
     let columns: [GridItem]
     let itemHeight: CGFloat
     let content: (Item) -> Content
+    @Binding var scrollOffset: CGFloat
     
     @State private var visibleRange: Range<Int> = 0..<0
     @State private var containerHeight: CGFloat = 0
-    @State private var scrollOffset: CGFloat = 0
     
     private let overscanBuffer: Int = 5 // Render extra items above/below visible area (reduced for performance)
     
@@ -16,11 +16,13 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
         items: [Item],
         columns: [GridItem],
         itemHeight: CGFloat,
+        scrollOffset: Binding<CGFloat>,
         @ViewBuilder content: @escaping (Item) -> Content
     ) {
         self.items = items
         self.columns = columns
         self.itemHeight = itemHeight
+        self._scrollOffset = scrollOffset
         self.content = content
     }
     
@@ -61,7 +63,8 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
             }
             .coordinateSpace(name: "scrollView")
             .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
-                scrollOffset = -offset
+                scrollOffset = offset
+                self.scrollOffset = offset // Update the binding
                 updateVisibleRange(containerHeight: geometry.size.height)
             }
             .onAppear {
@@ -116,13 +119,13 @@ struct ScrollOffsetPreferenceKey: PreferenceKey {
     let sampleItems = (0..<1000).map { index in
         PreviewItem(id: index, name: "Item \(index)")
     }
-    
     VirtualizedGridView(
         items: sampleItems,
         columns: [
             GridItem(.adaptive(minimum: 160), spacing: 16)
         ],
-        itemHeight: 160
+        itemHeight: 160,
+        scrollOffset: .constant(0)
     ) { item in
         VStack {
             Rectangle()
