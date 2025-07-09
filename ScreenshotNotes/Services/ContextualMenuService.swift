@@ -185,6 +185,7 @@ final class ContextualMenuService: ObservableObject {
     @Published var currentMenu: MenuConfiguration?
     @Published var isMenuVisible = false
     @Published var menuPosition: CGPoint = .zero
+    @Published var currentScreenshot: Screenshot? = nil
     @Published var lastActionResult: ActionResult?
     
     struct ActionResult {
@@ -215,10 +216,15 @@ final class ContextualMenuService: ObservableObject {
         at position: CGPoint,
         for item: Screenshot? = nil
     ) {
-        guard !isMenuVisible else { return }
+        print("🎯 ContextualMenuService.showMenu called at position: \(position) for item: \(item?.id.uuidString ?? "nil")")
+        guard !isMenuVisible else { 
+            print("🎯 Menu already visible, ignoring request")
+            return 
+        }
         
         currentMenu = configuration
         menuPosition = position
+        currentScreenshot = item // Store the screenshot context
         
         if configuration.enableHaptics {
             hapticService.triggerHaptic(.menuAppear)
@@ -228,6 +234,8 @@ final class ContextualMenuService: ObservableObject {
             isMenuVisible = true
         }
         
+        print("🎯 Menu should now be visible: \(isMenuVisible)")
+        
         // Auto-dismiss timer
         scheduleMenuDismissal(after: 10.0) // 10 seconds auto-dismiss
     }
@@ -235,7 +243,11 @@ final class ContextualMenuService: ObservableObject {
     /// Dismisses the current contextual menu
     /// - Parameter animated: Whether to animate the dismissal
     func dismissMenu(animated: Bool = true) {
-        guard isMenuVisible else { return }
+        print("🎯 ContextualMenuService.dismissMenu called")
+        guard isMenuVisible else { 
+            print("🎯 Menu not visible, ignoring dismiss request")
+            return 
+        }
         
         menuDismissTimer?.invalidate()
         
@@ -251,9 +263,12 @@ final class ContextualMenuService: ObservableObject {
             isMenuVisible = false
         }
         
+        print("🎯 Menu visibility set to: \(isMenuVisible)")
+        
         // Clear menu after animation
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             self.currentMenu = nil
+            self.currentScreenshot = nil // Clear screenshot context
         }
     }
     
@@ -265,6 +280,7 @@ final class ContextualMenuService: ObservableObject {
     ///   - screenshot: The target screenshot
     ///   - sourceView: Optional source view for animations
     func executeAction(_ action: MenuAction, for screenshot: Screenshot, from sourceView: UIView? = nil) {
+        print("🎯 ContextualMenuService.executeAction called: \(action.title) for screenshot: \(screenshot.id)")
         executeAction(action, for: [screenshot], from: sourceView)
     }
     
@@ -274,7 +290,11 @@ final class ContextualMenuService: ObservableObject {
     ///   - screenshots: The target screenshots
     ///   - sourceView: Optional source view for animations
     func executeAction(_ action: MenuAction, for screenshots: [Screenshot], from sourceView: UIView? = nil) {
-        guard !screenshots.isEmpty else { return }
+        print("🎯 ContextualMenuService.executeAction called: \(action.title) for \(screenshots.count) screenshots")
+        guard !screenshots.isEmpty else { 
+            print("🎯 ERROR: No screenshots provided for action")
+            return 
+        }
         
         // Trigger haptic feedback
         hapticService.triggerHaptic(action.hapticPattern)
@@ -286,6 +306,7 @@ final class ContextualMenuService: ObservableObject {
         
         // Execute the action using QuickActionService
         Task {
+            print("🎯 Calling QuickActionService.executeQuickAction")
             await QuickActionService.shared.executeQuickAction(action, on: screenshots, from: sourceView)
             
             await MainActor.run {
@@ -363,13 +384,8 @@ final class ContextualMenuService: ObservableObject {
 // MARK: - Contextual Menu View Components
 
 struct ContextualMenuOverlay: View {
-    let contextScreenshot: Screenshot?
     @StateObject private var menuService = ContextualMenuService.shared
     @State private var animationOffset: CGSize = .zero
-    
-    init(contextScreenshot: Screenshot? = nil) {
-        self.contextScreenshot = contextScreenshot
-    }
     
     var body: some View {
         ZStack {
@@ -378,19 +394,23 @@ struct ContextualMenuOverlay: View {
                 Color.black.opacity(0.1)
                     .ignoresSafeArea()
                     .onTapGesture {
+                        print("🎯 Background tapped, dismissing menu")
                         menuService.dismissMenu()
                     }
                 
                 // Menu content
-                ContextualMenuContent(configuration: menu, screenshot: contextScreenshot)
+                ContextualMenuContent(configuration: menu, screenshot: menuService.currentScreenshot)
                     .position(menuService.menuPosition)
                     .offset(animationOffset)
                     .onAppear {
+                        print("🎯 Menu is visible with \(menu.actions.count) actions")
+                        print("🎯 Menu content appeared")
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                             animationOffset = .zero
                         }
                     }
                     .onDisappear {
+                        print("🎯 Menu content disappeared")
                         animationOffset = CGSize(width: 0, height: -20)
                     }
             }
@@ -408,17 +428,24 @@ struct ContextualMenuContent: View {
         VStack(spacing: 8) {
             ForEach(configuration.actions) { action in
                 MenuActionButton(action: action) {
+                    print("🎯 Menu action tapped: \(action.title) for screenshot: \(screenshot?.id.uuidString ?? "nil")")
                     if let screenshot = screenshot {
                         menuService.executeAction(action, for: screenshot)
+                    } else {
+                        print("🎯 ERROR: No screenshot available for action")
                     }
                     menuService.dismissMenu()
                 }
             }
         }
         .padding(.vertical, 12)
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 16)
         .modalMaterial(cornerRadius: 16)
         .shadow(radius: 20, y: 10)
+        .fixedSize() // Allow content to size itself naturally
+        .onAppear {
+            print("🎯 Rendering menu content for screenshot: \(screenshot?.id.uuidString ?? "nil")")
+        }
     }
 }
 
@@ -429,7 +456,10 @@ struct MenuActionButton: View {
     @State private var isPressed = false
     
     var body: some View {
-        Button(action: onTap) {
+        Button(action: {
+            print("Button tapped for action: \(action.title)")
+            onTap()
+        }) {
             HStack(spacing: 12) {
                 Image(systemName: action.systemImage)
                     .font(.system(size: 16, weight: .medium))
@@ -439,11 +469,11 @@ struct MenuActionButton: View {
                 Text(action.title)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(action.destructive ? .red : .primary)
-                
-                Spacer()
+                    .frame(minWidth: 80, alignment: .leading) // Minimum width for consistency
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(isPressed ? Color.primary.opacity(0.1) : Color.clear)

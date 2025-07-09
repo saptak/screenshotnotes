@@ -238,6 +238,9 @@ struct ContentView: View {
                     Spacer()
                     bottomGlassSearchBar
                 }
+                
+                // Add the contextual menu overlay
+                ContextualMenuOverlay()
             }
             .navigationTitle("Screenshot Vault")
             .navigationBarTitleDisplayMode(.inline)

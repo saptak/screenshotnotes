@@ -11,6 +11,9 @@ struct OptimizedThumbnailView: View {
     @State private var thumbnailImage: UIImage?
     @State private var isLoading = false // Start as false, only set true when actually loading
     @State private var loadingTask: Task<Void, Never>?
+    @GestureState private var longPressLocation: CGPoint = .zero
+    @State private var lastGlobalFrame: CGRect = .zero
+    @State private var selectedScreenshot: Screenshot? = nil // Store screenshot for menu
     
     private var cornerRadius: CGFloat {
         responsiveLayout?.materials.cornerRadius ?? 14
@@ -44,6 +47,38 @@ struct OptimizedThumbnailView: View {
                     RoundedRectangle(cornerRadius: cornerRadius)
                         .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
                 )
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    print("Tap gesture on thumbnail: \(screenshot.id)")
+                    let impact = UIImpactFeedbackGenerator(style: .light)
+                    impact.impactOccurred()
+                    onTap()
+                }
+                .onLongPressGesture(minimumDuration: 0.6) {
+                    print("Long press completed on screenshot: \(screenshot.id)")
+                    selectedScreenshot = screenshot
+                    // Use a simple position relative to the screen center
+                    let menuPosition = CGPoint(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY)
+                    print("Showing menu at center position: \(menuPosition)")
+                    ContextualMenuService.shared.showMenu(
+                        configuration: .minimal,
+                        at: menuPosition,
+                        for: screenshot
+                    )
+                } onPressingChanged: { pressing in
+                    if pressing {
+                        print("Long press started on screenshot: \(screenshot.id)")
+                    } else {
+                        print("Long press cancelled on screenshot: \(screenshot.id)")
+                    }
+                }
+                .background(
+                    Rectangle()
+                        .fill(Color.clear)
+                        .onAppear {
+                            print("Thumbnail appeared for screenshot: \(screenshot.id)")
+                        }
+                )
             
             // Cleaner timestamp with better typography
             if hasExtractedText {
@@ -66,14 +101,7 @@ struct OptimizedThumbnailView: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            // Add subtle haptic feedback for interaction
-            let impact = UIImpactFeedbackGenerator(style: .light)
-            impact.impactOccurred()
-            onTap()
-        }
+        .frame(width: size.width)
         .onAppear {
             // Check cache first to avoid unnecessary loading states
             if thumbnailImage == nil {
@@ -253,16 +281,4 @@ struct OptimizedThumbnailView: View {
             return screenshot.timestamp.formatted(date: .abbreviated, time: .omitted)
         }
     }
-}
-
-#Preview {
-    OptimizedThumbnailView(
-        screenshot: Screenshot(
-            imageData: Data(),
-            filename: "test_screenshot",
-            timestamp: Date()
-        ),
-        onTap: {}
-    )
-    .padding()
 }
