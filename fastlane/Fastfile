@@ -15,11 +15,36 @@
 
 default_platform(:ios)
 
+app_store_connect_api_key(
+       key_id: "KL3YPTX965",
+       issuer_id: "64bc274d-d904-4205-b60b-38a08ab32f91",
+       key_filepath: "fastlane/AuthKey_KL3YPTX965.p8"
+     )
 platform :ios do
   desc "Push a new beta build to TestFlight"
   lane :beta do
     increment_build_number(xcodeproj: "ScreenshotNotes.xcodeproj")
     build_app(scheme: "ScreenshotNotes")
     upload_to_testflight
+  end
+  desc "Push a new release build to the App Store"
+  lane :release do
+    # Optionally increment version number
+    # increment_version_number(
+    #   bump_type: "patch", # or "minor", "major"
+    #   xcodeproj: "StarTimer.xcodeproj"
+    # )
+
+    increment_build_number(xcodeproj: "ScreenshotNotes.xcodeproj")
+    build_app(scheme: "ScreenshotNotes",
+    export_method: "app-store"
+    )
+    upload_to_app_store(
+      skip_metadata: true, # Set to false if you want to upload metadata/screenshots
+      skip_screenshots: true,
+      submit_for_review: false, # Set to false if you want to submit manually
+      automatic_release: true, # Set to true to release automatically after approval
+      run_precheck_before_submit: false
+    )
   end
 end
