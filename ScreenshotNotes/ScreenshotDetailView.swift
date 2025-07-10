@@ -13,6 +13,7 @@ struct ScreenshotDetailView: View {
     @State private var lastOffset: CGSize = .zero
     @State private var showingControls = true
     @State private var showingUnifiedPanel = true
+    @State private var isTextPanelExpanded = false
     @StateObject private var glassSystem = GlassDesignSystem.shared
     @State private var currentScreenshot: Screenshot
     @State private var showingActionSheet = false
@@ -90,7 +91,8 @@ struct ScreenshotDetailView: View {
                         onCopy: { _ in
                             addHapticFeedback(.light)
                         },
-                        showingUnifiedPanel: $showingUnifiedPanel
+                        showingUnifiedPanel: $showingUnifiedPanel,
+                        isTextPanelExpanded: $isTextPanelExpanded
                     )
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
@@ -189,61 +191,6 @@ struct ScreenshotDetailView: View {
                 
                 // Bottom Glass control panel - always visible
                 VStack(spacing: 12) {
-                    // Navigation controls
-                    HStack(spacing: 20) {
-                        Button(action: {
-                            if canNavigatePrevious {
-                                navigateToPrevious()
-                            }
-                        }) {
-                            Image(systemName: "chevron.left")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(canNavigatePrevious ? .white : .white.opacity(0.3))
-                                .frame(width: 44, height: 44)
-                                .background(
-                                    Circle()
-                                        .fill(.ultraThinMaterial)
-                                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 2)
-                                )
-                        }
-                        .disabled(!canNavigatePrevious)
-                        
-                        VStack(spacing: 4) {
-                            Text(currentScreenshot.timestamp.formatted(date: .abbreviated, time: .shortened))
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundColor(.white)
-                            Text("\(currentIndex + 1) of \(allScreenshots.count)")
-                                .font(.caption2)
-                                .foregroundColor(.white.opacity(0.7))
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(.ultraThinMaterial)
-                                .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 2)
-                        )
-                        
-                        Button(action: {
-                            if canNavigateNext {
-                                navigateToNext()
-                            }
-                        }) {
-                            Image(systemName: "chevron.right")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(canNavigateNext ? .white : .white.opacity(0.3))
-                                .frame(width: 44, height: 44)
-                                .background(
-                                    Circle()
-                                        .fill(.ultraThinMaterial)
-                                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 2)
-                                )
-                        }
-                        .disabled(!canNavigateNext)
-                    }
                     
                     // Zoom controls (only when zoomed)
                     if scale != 1.0 {
@@ -303,6 +250,58 @@ struct ScreenshotDetailView: View {
         } message: {
             Text("What would you like to do with this screenshot?")
         }
+        .overlay(alignment: .bottom) {
+            // --- Bottom Handle for Text Panel (when collapsed) ---
+            if !showingUnifiedPanel {
+                Button(action: {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        showingUnifiedPanel = true
+                    }
+                    addHapticFeedback(.light)
+                }) {
+                    VStack(spacing: 4) {
+                        // Handle indicator
+                        RoundedRectangle(cornerRadius: 2.5)
+                            .fill(.white.opacity(0.6))
+                            .frame(width: 36, height: 5)
+                        
+                        // Text label
+                        if let extractedText = currentScreenshot.extractedText, !extractedText.isEmpty {
+                            Text("Extracted Text")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.white.opacity(0.8))
+                        } else {
+                            Text("No Text Available")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 2)
+                    )
+                }
+                .buttonStyle(.plain)
+                .padding(.bottom, 40) // Safe area padding
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .fullScreenCover(isPresented: $isTextPanelExpanded) {
+            FullScreenTextView(
+                screenshot: currentScreenshot,
+                onTextChanged: { newText in
+                    currentScreenshot.extractedText = newText
+                },
+                onDismiss: {
+                    isTextPanelExpanded = false
+                }
+            )
+        }
     }
 
     var allGestures: some Gesture {
@@ -355,10 +354,6 @@ struct ScreenshotDetailView: View {
                                 // Swipe down - dismiss
                                 dismiss()
                                 addHapticFeedback(.medium)
-                            } else {
-                                // Swipe up - show actions
-                                showingActionSheet = true
-                                addHapticFeedback(.light)
                             }
                         }
                     }
@@ -514,6 +509,7 @@ struct UnifiedDetailsPanel: View {
     let onTextChanged: (String) -> Void
     let onCopy: (String) -> Void
     @Binding var showingUnifiedPanel: Bool
+    @Binding var isTextPanelExpanded: Bool
     @StateObject private var glassSystem = GlassDesignSystem.shared
     private let hapticService = HapticService.shared
     
@@ -624,6 +620,13 @@ struct UnifiedDetailsPanel: View {
                         if value.translation.height > 50 && value.velocity.height > 0 {
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                                 showingUnifiedPanel = false
+                            }
+                            hapticService.impact(.medium)
+                        }
+                        // Pull up to expand to full screen
+                        else if value.translation.height < -50 && value.velocity.height < 0 {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                isTextPanelExpanded = true
                             }
                             hapticService.impact(.medium)
                         }
@@ -1430,4 +1433,99 @@ struct ContentItemView: View {
     }
     
     return PreviewWrapper()
+}
+
+// MARK: - Full Screen Text View
+
+struct FullScreenTextView: View {
+    let screenshot: Screenshot
+    let onTextChanged: (String) -> Void
+    let onDismiss: () -> Void
+    
+    @StateObject private var glassSystem = GlassDesignSystem.shared
+    private let hapticService = HapticService.shared
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Header with pull-down indicator
+                VStack(spacing: 12) {
+                    // Pull-down indicator
+                    RoundedRectangle(cornerRadius: 2.5)
+                        .fill(.secondary.opacity(0.4))
+                        .frame(width: 36, height: 5)
+                        .padding(.top, 8)
+                    
+                    // Title
+                    HStack {
+                        Text("Extracted Text")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+                        
+                        Spacer()
+                        
+                        Button("Done") {
+                            onDismiss()
+                        }
+                        .font(.headline)
+                        .foregroundColor(.blue)
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .background(.regularMaterial)
+                .gesture(
+                    DragGesture()
+                        .onEnded { value in
+                            // Pull down to close
+                            if value.translation.height > 100 && value.velocity.height > 0 {
+                                hapticService.impact(.medium)
+                                onDismiss()
+                            }
+                        }
+                )
+                
+                // Content
+                if let extractedText = screenshot.extractedText, !extractedText.isEmpty {
+                    ExtractedTextView(
+                        text: extractedText,
+                        mode: .expanded,
+                        theme: .glass,
+                        showHeader: false,
+                        editable: true,
+                        onTextChanged: onTextChanged,
+                        onCopy: { text in
+                            hapticService.impact(.light)
+                        }
+                    )
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                } else {
+                    // No text state
+                    VStack(spacing: 20) {
+                        Image(systemName: "doc.text")
+                            .font(.system(size: 64))
+                            .foregroundColor(.secondary)
+                        
+                        Text("No Text Extracted")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        
+                        Text("This screenshot doesn't contain any readable text.")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(40)
+                }
+                
+                Spacer()
+            }
+            .background(.regularMaterial)
+            .edgesIgnoringSafeArea(.bottom)
+        }
+        .navigationBarHidden(true)
+    }
 }
