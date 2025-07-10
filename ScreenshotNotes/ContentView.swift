@@ -662,7 +662,7 @@ struct EmptyStateView: View {
                 if isRefreshing == false && !isBulkImportInProgress {
                     PullToImportMessageView()
                         .opacity(0.8)
-                        .padding(.top, -40) // Subtle overlap with top
+                        .padding(.top, 8) // Visible at the top
                         .padding(.bottom, 8)
                 }
                 Spacer()
@@ -713,6 +713,45 @@ struct EmptyStateView: View {
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 30)
+                        
+                        // Photo access guidance
+                        VStack(spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "info.circle")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.blue)
+                                
+                                Text("Photo Access Required")
+                                    .font(.headline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.primary)
+                            }
+                            
+                            VStack(spacing: 8) {
+                                Text("When prompted, grant access to \"All Photos\" to import your screenshots.")
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                
+                                Text("You can also enable photo access in Settings > Screenshot Vault > Photos.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary.opacity(0.7))
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                        .padding(.top, 20)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(.blue.opacity(0.2), lineWidth: 1)
+                                )
+                        )
+                        .padding(.horizontal, 20)
                     }
                 }
                 
@@ -1262,7 +1301,7 @@ struct PullToImportMessageView: View {
             Image(systemName: "arrow.down.circle")
                 .font(.system(size: 18, weight: .medium))
                 .foregroundColor(.accentColor)
-            Text("Pull to import 20 more screenshots")
+            Text("Pull to import 20 more Screenshots. Long-press to share, copy or delete.")
                 .font(.system(size: 15, weight: .medium, design: .rounded))
                 .foregroundColor(.secondary)
         }
@@ -1311,7 +1350,9 @@ struct UIScrollViewIntrospector: UIViewRepresentable {
             self.parent = parent
         }
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            parent.contentOffset = -scrollView.contentOffset.y
+            DispatchQueue.main.async {
+                self.parent.contentOffset = -scrollView.contentOffset.y
+            }
         }
     }
 }
