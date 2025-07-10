@@ -1,4 +1,6 @@
 import SwiftUI
+import SwiftData
+import Photos
 
 struct SettingsView: View {
     @ObservedObject private var settingsService = SettingsService.shared
@@ -6,6 +8,15 @@ struct SettingsView: View {
     @StateObject private var performanceMonitor = GalleryPerformanceMonitor.shared
     @StateObject private var thumbnailService = ThumbnailService.shared
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Query private var screenshots: [Screenshot]
+    
+    // Bulk deletion state
+    @State private var showingDeleteConfirmation = false
+    @State private var showingDeletionProgress = false
+    @State private var deletionProgress: Double = 0.0
+    @State private var deletionStatus = ""
+    @State private var deletionCompleted = false
     
     init(photoLibraryService: PhotoLibraryService) {
         self.photoLibraryService = photoLibraryService
@@ -204,6 +215,64 @@ struct SettingsView: View {
                 }
                 
                 Section {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "photo.on.rectangle.angled")
+                                .foregroundColor(.red)
+                                .font(.title2)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Bulk Delete from Photos")
+                                    .font(.headline)
+                                Text("Remove all imported screenshots from Photos app")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                        }
+                        
+                        let importedCount = screenshots.filter { $0.assetIdentifier != nil }.count
+                        
+                        if importedCount > 0 {
+                            HStack {
+                                Text("\(importedCount) imported screenshots found")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                            }
+                            
+                            Button(action: {
+                                showingDeleteConfirmation = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "trash.fill")
+                                        .foregroundColor(.white)
+                                    Text("Delete All from Photos")
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.white)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.red)
+                                .cornerRadius(10)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Text("No imported screenshots to delete")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.vertical, 8)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Bulk Operations")
+                } footer: {
+                    Text("⚠️ WARNING: This will permanently delete ALL imported screenshots from your Photos app. Screenshots will remain in Screenshot Vault. This action cannot be undone.")
+                }
+                
+                Section {
                     Button("Reset to Defaults") {
                         settingsService.resetToDefaults()
                     }
@@ -220,6 +289,126 @@ struct SettingsView: View {
                     .fontWeight(.semibold)
                 }
             }
+            .confirmationDialog(
+                "Delete All Screenshots from Photos?",
+                isPresented: $showingDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Delete All", role: .destructive) {
+                    Task {
+                        await performBulkDeletion()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                let count = screenshots.filter { $0.assetIdentifier != nil }.count
+                Text("This will permanently delete \(count) screenshots from your Photos app. This action cannot be undone. Screenshots will remain in Screenshot Vault.")
+            }
+            .sheet(isPresented: $showingDeletionProgress) {
+                DeletionProgressView(
+                    progress: deletionProgress,
+                    status: deletionStatus,
+                    isCompleted: deletionCompleted,
+                    onDismiss: {
+                        showingDeletionProgress = false
+                        deletionCompleted = false
+                        deletionProgress = 0.0
+                        deletionStatus = ""
+                    }
+                )
+            }
+        }
+    }
+    
+    // MARK: - Bulk Deletion Functions
+    
+    private func performBulkDeletion() async {
+        showingDeletionProgress = true
+        deletionProgress = 0.0
+        deletionStatus = "Preparing deletion..."
+        
+        // Check permissions
+        let authStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        guard authStatus == .authorized else {
+            deletionStatus = "Photos access required"
+            deletionCompleted = true
+            return
+        }
+        
+        // Get screenshots with asset identifiers
+        let screenshotsToDelete = screenshots.filter { $0.assetIdentifier != nil }
+        let totalCount = screenshotsToDelete.count
+        
+        guard totalCount > 0 else {
+            deletionStatus = "No screenshots to delete"
+            deletionCompleted = true
+            return
+        }
+        
+        deletionStatus = "Deleting \(totalCount) screenshots..."
+        
+        var deletedCount = 0
+        var failedCount = 0
+        
+        // Process in batches to avoid memory issues
+        let batchSize = 50
+        let batches = stride(from: 0, to: totalCount, by: batchSize).map {
+            Array(screenshotsToDelete[$0..<min($0 + batchSize, totalCount)])
+        }
+        
+        for (batchIndex, batch) in batches.enumerated() {
+            // Update progress
+            let batchProgress = Double(batchIndex) / Double(batches.count)
+            await MainActor.run {
+                deletionProgress = batchProgress
+                deletionStatus = "Processing batch \(batchIndex + 1) of \(batches.count)..."
+            }
+            
+            // Get asset identifiers for this batch
+            let assetIdentifiers = batch.compactMap { $0.assetIdentifier }
+            
+            // Fetch PHAssets
+            let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: assetIdentifiers, options: nil)
+            let assetsToDelete = Array(0..<fetchResult.count).map { fetchResult.object(at: $0) }
+            
+            // Perform deletion
+            do {
+                try await PHPhotoLibrary.shared().performChanges {
+                    PHAssetChangeRequest.deleteAssets(assetsToDelete as NSArray)
+                }
+                
+                deletedCount += assetsToDelete.count
+                
+                // Clear asset identifiers from successfully deleted screenshots
+                await MainActor.run {
+                    for screenshot in batch {
+                        if assetIdentifiers.contains(screenshot.assetIdentifier ?? "") {
+                            screenshot.assetIdentifier = nil
+                        }
+                    }
+                    
+                    do {
+                        try modelContext.save()
+                    } catch {
+                        print("❌ Failed to save model context: \(error)")
+                    }
+                }
+                
+            } catch {
+                print("❌ Failed to delete batch: \(error)")
+                failedCount += assetsToDelete.count
+            }
+        }
+        
+        // Final status
+        await MainActor.run {
+            deletionProgress = 1.0
+            if failedCount == 0 {
+                deletionStatus = "Successfully deleted \(deletedCount) screenshots"
+            } else {
+                deletionStatus = "Deleted \(deletedCount), failed \(failedCount)"
+            }
+            deletionCompleted = true
         }
     }
     
@@ -253,5 +442,90 @@ struct SettingsView: View {
         @unknown default:
             return .gray
         }
+    }
+}
+
+// MARK: - Deletion Progress View
+
+struct DeletionProgressView: View {
+    let progress: Double
+    let status: String
+    let isCompleted: Bool
+    let onDismiss: () -> Void
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                Spacer()
+                
+                // Icon
+                Image(systemName: isCompleted ? (progress == 1.0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill") : "trash.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(isCompleted ? (progress == 1.0 ? .green : .orange) : .red)
+                
+                // Progress Circle
+                if !isCompleted {
+                    ZStack {
+                        Circle()
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 8)
+                            .frame(width: 120, height: 120)
+                        
+                        Circle()
+                            .trim(from: 0, to: progress)
+                            .stroke(Color.red, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                            .frame(width: 120, height: 120)
+                            .rotationEffect(.degrees(-90))
+                            .animation(.easeInOut, value: progress)
+                        
+                        Text("\(Int(progress * 100))%")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                    }
+                }
+                
+                // Status Text
+                VStack(spacing: 8) {
+                    Text(isCompleted ? "Deletion Complete" : "Deleting Screenshots")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    Text(status)
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+                
+                Spacer()
+                
+                // Done Button (only when completed)
+                if isCompleted {
+                    Button("Done") {
+                        onDismiss()
+                    }
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+                }
+            }
+            .navigationTitle("Bulk Delete")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(!isCompleted)
+            .toolbar {
+                if isCompleted {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            onDismiss()
+                        }
+                    }
+                }
+            }
+        }
+        .interactiveDismissDisabled(!isCompleted)
     }
 }
