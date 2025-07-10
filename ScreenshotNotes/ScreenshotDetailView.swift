@@ -12,6 +12,7 @@ struct ScreenshotDetailView: View {
     @State private var lastOffset: CGSize = .zero
     @State private var showingControls = true
     @State private var showingAttributesPanel = false
+    @State private var showingExtractedText = true
     @StateObject private var glassSystem = GlassDesignSystem.shared
     @State private var currentScreenshot: Screenshot
     @State private var showingActionSheet = false
@@ -81,22 +82,62 @@ struct ScreenshotDetailView: View {
                 }
                 // --- Extracted Text Display ---
                 if let extractedText = currentScreenshot.extractedText, !extractedText.isEmpty {
-                    ExtractedTextView(
-                        text: extractedText,
-                        mode: .standard,
-                        theme: .glass,
-                        editable: true,
-                        onTextChanged: { newText in
-                            // Update the screenshot's extracted text
-                            currentScreenshot.extractedText = newText
-                        },
-                        onCopy: { copiedText in
-                            addHapticFeedback(.light)
+                    VStack(spacing: 0) {
+                        // Toggle button for text panel
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    showingExtractedText.toggle()
+                                }
+                                addHapticFeedback(.light)
+                            }) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "text.quote")
+                                        .font(.caption)
+                                        .foregroundColor(.white)
+                                    
+                                    Text(showingExtractedText ? "Hide Text" : "Show Text")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.white)
+                                    
+                                    Image(systemName: showingExtractedText ? "chevron.down" : "chevron.up")
+                                        .font(.caption2)
+                                        .foregroundColor(.white.opacity(0.8))
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule()
+                                        .fill(.ultraThinMaterial)
+                                        .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 1)
+                                )
+                            }
+                            .padding(.trailing, 16)
+                            .padding(.bottom, showingExtractedText ? 8 : 16)
                         }
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                        
+                        // Extracted text content
+                        if showingExtractedText {
+                            ExtractedTextView(
+                                text: extractedText,
+                                mode: .standard,
+                                theme: .glass,
+                                editable: true,
+                                onTextChanged: { newText in
+                                    // Update the screenshot's extracted text
+                                    currentScreenshot.extractedText = newText
+                                },
+                                onCopy: { copiedText in
+                                    addHapticFeedback(.light)
+                                }
+                            )
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 8)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+                    }
                 }
             }
             // Glass navigation bar overlay - always visible
@@ -159,6 +200,12 @@ struct ScreenshotDetailView: View {
                         if let extractedText = currentScreenshot.extractedText, !extractedText.isEmpty {
                             Button("Copy Text", systemImage: "text.quote") {
                                 copyExtractedText()
+                            }
+                            Button(showingExtractedText ? "Hide Text Panel" : "Show Text Panel", systemImage: showingExtractedText ? "eye.slash" : "eye") {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    showingExtractedText.toggle()
+                                }
+                                addHapticFeedback(.light)
                             }
                         }
                         Divider()
@@ -281,6 +328,10 @@ struct ScreenshotDetailView: View {
         .statusBarHidden()
         .onAppear {
             // Controls are now persistent - no timer needed
+            // Smart initialization: hide text panel if it's very long
+            if let extractedText = currentScreenshot.extractedText, extractedText.count > 300 {
+                showingExtractedText = false
+            }
         }
         .sheet(isPresented: $showingAttributesPanel) {
             ScreenshotAttributesPanel(screenshot: currentScreenshot)
