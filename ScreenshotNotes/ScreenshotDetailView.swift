@@ -1,4 +1,5 @@
 import SwiftUI
+import NaturalLanguage
 
 struct ScreenshotDetailView: View {
     let screenshot: Screenshot
@@ -88,7 +89,8 @@ struct ScreenshotDetailView: View {
                         },
                         onCopy: { _ in
                             addHapticFeedback(.light)
-                        }
+                        },
+                        showingUnifiedPanel: $showingUnifiedPanel
                     )
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
@@ -511,42 +513,48 @@ struct UnifiedDetailsPanel: View {
     let screenshot: Screenshot
     let onTextChanged: (String) -> Void
     let onCopy: (String) -> Void
+    @Binding var showingUnifiedPanel: Bool
     @StateObject private var glassSystem = GlassDesignSystem.shared
     private let hapticService = HapticService.shared
     
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Extracted Text Section (if available)
-                if let extractedText = screenshot.extractedText, !extractedText.isEmpty {
-                    extractedTextSection(extractedText)
-                }
-                
-                // File Information
-                fileInformationSection
-                
-                // Object Tags (if available)
-                if let objectTags = screenshot.objectTags, !objectTags.isEmpty {
-                    objectTagsSection(objectTags)
-                }
-                
-                // Semantic Tags (if available)
-                if let semanticTags = screenshot.semanticTags, !semanticTags.tags.isEmpty {
-                    semanticTagsSection(semanticTags.tags)
-                }
-                
-                // Color Analysis (if available)
-                if !screenshot.dominantColors.isEmpty {
-                    colorAnalysisSection
-                }
-                
-                // Technical Details
-                technicalDetailsSection
-                
-                // Quick Actions
-                quickActionsSection
+        VStack(alignment: .leading, spacing: 0) {
+            // Extracted Text Section (fixed height, scrollable if needed)
+            if let extractedText = screenshot.extractedText, !extractedText.isEmpty {
+                extractedTextSection(extractedText)
+                    .frame(maxHeight: 200)
             }
-            .padding(.vertical, 16)
+            
+            // Attributes Section (scrollable, outside of text pane)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    // File Information
+                    fileInformationSection
+                    
+                    // Object Tags (if available)
+                    if let objectTags = screenshot.objectTags, !objectTags.isEmpty {
+                        objectTagsSection(objectTags)
+                    }
+                    
+                    // Semantic Tags (if available)
+                    if let semanticTags = screenshot.semanticTags, !semanticTags.tags.isEmpty {
+                        semanticTagsSection(semanticTags.tags)
+                    }
+                    
+                    // Color Analysis (if available)
+                    if !screenshot.dominantColors.isEmpty {
+                        colorAnalysisSection
+                    }
+                    
+                    // Technical Details
+                    technicalDetailsSection
+                    
+                    // Quick Actions
+                    quickActionsSection
+                }
+                .padding(.vertical, 16)
+                .padding(.horizontal, 16)
+            }
         }
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -560,42 +568,109 @@ struct UnifiedDetailsPanel: View {
     
     @ViewBuilder
     private func extractedTextSection(_ text: String) -> some View {
-        sectionCard(title: "Extracted Text", icon: "text.quote") {
-            VStack(alignment: .leading, spacing: 12) {
-                ExtractedTextView(
-                    text: text,
-                    mode: .standard,
-                    theme: .glass,
-                    editable: true,
-                    onTextChanged: onTextChanged,
-                    onCopy: onCopy
-                )
+        let contentItems = extractContentItems(from: text)
+        let hasContent = !contentItems.isEmpty
+        
+        VStack(alignment: .leading, spacing: 0) {
+            // Pull-down indicator and header
+            VStack(spacing: 8) {
+                // Pull-down indicator
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(.secondary.opacity(0.4))
+                    .frame(width: 36, height: 5)
+                    .padding(.top, 8)
                 
-                HStack {
+                // Header
+                HStack(spacing: 8) {
+                    Image(systemName: "text.quote")
+                        .font(.body)
+                        .foregroundColor(.blue)
+                    
+                    Text("Key Content")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
                     Button(action: {
                         UIPasteboard.general.string = text
                         hapticService.impact(.light)
                     }) {
-                        HStack(spacing: 6) {
+                        HStack(spacing: 4) {
                             Image(systemName: "doc.on.doc")
-                            Text("Copy Text")
+                            Text("Copy All")
                         }
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundColor(.blue)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
                         .background(
                             Capsule()
                                 .fill(.ultraThinMaterial)
                         )
                     }
                     .buttonStyle(.plain)
-                    
-                    Spacer()
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+            }
+            .background(.regularMaterial)
+            .gesture(
+                DragGesture()
+                    .onEnded { value in
+                        // Pull down to close
+                        if value.translation.height > 50 && value.velocity.height > 0 {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                showingUnifiedPanel = false
+                            }
+                            hapticService.impact(.medium)
+                        }
+                    }
+            )
+            
+            // Content
+            if hasContent {
+                ScrollView {
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], alignment: .leading, spacing: 8) {
+                        ForEach(contentItems, id: \.text) { item in
+                            ContentItemView(
+                                item: item,
+                                onCopy: {
+                                    UIPasteboard.general.string = item.text
+                                    hapticService.impact(.light)
+                                }
+                            )
+                        }
+                    }
+                    .padding(16)
+                }
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "text.magnifyingglass")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                    
+                    Text("No key content detected")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(24)
             }
         }
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
     }
     
     @ViewBuilder
@@ -991,6 +1066,348 @@ struct UnifiedDetailsPanel: View {
             }
         } catch {
             hapticService.notification(.error)
+        }
+    }
+    
+    // MARK: - Natural Language Processing
+    
+    // Content item types for highlighting
+    enum ContentType: String, CaseIterable {
+        case url = "URL"
+        case email = "Email"
+        case phone = "Phone"
+        case price = "Price"
+        case code = "Code"
+        case date = "Date"
+        case address = "Address"
+        case number = "Number"
+        case regular = "Text"
+        
+        var color: Color {
+            switch self {
+            case .url: return .blue
+            case .email: return .green
+            case .phone: return .orange
+            case .price: return .purple
+            case .code: return .red
+            case .date: return .indigo
+            case .address: return .brown
+            case .number: return .cyan
+            case .regular: return .primary
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .url: return "link"
+            case .email: return "envelope"
+            case .phone: return "phone"
+            case .price: return "dollarsign"
+            case .code: return "chevron.left.forwardslash.chevron.right"
+            case .date: return "calendar"
+            case .address: return "location"
+            case .number: return "number"
+            case .regular: return "text.quote"
+            }
+        }
+    }
+    
+    struct ContentItem {
+        let text: String
+        let type: ContentType
+        let confidence: Double
+    }
+    
+    /// Extracts content items with type detection and highlighting
+    private func extractContentItems(from text: String) -> [ContentItem] {
+        guard !text.isEmpty else { return [] }
+        
+        var contentItems: [ContentItem] = []
+        
+        // First extract regular content words
+        let regularTerms = extractNounsAndNames(from: text)
+        
+        // Then detect special content types in the original text
+        let specialItems = detectSpecialContent(from: text)
+        
+        // Combine regular terms (excluding those already found as special)
+        let specialTexts = Set(specialItems.map { $0.text.lowercased() })
+        for term in regularTerms {
+            if !specialTexts.contains(term.lowercased()) {
+                contentItems.append(ContentItem(text: term, type: .regular, confidence: 1.0))
+            }
+        }
+        
+        // Add special items
+        contentItems.append(contentsOf: specialItems)
+        
+        // Sort by confidence and type priority, limit to 25 items
+        return contentItems
+            .sorted { item1, item2 in
+                if item1.type != item2.type {
+                    return item1.type.rawValue < item2.type.rawValue
+                }
+                return item1.confidence > item2.confidence
+            }
+            .prefix(25)
+            .map { $0 }
+    }
+    
+    /// Detect special content types like URLs, emails, prices, etc.
+    private func detectSpecialContent(from text: String) -> [ContentItem] {
+        var items: [ContentItem] = []
+        
+        // URL detection
+        let urlPattern = #"(?i)\b(?:https?://|www\.)\S+\b"#
+        if let urlRegex = try? NSRegularExpression(pattern: urlPattern) {
+            let matches = urlRegex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+            for match in matches {
+                if let range = Range(match.range, in: text) {
+                    let url = String(text[range])
+                    items.append(ContentItem(text: url, type: .url, confidence: 0.95))
+                }
+            }
+        }
+        
+        // Email detection
+        let emailPattern = #"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"#
+        if let emailRegex = try? NSRegularExpression(pattern: emailPattern) {
+            let matches = emailRegex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+            for match in matches {
+                if let range = Range(match.range, in: text) {
+                    let email = String(text[range])
+                    items.append(ContentItem(text: email, type: .email, confidence: 0.95))
+                }
+            }
+        }
+        
+        // Phone number detection
+        let phonePattern = #"(?:\+?1[-.\s]?)?(?:\(?[0-9]{3}\)?[-.\s]?)?[0-9]{3}[-.\s]?[0-9]{4}\b"#
+        if let phoneRegex = try? NSRegularExpression(pattern: phonePattern) {
+            let matches = phoneRegex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+            for match in matches {
+                if let range = Range(match.range, in: text) {
+                    let phone = String(text[range])
+                    if phone.count >= 10 { // Filter out short numbers
+                        items.append(ContentItem(text: phone, type: .phone, confidence: 0.9))
+                    }
+                }
+            }
+        }
+        
+        // Price detection
+        let pricePattern = #"(?:\$|USD|EUR|GBP|¥|₹|£|€)\s*[0-9]{1,3}(?:,?[0-9]{3})*(?:\.[0-9]{2})?|\b[0-9]{1,3}(?:,?[0-9]{3})*(?:\.[0-9]{2})?\s*(?:\$|USD|EUR|GBP|dollars?|cents?)\b"#
+        if let priceRegex = try? NSRegularExpression(pattern: pricePattern, options: .caseInsensitive) {
+            let matches = priceRegex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+            for match in matches {
+                if let range = Range(match.range, in: text) {
+                    let price = String(text[range])
+                    items.append(ContentItem(text: price, type: .price, confidence: 0.9))
+                }
+            }
+        }
+        
+        // Code/technical terms detection (patterns like version numbers, file extensions, hex codes)
+        let codePatterns = [
+            #"\bv?[0-9]+\.[0-9]+(?:\.[0-9]+)*\b"#, // Version numbers
+            #"\b[A-Fa-f0-9]{6,8}\b"#, // Hex codes
+            #"\b\w+\.[a-z]{2,4}\b"#, // File extensions
+            #"\b[A-Z]{2,10}_[A-Z_0-9]+\b"#, // Constants
+            #"\b[a-zA-Z]+:[a-zA-Z0-9_/-]+\b"# // Protocols/schemes
+        ]
+        
+        for pattern in codePatterns {
+            if let codeRegex = try? NSRegularExpression(pattern: pattern) {
+                let matches = codeRegex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+                for match in matches {
+                    if let range = Range(match.range, in: text) {
+                        let code = String(text[range])
+                        if code.count >= 4 && !isCommonWord(code) {
+                            items.append(ContentItem(text: code, type: .code, confidence: 0.8))
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Number detection (standalone numbers that might be important)
+        let numberPattern = #"\b[0-9]{4,}\b"# // 4+ digit numbers
+        if let numberRegex = try? NSRegularExpression(pattern: numberPattern) {
+            let matches = numberRegex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+            for match in matches {
+                if let range = Range(match.range, in: text) {
+                    let number = String(text[range])
+                    // Avoid duplicating dates/prices already found
+                    let numberText = number.lowercased()
+                    if !items.contains(where: { $0.text.lowercased().contains(numberText) }) {
+                        items.append(ContentItem(text: number, type: .number, confidence: 0.7))
+                    }
+                }
+            }
+        }
+        
+        return items
+    }
+    
+    private func isCommonWord(_ word: String) -> Bool {
+        let commonWords = ["html", "http", "https", "www", "com", "org", "net", "file", "text", "data"]
+        return commonWords.contains(word.lowercased())
+    }
+    
+    /// Extracts content words from the given text, excluding grammatical words like verbs, adjectives, prepositions
+    private func extractNounsAndNames(from text: String) -> [String] {
+        guard !text.isEmpty else { return [] }
+        
+        var extractedTerms: Set<String> = []
+        let tokenizer = NLTokenizer(unit: .word)
+        tokenizer.string = text
+        
+        // Extract tokens and their parts of speech
+        tokenizer.enumerateTokens(in: text.startIndex..<text.endIndex) { tokenRange, _ in
+            let token = String(text[tokenRange])
+            
+            // Skip very short words, punctuation, or common stop words
+            guard token.count > 2,
+                  !token.allSatisfy({ $0.isWhitespace || $0.isPunctuation }),
+                  !isStopWord(token) else {
+                return true
+            }
+            
+            // Use POS tagger to identify content words (exclude grammatical words)
+            let tagger = NLTagger(tagSchemes: [.lexicalClass])
+            tagger.string = token
+            
+            let tags = tagger.tags(in: token.startIndex..<token.endIndex, unit: .word, scheme: .lexicalClass)
+            for (tag, _) in tags {
+                if let tag = tag {
+                    switch tag {
+                    // Include these content word types
+                    case .noun, .personalName, .placeName, .organizationName:
+                        let cleanToken = token.trimmingCharacters(in: .punctuationCharacters)
+                        if !cleanToken.isEmpty {
+                            extractedTerms.insert(cleanToken.capitalized)
+                        }
+                    case .otherWord:
+                        // Include unclassified words (often technical terms, abbreviations, etc.)
+                        let cleanToken = token.trimmingCharacters(in: .punctuationCharacters)
+                        if !cleanToken.isEmpty && !isGrammaticalWord(cleanToken) {
+                            extractedTerms.insert(cleanToken.capitalized)
+                        }
+                    // Exclude these grammatical word types
+                    case .verb, .adjective, .adverb, .pronoun, .determiner, .particle, .preposition, .conjunction, .interjection:
+                        break
+                    default:
+                        // For any other unhandled types, include if not a grammatical word
+                        let cleanToken = token.trimmingCharacters(in: .punctuationCharacters)
+                        if !cleanToken.isEmpty && !isGrammaticalWord(cleanToken) {
+                            extractedTerms.insert(cleanToken.capitalized)
+                        }
+                    }
+                }
+            }
+            
+            return true
+        }
+        
+        // Also extract named entities using NER
+        let namedEntityRecognizer = NLTagger(tagSchemes: [.nameType])
+        namedEntityRecognizer.string = text
+        
+        let namedEntityTags = namedEntityRecognizer.tags(in: text.startIndex..<text.endIndex, unit: .word, scheme: .nameType)
+        for (tag, tokenRange) in namedEntityTags {
+            if let tag = tag {
+                let token = String(text[tokenRange])
+                switch tag {
+                case .personalName, .placeName, .organizationName:
+                    let cleanToken = token.trimmingCharacters(in: .punctuationCharacters)
+                    if !cleanToken.isEmpty && cleanToken.count > 2 {
+                        extractedTerms.insert(cleanToken.capitalized)
+                    }
+                default:
+                    break
+                }
+            }
+        }
+        
+        // Sort alphabetically and limit to reasonable number
+        return Array(extractedTerms)
+            .sorted()
+            .prefix(20)
+            .map { $0 }
+    }
+    
+    /// Check if a word is a common stop word that should be filtered out
+    private func isStopWord(_ word: String) -> Bool {
+        let stopWords: Set<String> = [
+            "the", "and", "for", "are", "but", "not", "you", "all", "can", "had", "her", "was", "one", "our", "out", "day", "get", "has", "him", "his", "how", "its", "may", "new", "now", "old", "see", "two", "who", "boy", "did", "she", "use", "her", "way", "many", "then", "them", "these", "so", "some", "time", "very", "when", "come", "here", "just", "like", "long", "make", "much", "over", "such", "take", "than", "they", "well", "this", "that", "with", "have", "from", "they", "know", "want", "been", "good", "much", "some", "time", "will", "year", "your", "what", "said", "each", "which", "their", "would", "there", "could", "other"
+        ]
+        return stopWords.contains(word.lowercased())
+    }
+    
+    /// Check if a word is a grammatical word (verbs, adjectives, prepositions, etc.) that should be filtered out
+    private func isGrammaticalWord(_ word: String) -> Bool {
+        let grammaticalWords: Set<String> = [
+            // Common verbs
+            "is", "am", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did", "will", "would", "shall", "should", "may", "might", "must", "can", "could", "go", "going", "went", "gone", "come", "came", "get", "got", "gotten", "make", "made", "take", "took", "taken", "see", "saw", "seen", "know", "knew", "known", "think", "thought", "say", "said", "tell", "told", "give", "gave", "given", "find", "found", "work", "worked", "call", "called", "try", "tried", "ask", "asked", "need", "needed", "feel", "felt", "become", "became", "leave", "left", "put", "bring", "brought", "begin", "began", "begun", "keep", "kept", "hold", "held", "turn", "turned", "follow", "followed", "seem", "seemed", "help", "helped", "talk", "talked", "start", "started", "show", "showed", "shown", "hear", "heard", "play", "played", "run", "ran", "move", "moved", "live", "lived", "believe", "believed", "happen", "happened", "write", "wrote", "written", "provide", "provided", "sit", "sat", "stand", "stood", "lose", "lost", "pay", "paid", "meet", "met", "include", "included", "continue", "continued", "set", "learn", "learned", "change", "changed", "lead", "led", "understand", "understood", "watch", "watched", "let", "stop", "stopped", "create", "created", "speak", "spoke", "spoken", "read", "allow", "allowed", "add", "added", "spend", "spent", "grow", "grew", "grown", "open", "opened", "walk", "walked", "win", "won", "offer", "offered", "remember", "remembered", "love", "loved", "consider", "considered", "appear", "appeared", "buy", "bought", "wait", "waited", "serve", "served", "die", "died", "send", "sent", "expect", "expected", "build", "built", "stay", "stayed", "fall", "fell", "fallen", "cut", "reach", "reached", "kill", "killed", "remain", "remained",
+            // Common adjectives
+            "good", "great", "small", "large", "big", "little", "high", "low", "long", "short", "wide", "narrow", "thick", "thin", "heavy", "light", "fast", "slow", "hot", "cold", "warm", "cool", "dry", "wet", "clean", "dirty", "old", "young", "new", "fresh", "early", "late", "easy", "hard", "difficult", "simple", "complex", "important", "serious", "common", "special", "certain", "particular", "general", "basic", "main", "major", "minor", "primary", "secondary", "public", "private", "personal", "social", "national", "international", "local", "regional", "global", "human", "natural", "physical", "mental", "emotional", "spiritual", "political", "economic", "financial", "legal", "medical", "technical", "scientific", "educational", "cultural", "historical", "traditional", "modern", "contemporary", "ancient", "recent", "current", "future", "past", "present", "available", "possible", "impossible", "necessary", "optional", "required", "free", "busy", "full", "empty", "open", "closed", "active", "passive", "positive", "negative", "true", "false", "real", "fake", "right", "wrong", "correct", "incorrect", "clear", "unclear", "obvious", "hidden", "visible", "invisible", "loud", "quiet", "strong", "weak", "rich", "poor", "expensive", "cheap", "beautiful", "ugly", "attractive", "popular", "famous", "unknown", "safe", "dangerous", "healthy", "sick", "happy", "sad", "angry", "calm", "excited", "bored", "interested", "surprised", "confused", "worried", "relaxed", "tired", "energetic", "successful", "failed", "lucky", "unlucky", "similar", "different", "same", "equal", "unequal", "better", "worse", "best", "worst", "first", "last", "next", "previous", "original", "final", "complete", "incomplete", "total", "partial", "whole", "broken", "fixed", "ready", "prepared", "finished", "started", "continued", "stopped",
+            // Common prepositions
+            "in", "on", "at", "by", "for", "with", "without", "to", "from", "of", "about", "above", "below", "under", "over", "through", "between", "among", "during", "before", "after", "since", "until", "within", "outside", "inside", "near", "far", "beside", "behind", "ahead", "around", "across", "along", "up", "down", "into", "onto", "upon", "off", "out", "against", "toward", "towards", "past", "beyond", "beneath", "underneath", "throughout", "concerning", "regarding", "despite", "except", "excluding", "including", "according", "due", "owing", "thanks", "because", "instead", "rather", "plus", "minus", "per", "via", "versus",
+            // Common adverbs
+            "very", "really", "quite", "rather", "pretty", "fairly", "extremely", "incredibly", "absolutely", "completely", "totally", "entirely", "fully", "partially", "hardly", "barely", "nearly", "almost", "exactly", "precisely", "approximately", "roughly", "about", "around", "clearly", "obviously", "certainly", "definitely", "probably", "possibly", "maybe", "perhaps", "surely", "likely", "unlikely", "hopefully", "fortunately", "unfortunately", "surprisingly", "interestingly", "importantly", "significantly", "basically", "essentially", "fundamentally", "generally", "usually", "normally", "typically", "commonly", "rarely", "seldom", "never", "always", "often", "sometimes", "occasionally", "frequently", "regularly", "constantly", "continuously", "temporarily", "permanently", "immediately", "instantly", "quickly", "slowly", "gradually", "suddenly", "eventually", "finally", "initially", "originally", "recently", "lately", "currently", "presently", "previously", "formerly", "earlier", "later", "soon", "shortly", "already", "still", "yet", "again", "once", "twice", "together", "apart", "separately", "alone", "here", "there", "everywhere", "somewhere", "nowhere", "anywhere", "upstairs", "downstairs", "outside", "inside", "abroad", "overseas", "home", "away", "back", "forward", "ahead", "behind", "right", "left", "straight", "directly", "indirectly"
+        ]
+        return grammaticalWords.contains(word.lowercased())
+    }
+}
+
+// MARK: - Content Item View
+
+struct ContentItemView: View {
+    let item: UnifiedDetailsPanel.ContentItem
+    let onCopy: () -> Void
+    
+    @StateObject private var glassSystem = GlassDesignSystem.shared
+    private let hapticService = HapticService.shared
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            // Type icon
+            Image(systemName: item.type.icon)
+                .font(.caption)
+                .foregroundColor(item.type.color)
+                .frame(width: 16, height: 16)
+            
+            // Content text
+            Text(item.text)
+                .font(.body)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+            
+            Spacer()
+            
+            // Copy button
+            Button(action: onCopy) {
+                Image(systemName: "doc.on.doc")
+                    .font(.caption2)
+                    .foregroundColor(item.type.color)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(.thinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(item.type.color.opacity(0.3), lineWidth: 1)
+                )
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onCopy()
         }
     }
 }
