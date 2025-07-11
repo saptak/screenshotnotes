@@ -19,6 +19,8 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     private var modelContext: ModelContext?
     private let imageStorageService: ImageStorageServiceProtocol
     private let hapticService: HapticFeedbackService
+    private let networkRetryService: NetworkRetryService
+    private let transactionService: TransactionService
     private var isMonitoring = false
     // Keep a reference to the fetch result for change observation
     private var screenshotsFetchResult: PHFetchResult<PHAsset>?
@@ -29,9 +31,13 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     private let importCoordinator = ImportCoordinator()
 
     init(imageStorageService: ImageStorageServiceProtocol = ImageStorageService(),
-         hapticService: HapticFeedbackService? = nil) {
+         hapticService: HapticFeedbackService? = nil,
+         networkRetryService: NetworkRetryService = NetworkRetryService.shared,
+         transactionService: TransactionService = TransactionService.shared) {
         self.imageStorageService = imageStorageService
         self.hapticService = hapticService ?? HapticFeedbackService.shared
+        self.networkRetryService = networkRetryService
+        self.transactionService = transactionService
         super.init()
         // Load user preference - defaults to true for first launch
         automaticImportEnabled = UserDefaults.standard.object(forKey: "automaticImportEnabled") as? Bool ?? true
@@ -80,12 +86,7 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
         }
         var importedCount = 0
         var skippedCount = 0
-        let imageManager = PHImageManager.default()
-        let requestOptions = PHImageRequestOptions()
-        requestOptions.isSynchronous = false
-        requestOptions.deliveryMode = .highQualityFormat
-        requestOptions.resizeMode = .exact
-        requestOptions.isNetworkAccessAllowed = true
+        
         for i in start..<end {
             let asset = allScreenshots.object(at: i)
             let assetId = asset.localIdentifier
@@ -100,54 +101,47 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
                 skippedCount += 1
                 continue
             }
-            await withCheckedContinuation { continuation in
-                imageManager.requestImage(
-                    for: asset,
+            do {
+                let image = try await networkRetryService.requestImageWithRetry(
+                    asset: asset,
                     targetSize: PHImageManagerMaximumSize,
-                    contentMode: .aspectFit,
-                    options: requestOptions
-                ) { [weak self] image, _ in
-                    guard let image = image, let self = self else {
-                        continuation.resume()
-                        return
-                    }
-                    Task {
-                        do {
-                            let imageData = try await self.imageStorageService.saveImage(
-                                image,
-                                filename: "screenshot_\(asset.localIdentifier)"
-                            )
-                            let screenshot = Screenshot(
-                                imageData: imageData,
-                                filename: "screenshot_\(asset.creationDate?.timeIntervalSince1970 ?? Date().timeIntervalSince1970)",
-                                timestamp: asset.creationDate ?? Date(),
-                                assetIdentifier: asset.localIdentifier
-                            )
-                            await MainActor.run {
-                                modelContext.insert(screenshot)
-                                // Save immediately for progressive UI updates
-                                try? modelContext.save()
-                                importedCount += 1
-                                print("📸 Batch imported screenshot \(importedCount): \(asset.localIdentifier)")
-                                
-                                // Proactively generate thumbnail for better UX
-                                Task.detached { [screenshot] in
-                                    _ = await ThumbnailService.shared.getThumbnail(
-                                        for: screenshot.id,
-                                        from: screenshot.imageData,
-                                        size: ThumbnailService.listThumbnailSize
-                                    )
-                                }
-                            }
-                            
-                            // Add small delay between imports to prevent resource starvation
-                            try? await Task.sleep(nanoseconds: 100_000_000) // 100ms delay
-                        } catch {
-                            print("❌ Failed to batch import screenshot: \(error)")
-                        }
-                        continuation.resume()
+                    configuration: .standard
+                )
+                
+                let imageData = try await imageStorageService.saveImage(
+                    image,
+                    filename: "screenshot_\(asset.localIdentifier)"
+                )
+                
+                let screenshot = Screenshot(
+                    imageData: imageData,
+                    filename: "screenshot_\(asset.creationDate?.timeIntervalSince1970 ?? Date().timeIntervalSince1970)",
+                    timestamp: asset.creationDate ?? Date(),
+                    assetIdentifier: asset.localIdentifier
+                )
+                
+                await MainActor.run {
+                    modelContext.insert(screenshot)
+                    // Save immediately for progressive UI updates
+                    try? modelContext.save()
+                    importedCount += 1
+                    print("📸 Batch imported screenshot \(importedCount): \(asset.localIdentifier)")
+                    
+                    // Proactively generate thumbnail for better UX
+                    Task.detached { [screenshot] in
+                        _ = await ThumbnailService.shared.getThumbnail(
+                            for: screenshot.id,
+                            from: screenshot.imageData,
+                            size: ThumbnailService.listThumbnailSize
+                        )
                     }
                 }
+                
+                // Add small delay between imports to prevent resource starvation
+                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms delay
+            } catch {
+                print("❌ Failed to batch import screenshot with retry: \(error)")
+                // Continue with next screenshot even if this one fails
             }
         }
         // Individual saves are now handled per screenshot for progressive updates
@@ -250,6 +244,123 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
         }
     }
     
+    func importAllPastScreenshotsWithTransaction() async -> (imported: Int, skipped: Int) {
+        // Attempt to start import operation with async-safe coordination
+        guard let importId = await importCoordinator.startImport() else {
+            print("⚠️ Import already in progress, aborting new import request")
+            return (imported: 0, skipped: 0)
+        }
+        defer { 
+            Task { await importCoordinator.endImport(importId: importId) }
+        }
+        
+        guard authorizationStatus == .authorized else {
+            print("❌ Photo library access not authorized")
+            return (imported: 0, skipped: 0)
+        }
+        
+        guard let modelContext = modelContext else {
+            print("❌ Model context not available")
+            return (imported: 0, skipped: 0)
+        }
+        
+        // Set bulk import state to prevent aggressive cache clearing
+        GalleryPerformanceMonitor.shared.setBulkImportState(true)
+        defer {
+            GalleryPerformanceMonitor.shared.setBulkImportState(false)
+        }
+        
+        print("📸 Starting transactional import of all past screenshots...")
+        
+        // Fetch all screenshots from Photos app
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.predicate = NSPredicate(format: "mediaSubtype & %d != 0", PHAssetMediaSubtype.photoScreenshot.rawValue)
+        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        
+        let allScreenshots = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+        print("📸 Found \(allScreenshots.count) total screenshots in Photo Library")
+        
+        // Convert to array for transaction processing
+        var assets: [PHAsset] = []
+        for i in 0..<allScreenshots.count {
+            let asset = allScreenshots.object(at: i)
+            
+            // Check if already imported
+            let assetId = asset.localIdentifier
+            let existingScreenshots = try? modelContext.fetch(
+                FetchDescriptor<Screenshot>(
+                    predicate: #Predicate<Screenshot> { screenshot in
+                        screenshot.assetIdentifier == assetId
+                    }
+                )
+            )
+            
+            if existingScreenshots?.isEmpty == false {
+                // Already imported, skip
+                continue
+            }
+            
+            assets.append(asset)
+        }
+        
+        let skippedCount = allScreenshots.count - assets.count
+        print("📸 Will import \(assets.count) new screenshots, skipping \(skippedCount) existing ones")
+        
+        // Use transaction service for reliable batch import
+        let result = await transactionService.executeScreenshotImportTransaction(
+            modelContext: modelContext,
+            assets: assets,
+            configuration: .standard
+        ) { [weak self] asset, index in
+            guard let self = self else { 
+                throw NSError(domain: "PhotoLibraryService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Service deallocated"])
+            }
+            
+            // Import with network retry
+            let image = try await self.networkRetryService.requestImageWithRetry(
+                asset: asset,
+                targetSize: PHImageManagerMaximumSize,
+                configuration: .standard
+            )
+            
+            let imageData = try await self.imageStorageService.saveImage(
+                image,
+                filename: "screenshot_\(asset.localIdentifier)"
+            )
+            
+            let screenshot = Screenshot(
+                imageData: imageData,
+                filename: "screenshot_\(asset.creationDate?.timeIntervalSince1970 ?? Date().timeIntervalSince1970)",
+                timestamp: asset.creationDate ?? Date(),
+                assetIdentifier: asset.localIdentifier
+            )
+            
+            // Proactively generate thumbnail for better UX
+            Task.detached { [screenshot] in
+                _ = await ThumbnailService.shared.getThumbnail(
+                    for: screenshot.id,
+                    from: screenshot.imageData,
+                    size: ThumbnailService.listThumbnailSize
+                )
+            }
+            
+            return screenshot
+        }
+        
+        // Handle transaction result
+        switch result {
+        case .success(let itemsProcessed):
+            print("📸 Transactional import completed successfully: \(itemsProcessed) imported, \(skippedCount) skipped")
+            return (imported: itemsProcessed, skipped: skippedCount)
+        case .failure(let error, let itemsProcessed):
+            print("❌ Transactional import failed: \(error.localizedDescription), \(itemsProcessed) items processed")
+            return (imported: itemsProcessed, skipped: skippedCount)
+        case .partialSuccess(let itemsProcessed, let failures):
+            print("⚠️ Transactional import partially succeeded: \(itemsProcessed) imported, \(failures.count) failures, \(skippedCount) skipped")
+            return (imported: itemsProcessed, skipped: skippedCount)
+        }
+    }
+    
     func importAllPastScreenshots() async -> (imported: Int, skipped: Int) {
         // Attempt to start import operation with async-safe coordination
         guard let importId = await importCoordinator.startImport() else {
@@ -289,13 +400,6 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
         var importedCount = 0
         var skippedCount = 0
         
-        let imageManager = PHImageManager.default()
-        let requestOptions = PHImageRequestOptions()
-        requestOptions.isSynchronous = false
-        requestOptions.deliveryMode = .highQualityFormat
-        requestOptions.resizeMode = .exact
-        requestOptions.isNetworkAccessAllowed = true
-        
         // Process screenshots in batches to avoid memory issues
         let batchSize = 10
         for i in stride(from: 0, to: allScreenshots.count, by: batchSize) {
@@ -319,53 +423,43 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
                     continue // Already imported
                 }
                 
-                // Import the screenshot
-                await withCheckedContinuation { continuation in
-                    imageManager.requestImage(
-                        for: asset,
+                // Import the screenshot with retry logic
+                do {
+                    let image = try await networkRetryService.requestImageWithRetry(
+                        asset: asset,
                         targetSize: PHImageManagerMaximumSize,
-                        contentMode: .aspectFit,
-                        options: requestOptions
-                    ) { [weak self] image, _ in
-                        guard let image = image, let self = self else {
-                            continuation.resume()
-                            return
-                        }
+                        configuration: .standard
+                    )
+                    
+                    let imageData = try await imageStorageService.saveImage(
+                        image,
+                        filename: "screenshot_\(asset.localIdentifier)"
+                    )
+                    
+                    let screenshot = Screenshot(
+                        imageData: imageData,
+                        filename: "screenshot_\(asset.creationDate?.timeIntervalSince1970 ?? Date().timeIntervalSince1970)",
+                        timestamp: asset.creationDate ?? Date(),
+                        assetIdentifier: asset.localIdentifier
+                    )
+                    
+                    await MainActor.run {
+                        modelContext.insert(screenshot)
+                        importedCount += 1
+                        print("📸 Imported screenshot \(importedCount): \(asset.localIdentifier)")
                         
-                        Task {
-                            do {
-                                let imageData = try await self.imageStorageService.saveImage(
-                                    image,
-                                    filename: "screenshot_\(asset.localIdentifier)"
-                                )
-                                
-                                let screenshot = Screenshot(
-                                    imageData: imageData,
-                                    filename: "screenshot_\(asset.creationDate?.timeIntervalSince1970 ?? Date().timeIntervalSince1970)",
-                                    timestamp: asset.creationDate ?? Date(),
-                                    assetIdentifier: asset.localIdentifier
-                                )
-                                
-                                await MainActor.run {
-                                    modelContext.insert(screenshot)
-                                    importedCount += 1
-                                    print("📸 Imported screenshot \(importedCount): \(asset.localIdentifier)")
-                                    
-                                    // Proactively generate thumbnail for better UX
-                                    Task.detached { [screenshot] in
-                                        _ = await ThumbnailService.shared.getThumbnail(
-                                            for: screenshot.id,
-                                            from: screenshot.imageData,
-                                            size: ThumbnailService.listThumbnailSize
-                                        )
-                                    }
-                                }
-                            } catch {
-                                print("❌ Failed to import screenshot: \(error)")
-                            }
-                            continuation.resume()
+                        // Proactively generate thumbnail for better UX
+                        Task.detached { [screenshot] in
+                            _ = await ThumbnailService.shared.getThumbnail(
+                                for: screenshot.id,
+                                from: screenshot.imageData,
+                                size: ThumbnailService.listThumbnailSize
+                            )
                         }
                     }
+                } catch {
+                    print("❌ Failed to import screenshot with retry: \(error)")
+                    // Continue with next screenshot even if this one fails
                 }
             }
             
@@ -386,13 +480,6 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     private func importScreenshots(_ screenshots: [PHAsset]) async {
         guard let modelContext = modelContext else { return }
         
-        let imageManager = PHImageManager.default()
-        let requestOptions = PHImageRequestOptions()
-        requestOptions.isSynchronous = false
-        requestOptions.deliveryMode = .highQualityFormat
-        requestOptions.resizeMode = .exact
-        requestOptions.isNetworkAccessAllowed = true
-        
         // Process screenshots sequentially to avoid memory issues
         for asset in screenshots {
             // Check if already imported using creation date and identifier
@@ -409,48 +496,37 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
                 continue // Already imported
             }
             
-            await withCheckedContinuation { continuation in
-                imageManager.requestImage(
-                    for: asset,
+            do {
+                let image = try await networkRetryService.requestImageWithRetry(
+                    asset: asset,
                     targetSize: PHImageManagerMaximumSize,
-                    contentMode: .aspectFit,
-                    options: requestOptions
-                ) { [weak self] image, _ in
-                    guard let image = image, let self = self else {
-                        continuation.resume()
-                        return
-                    }
+                    configuration: .conservative  // Use conservative for auto-import to avoid battery drain
+                )
+                
+                let imageData = try await imageStorageService.saveImage(
+                    image,
+                    filename: "screenshot_\(asset.localIdentifier)"
+                )
+                
+                let screenshot = Screenshot(
+                    imageData: imageData,
+                    filename: "screenshot_\(Date().timeIntervalSince1970)",
+                    timestamp: asset.creationDate ?? Date(),
+                    assetIdentifier: asset.localIdentifier
+                )
+                
+                await MainActor.run {
+                    modelContext.insert(screenshot)
+                    try? modelContext.save()
                     
-                    Task {
-                        do {
-                            let imageData = try await self.imageStorageService.saveImage(
-                                image,
-                                filename: "screenshot_\(asset.localIdentifier)"
-                            )
-                            
-                            let screenshot = Screenshot(
-                                imageData: imageData,
-                                filename: "screenshot_\(Date().timeIntervalSince1970)",
-                                timestamp: asset.creationDate ?? Date(),
-                                assetIdentifier: asset.localIdentifier
-                            )
-                            
-                            await MainActor.run {
-                                modelContext.insert(screenshot)
-                                try? modelContext.save()
-                                
-                                // Provide haptic feedback for successful import
-                                self.hapticService.triggerHaptic(.successFeedback)
-                                print("📸 Auto-imported screenshot: \(asset.localIdentifier)")
-                            }
-                        } catch {
-                            print("❌ Failed to auto-import screenshot: \(error)")
-                            await MainActor.run {
-                                self.hapticService.triggerHaptic(.errorFeedback)
-                            }
-                        }
-                        continuation.resume()
-                    }
+                    // Provide haptic feedback for successful import
+                    hapticService.triggerHaptic(.successFeedback)
+                    print("📸 Auto-imported screenshot: \(asset.localIdentifier)")
+                }
+            } catch {
+                print("❌ Failed to auto-import screenshot with retry: \(error)")
+                await MainActor.run {
+                    hapticService.triggerHaptic(.errorFeedback)
                 }
             }
         }

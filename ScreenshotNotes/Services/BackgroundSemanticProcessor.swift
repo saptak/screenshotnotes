@@ -55,14 +55,10 @@ final class BackgroundSemanticProcessor: ObservableObject {
                 GalleryPerformanceMonitor.shared.setBulkImportState(false)
             }
         }
-        // Calculate 30 days ago for semantic analysis staleness check
-        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date.distantPast
-        
         let descriptor = FetchDescriptor<Screenshot>(
             predicate: #Predicate<Screenshot> { screenshot in
-                // Need semantic analysis if never analyzed or analysis is stale (older than 30 days)
+                // Need semantic analysis if never analyzed, analysis is stale, or no extracted text
                 screenshot.lastSemanticAnalysis == nil || 
-                screenshot.lastSemanticAnalysis! < thirtyDaysAgo ||
                 screenshot.extractedText == nil
             }
         )
@@ -167,8 +163,17 @@ final class BackgroundSemanticProcessor: ObservableObject {
     }
     
     private func processBatch(_ screenshots: [Screenshot], in modelContext: ModelContext) async {
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date.distantPast
+        
         for screenshot in screenshots {
-            await processScreenshot(screenshot, in: modelContext)
+            // Check if this screenshot actually needs processing
+            let needsProcessing = screenshot.lastSemanticAnalysis == nil ||
+                                  screenshot.extractedText == nil ||
+                                  (screenshot.lastSemanticAnalysis.map { $0 < thirtyDaysAgo } ?? false)
+            
+            if needsProcessing {
+                await processScreenshot(screenshot, in: modelContext)
+            }
             
             await MainActor.run {
                 self.processedCount += 1
