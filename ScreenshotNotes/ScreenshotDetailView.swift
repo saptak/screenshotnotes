@@ -102,91 +102,78 @@ struct ScreenshotDetailView: View {
             // Glass navigation bar overlay - always visible
             VStack {
                 HStack {
-                    Button(action: {
-                        dismiss()
-                        addHapticFeedback(.light)
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(
-                                Circle()
-                                    .fill(.ultraThinMaterial)
-                                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 2)
-                            )
-                    }
-                    
                     Spacer()
                     
-                    Text(currentScreenshot.filename)
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(.ultraThinMaterial)
-                                .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 2)
-                        )
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                            showingUnifiedPanel.toggle()
-                        }
-                        addHapticFeedback(.light)
-                    }) {
-                        Image(systemName: showingUnifiedPanel ? "info.circle.fill" : "info.circle")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(
-                                Circle()
-                                    .fill(.ultraThinMaterial)
-                                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 2)
-                            )
-                    }
-                    
-                    Menu {
-                        Button("Share", systemImage: "square.and.arrow.up") {
-                            shareImage()
-                        }
-                        Button("Copy Image", systemImage: "doc.on.doc") {
-                            copyImage()
-                        }
-                        if let extractedText = currentScreenshot.extractedText, !extractedText.isEmpty {
-                            Button("Copy Text", systemImage: "text.quote") {
-                                copyExtractedText()
-                            }
-                        }
-                        Button(showingUnifiedPanel ? "Hide Details Panel" : "Show Details Panel", systemImage: showingUnifiedPanel ? "eye.slash" : "eye") {
+                    HStack(spacing: 12) {
+                        Button(action: {
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                                 showingUnifiedPanel.toggle()
                             }
                             addHapticFeedback(.light)
+                        }) {
+                            Image(systemName: showingUnifiedPanel ? "info.circle.fill" : "info.circle")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(
+                                    Circle()
+                                        .fill(.ultraThinMaterial)
+                                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 2)
+                                )
                         }
-                        Divider()
-                        Button("Delete", systemImage: "trash", role: .destructive) {
-                            showingActionSheet = true
+                        
+                        Menu {
+                            Button("Share", systemImage: "square.and.arrow.up") {
+                                shareImage()
+                            }
+                            Button("Copy Image", systemImage: "doc.on.doc") {
+                                copyImage()
+                            }
+                            if let extractedText = currentScreenshot.extractedText, !extractedText.isEmpty {
+                                Button("Copy Text", systemImage: "text.quote") {
+                                    copyExtractedText()
+                                }
+                            }
+                            Button(showingUnifiedPanel ? "Hide Details Panel" : "Show Details Panel", systemImage: showingUnifiedPanel ? "eye.slash" : "eye") {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    showingUnifiedPanel.toggle()
+                                }
+                                addHapticFeedback(.light)
+                            }
+                            Divider()
+                            Button("Delete", systemImage: "trash", role: .destructive) {
+                                showingActionSheet = true
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(
+                                    Circle()
+                                        .fill(.ultraThinMaterial)
+                                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 2)
+                                )
                         }
-                    } label: {
-                        Image(systemName: "ellipsis.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(
-                                Circle()
-                                    .fill(.ultraThinMaterial)
-                                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 2)
-                            )
+                        
+                        Button(action: {
+                            dismiss()
+                            addHapticFeedback(.light)
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(
+                                    Circle()
+                                        .fill(.ultraThinMaterial)
+                                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 2)
+                                )
+                        }
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 60) // Account for safe area
+                .padding(.horizontal, 8)
+                .padding(.top, 10) // Moved as high as possible
                 Spacer()
                 
                 // Bottom Glass control panel - always visible
@@ -515,18 +502,14 @@ struct UnifiedDetailsPanel: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Extracted Text Section (fixed height, scrollable if needed)
+            // Extracted Text Section (expanded to take most of the panel)
             if let extractedText = screenshot.extractedText, !extractedText.isEmpty {
                 extractedTextSection(extractedText)
-                    .frame(maxHeight: 200)
             }
             
-            // Attributes Section (scrollable, outside of text pane)
+            // Attributes Section (scrollable, compact)
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    // File Information
-                    fileInformationSection
-                    
                     // Object Tags (if available)
                     if let objectTags = screenshot.objectTags, !objectTags.isEmpty {
                         objectTagsSection(objectTags)
@@ -536,14 +519,6 @@ struct UnifiedDetailsPanel: View {
                     if let semanticTags = screenshot.semanticTags, !semanticTags.tags.isEmpty {
                         semanticTagsSection(semanticTags.tags)
                     }
-                    
-                    // Color Analysis (if available)
-                    if !screenshot.dominantColors.isEmpty {
-                        colorAnalysisSection
-                    }
-                    
-                    // Technical Details
-                    technicalDetailsSection
                     
                     // Quick Actions
                     quickActionsSection
@@ -676,19 +651,6 @@ struct UnifiedDetailsPanel: View {
         .padding(.top, 16)
     }
     
-    @ViewBuilder
-    private var fileInformationSection: some View {
-        sectionCard(title: "File Information", icon: "doc.text") {
-            VStack(alignment: .leading, spacing: 8) {
-                infoRow(label: "Filename", value: screenshot.filename, copyable: true)
-                infoRow(label: "Date", value: formatTimestamp(), copyable: false)
-                infoRow(label: "Size", value: formatFileSize(), copyable: false)
-                if let dimensions = getImageDimensions() {
-                    infoRow(label: "Dimensions", value: dimensions, copyable: false)
-                }
-            }
-        }
-    }
     
     @ViewBuilder
     private func objectTagsSection(_ tags: [String]) -> some View {
@@ -797,79 +759,7 @@ struct UnifiedDetailsPanel: View {
         }
     }
     
-    @ViewBuilder
-    private var colorAnalysisSection: some View {
-        sectionCard(title: "Color Analysis", icon: "paintpalette") {
-            VStack(alignment: .leading, spacing: 12) {
-                LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ], spacing: 8) {
-                    ForEach(screenshot.dominantColors, id: \.colorName) { colorInfo in
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(Color(red: colorInfo.red, green: colorInfo.green, blue: colorInfo.blue))
-                                .frame(width: 16, height: 16)
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.primary.opacity(0.2), lineWidth: 0.5)
-                                )
-                            
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(colorInfo.colorName)
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.primary)
-                                
-                                Text("\(Int(colorInfo.prominence * 100))%")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Spacer()
-                        }
-                        .padding(8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(.thinMaterial)
-                        )
-                    }
-                }
-                
-                Button(action: {
-                    let colorText = screenshot.dominantColors.map { "\($0.colorName) (\(Int($0.prominence * 100))%)" }.joined(separator: ", ")
-                    UIPasteboard.general.string = colorText
-                    hapticService.impact(.light)
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "doc.on.doc")
-                        Text("Copy Colors")
-                    }
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.orange)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(.ultraThinMaterial)
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
     
-    @ViewBuilder
-    private var technicalDetailsSection: some View {
-        sectionCard(title: "Technical Details", icon: "info.circle") {
-            VStack(alignment: .leading, spacing: 8) {
-                infoRow(label: "ID", value: screenshot.id.uuidString, copyable: true)
-                infoRow(label: "Processing", value: getProcessingStatus(), copyable: false)
-                infoRow(label: "Vision Analysis", value: screenshot.needsVisionAnalysis ? "Pending" : "Complete", copyable: false)
-            }
-        }
-    }
     
     @ViewBuilder
     private var quickActionsSection: some View {
