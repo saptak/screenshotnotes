@@ -7,6 +7,12 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
     let content: (Item) -> Content
     @Binding var scrollOffset: CGFloat
     
+    // Optional pull-to-refresh message
+    var showPullMessage: Bool = false
+    var isRefreshing: Bool = false
+    var isBulkImportInProgress: Bool = false
+    var onRefresh: (() async -> Void)? = nil
+    
     @State private var visibleRange: Range<Int> = 0..<0
     @State private var containerHeight: CGFloat = 0
     
@@ -17,12 +23,20 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
         columns: [GridItem],
         itemHeight: CGFloat,
         scrollOffset: Binding<CGFloat>,
+        showPullMessage: Bool = false,
+        isRefreshing: Bool = false,
+        isBulkImportInProgress: Bool = false,
+        onRefresh: (() async -> Void)? = nil,
         @ViewBuilder content: @escaping (Item) -> Content
     ) {
         self.items = items
         self.columns = columns
         self.itemHeight = itemHeight
         self._scrollOffset = scrollOffset
+        self.showPullMessage = showPullMessage
+        self.isRefreshing = isRefreshing
+        self.isBulkImportInProgress = isBulkImportInProgress
+        self.onRefresh = onRefresh
         self.content = content
     }
     
@@ -30,6 +44,14 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
         GeometryReader { geometry in
             ScrollView {
                 LazyVStack(spacing: 0) {
+                    // Pull-to-import message (shows when user pulls down)
+                    if showPullMessage && scrollOffset > 10 && !isRefreshing && !isBulkImportInProgress {
+                        PullToImportMessageView()
+                            .opacity(0.8)
+                            .padding(.top, 8)
+                            .padding(.bottom, 4)
+                    }
+                    
                     // Top spacer for items above visible area
                     if visibleRange.lowerBound > 0 {
                         Rectangle()
@@ -55,17 +77,23 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
                     }
                 }
                 .background(
-                    GeometryReader { scrollGeometry in
+                    GeometryReader { proxy in
                         Color.clear
-                            .preference(key: ScrollOffsetPreferenceKey.self, value: scrollGeometry.frame(in: .named("scrollView")).origin.y)
+                            .preference(key: ScrollOffsetPreferenceKey.self, value: proxy.frame(in: .global).minY)
                     }
                 )
             }
-            .coordinateSpace(name: "scrollView")
+            .coordinateSpace(name: "pullArea")
             .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
-                scrollOffset = -offset // Convert to positive for pull-down detection
-                self.scrollOffset = scrollOffset // Update the binding
+                // Convert the global position to a proper scroll offset
+                let containerTop = geometry.frame(in: .global).minY
+                scrollOffset = max(0, offset - containerTop)
                 updateVisibleRange(containerHeight: geometry.size.height)
+            }
+            .refreshable {
+                if let onRefresh = onRefresh {
+                    await onRefresh()
+                }
             }
             .onAppear {
                 containerHeight = geometry.size.height
@@ -101,8 +129,8 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
         let itemsPerRow = max(1, columns.count) // Ensure at least 1 item per row
         let rowHeight = itemHeight + 16 // Include spacing
         
-        // For small collections or when container height is small, show all items
-        if items.count <= 50 || containerHeight < rowHeight * 3 {
+        // For small to medium collections, show all items to avoid virtualization issues
+        if items.count <= 100 || containerHeight < rowHeight * 3 {
             let newRange = 0..<items.count
             if newRange != visibleRange {
                 visibleRange = newRange

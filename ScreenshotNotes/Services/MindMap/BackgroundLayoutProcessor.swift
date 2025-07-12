@@ -314,18 +314,25 @@ class BackgroundLayoutProcessor: ObservableObject {
     private func generateCompleteLayout() async {
         print("🎯 Generating complete mind map layout")
         
-        guard modelContext != nil else { return }
+        guard let modelContext = modelContext else { return }
         
-        // Fetch all screenshots
-        let screenshots = await fetchAllScreenshots()
+        // Fetch all screenshot IDs
+        let screenshotIDs = await fetchAllScreenshots()
         
-        if screenshots.count < 3 {
-            print("ℹ️ Insufficient screenshots for mind map generation (\(screenshots.count) < 3)")
+        if screenshotIDs.count < 3 {
+            print("ℹ️ Insufficient screenshots for mind map generation (\(screenshotIDs.count) < 3)")
             return
         }
         
+        // Fetch full screenshot objects on the main actor
+        let screenshots = await MainActor.run {
+            screenshotIDs.compactMap { id in
+                modelContext.model(for: id) as? Screenshot
+            }
+        }
+        
         // Generate layout using force-directed algorithm
-        let layout = await generateForceDirectedLayout(for: screenshots)
+        let layout = await generateForceDirectedLayout(for: screenshotIDs)
         
         // Cache the layout
         let fingerprint = await generateDataFingerprint()
@@ -392,22 +399,30 @@ class BackgroundLayoutProcessor: ObservableObject {
     // MARK: - Data and Utility Methods
     
     private func generateDataFingerprint() async -> String {
-        // Generate checksum for current data state
-        // This should include screenshots, relationships, and last modification times
-        guard modelContext != nil else { return UUID().uuidString }
+        // Generate a fingerprint from screenshot IDs and timestamps
         
-        let screenshots = await fetchAllScreenshots()
-        let fingerprintData = screenshots.map { "\($0.id)-\($0.timestamp.timeIntervalSince1970)" }.joined(separator: "|")
+        let screenshotIDs = await fetchAllScreenshots()
+        
+        // Must be on main actor to access model properties
+        let fingerprintData = await MainActor.run {
+            screenshotIDs.compactMap { id in
+                guard let screenshot = modelContext?.model(for: id) as? Screenshot else {
+                    return nil
+                }
+                return "\(id)-\(screenshot.timestamp.timeIntervalSince1970)"
+            }.joined(separator: "|")
+        }
         
         return fingerprintData.md5Hash
     }
     
-    private func fetchAllScreenshots() async -> [Screenshot] {
+    private func fetchAllScreenshots() async -> [PersistentIdentifier] {
         guard let modelContext = modelContext else { return [] }
         
         return await MainActor.run {
             do {
-                return try modelContext.fetch(FetchDescriptor<Screenshot>())
+                let screenshots = try modelContext.fetch(FetchDescriptor<Screenshot>())
+                return screenshots.map { $0.persistentModelID }
             } catch {
                 print("❌ Failed to fetch screenshots: \(error)")
                 return []
@@ -447,9 +462,18 @@ class BackgroundLayoutProcessor: ObservableObject {
         return CachedMindMapLayoutData(nodes: nodes, connections: [])
     }
     
-    private func generateForceDirectedLayout(for screenshots: [Screenshot]) async -> CachedMindMapLayoutData {
+    private func generateForceDirectedLayout(for screenshotIDs: [PersistentIdentifier]) async -> CachedMindMapLayoutData {
         // Implement force-directed layout algorithm
         // Simplified implementation for now
+        
+        guard let modelContext = modelContext else { return CachedMindMapLayoutData(nodes: [], connections: []) }
+        
+        let screenshots = await MainActor.run {
+            screenshotIDs.compactMap { id in
+                modelContext.model(for: id) as? Screenshot
+            }
+        }
+        
         let nodes = screenshots.enumerated().map { index, screenshot in
             let angle = Double(index) * 2.0 * .pi / Double(screenshots.count)
             let radius = 200.0

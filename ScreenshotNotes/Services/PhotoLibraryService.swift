@@ -344,7 +344,7 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
                 )
             }
             
-            return screenshot
+            return screenshot.id
         }
         
         // Handle transaction result

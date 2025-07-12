@@ -205,7 +205,7 @@ class TransactionService: ObservableObject {
         modelContext: ModelContext,
         assets: [PHAsset],
         configuration: TransactionConfiguration = .standard,
-        importOperation: @escaping (PHAsset, Int) async throws -> Screenshot
+        importOperation: @escaping (PHAsset, Int) async throws -> UUID
     ) async -> TransactionResult {
         
         return await executeTransaction(
@@ -213,10 +213,8 @@ class TransactionService: ObservableObject {
             items: assets,
             configuration: configuration
         ) { asset, index in
-            let screenshot = try await importOperation(asset, index)
-            
-            // Insert the screenshot into the context (already on MainActor)
-            modelContext.insert(screenshot)
+            _ = try await importOperation(asset, index)
+            // The screenshot is already in the context, we don't need to do anything here.
         }
     }
     

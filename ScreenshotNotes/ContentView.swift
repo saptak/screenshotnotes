@@ -122,7 +122,8 @@ struct ContentView: View {
                     isBulkImportInProgress: $isBulkImportInProgress,
                     backgroundOCRProcessor: backgroundOCRProcessor,
                     backgroundSemanticProcessor: backgroundSemanticProcessor,
-                    modelContext: modelContext
+                    modelContext: modelContext,
+                    scrollOffset: $scrollOffset
                 )
             } else if isSearchActive {
                 ScreenshotGridView(
@@ -670,18 +671,18 @@ struct EmptyStateView: View {
     let backgroundOCRProcessor: BackgroundOCRProcessor
     let backgroundSemanticProcessor: BackgroundSemanticProcessor
     let modelContext: ModelContext
+    @Binding var scrollOffset: CGFloat
     
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 // Pull-to-import message (shows when user pulls down)
-                if isRefreshing == false && !isBulkImportInProgress {
+                if scrollOffset > 10 && isRefreshing == false && !isBulkImportInProgress {
                     PullToImportMessageView()
                         .opacity(0.8)
                         .padding(.top, 8) // Visible at the top
                         .padding(.bottom, 8)
                 }
-                Spacer()
                 
                 // Progressive import progress indicator
                 if isRefreshing && bulkImportProgress.total > 0 {
@@ -775,6 +776,10 @@ struct EmptyStateView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .frame(minHeight: 500) // Ensure enough space for pull gesture
+        }
+        .coordinateSpace(name: "pullArea")
+        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
+            scrollOffset = offset
         }
         .refreshable {
             await refreshScreenshots()
@@ -887,10 +892,10 @@ struct ScreenshotGridView: View {
     @Namespace private var heroNamespace
     @StateObject private var performanceMonitor = GalleryPerformanceMonitor.shared
     @StateObject private var thumbnailService = ThumbnailService.shared
-    @State private var pullOffset: CGFloat = 0
+    
 
     private func computeColumns(for width: CGFloat) -> [GridItem] {
-        let minThumbnailWidth: CGFloat = 160
+        let minThumbnailWidth: CGFloat = 150
         let columnSpacing: CGFloat = 16
         let sidePadding: CGFloat = 20 * 2 // 20 on each side
         
@@ -904,68 +909,25 @@ struct ScreenshotGridView: View {
         GeometryReader { geometry in
             let columns = computeColumns(for: geometry.size.width)
             
-            Group {
-                if screenshots.count > 100 {
-                    VStack(spacing: 0) {
-                        if scrollOffset > 10 && isRefreshing == false && !isBulkImportInProgress {
-                            PullToImportMessageView()
-                                .opacity(0.8)
-                                .padding(.top, 8)
-                                .padding(.bottom, 4)
-                        }
-                        VirtualizedGridView(
-                            items: screenshots,
-                            columns: columns,
-                            itemHeight: 220,
-                            scrollOffset: $scrollOffset
-                        ) { screenshot in
-                            OptimizedThumbnailView(
-                                screenshot: screenshot,
-                                size: CGSize(width: 160, height: 200),
-                                onTap: {
-                                    selectedScreenshot = screenshot
-                                }
-                            )
-                        }
-                        .frame(maxWidth: .infinity)
+            VirtualizedGridView(
+                items: screenshots,
+                columns: columns,
+                itemHeight: 220,
+                scrollOffset: $scrollOffset,
+                showPullMessage: true,
+                isRefreshing: isRefreshing,
+                isBulkImportInProgress: isBulkImportInProgress,
+                onRefresh: refreshScreenshots
+            ) { screenshot in
+                OptimizedThumbnailView(
+                    screenshot: screenshot,
+                    size: CGSize(width: 160, height: 200),
+                    onTap: {
+                        selectedScreenshot = screenshot
                     }
-                } else {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            UIScrollViewIntrospector(contentOffset: $pullOffset)
-                                .frame(width: 0, height: 0)
-                            if pullOffset > 10 && isRefreshing == false && !isBulkImportInProgress {
-                                PullToImportMessageView()
-                                    .opacity(0.8)
-                                    .padding(.top, 8)
-                                    .padding(.bottom, 4)
-                            }
-                            LazyVGrid(columns: columns, spacing: 16) {
-                                ForEach(screenshots, id: \.id) { screenshot in
-                                    OptimizedThumbnailView(
-                                        screenshot: screenshot,
-                                        size: CGSize(width: 160, height: 200),
-                                        onTap: {
-                                            selectedScreenshot = screenshot
-                                        }
-                                    )
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 16)
-                            .padding(.bottom, 16)
-                        }
-                    }
-                    .coordinateSpace(name: "pullArea")
-                    .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
-                        pullOffset = offset
-                    }
-                }
+                )
             }
-        }
-        .refreshable {
-            await refreshScreenshots()
+            .frame(maxWidth: .infinity)
         }
         .fullScreenCover(item: $selectedScreenshot) { screenshot in
             ScreenshotDetailView(
@@ -1296,40 +1258,14 @@ struct PullToImportMessageView: View {
         .modelContainer(for: Screenshot.self, inMemory: true)
 }
 
-
-struct UIScrollViewIntrospector: UIViewRepresentable {
-    @Binding var contentOffset: CGFloat
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView()
-        DispatchQueue.main.async {
-            if let scrollView = view.enclosingScrollView {
-                scrollView.delegate = context.coordinator
-            }
-        }
-        return view
-    }
-    func updateUIView(_ uiView: UIView, context: Context) {
-        DispatchQueue.main.async {
-            if let scrollView = uiView.enclosingScrollView {
-                scrollView.delegate = context.coordinator
-            }
-        }
-    }
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    class Coordinator: NSObject, UIScrollViewDelegate {
-        var parent: UIScrollViewIntrospector
-        init(_ parent: UIScrollViewIntrospector) {
-            self.parent = parent
-        }
-        func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            DispatchQueue.main.async {
-                self.parent.contentOffset = -scrollView.contentOffset.y
-            }
-        }
+/*
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
+*/
 
 private extension UIView {
     var enclosingScrollView: UIScrollView? {
