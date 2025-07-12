@@ -154,7 +154,7 @@ class ChangeTrackingService: ObservableObject {
     }
     
     /// Get changes that occurred after a specific version
-    func getChangesSince(_ version: DataVersion) -> [DataChange] {
+    func getChangesSince(_ version: ChangeTrackingVersion) -> [DataChange] {
         return changeHistory.filter { change in
             change.timestamp > version.timestamp
         }
@@ -225,9 +225,13 @@ class ChangeTrackingService: ObservableObject {
         }
         
         return ConflictResolution(
+            resolutionId: UUID(),
+            conflicts: conflicts,
             acceptedChanges: resolvedChanges,
             rejectedChanges: rejectedChanges,
-            resolutionStrategy: .priorityBased
+            resolutionStrategy: .userPriority,
+            success: true,
+            message: "Resolved \(conflicts.count) conflicts using user priority strategy"
         )
     }
     
@@ -365,9 +369,13 @@ class ChangeTrackingService: ObservableObject {
         
         // User changes always win
         return ConflictResolution(
+            resolutionId: UUID(),
+            conflicts: [conflict],
             acceptedChanges: userChanges,
             rejectedChanges: aiChanges,
-            resolutionStrategy: .userPriority
+            resolutionStrategy: .userPriority,
+            success: true,
+            message: "User changes prioritized over AI changes"
         )
     }
     
@@ -432,7 +440,7 @@ class ChangeTrackingService: ObservableObject {
 
 // MARK: - Supporting Types
 
-struct DataVersion {
+struct ChangeTrackingVersion {
     let timestamp: Date
     let versionId: UUID
     let changeType: ChangeType
@@ -452,39 +460,7 @@ struct DataChangeSet {
     }
 }
 
-struct DataConflict {
-    let conflictId: UUID
-    let changes: [DataChange]
-    let conflictType: ConflictType
-    let timestamp: Date
-    
-    init(changes: [DataChange], conflictType: ConflictType) {
-        self.conflictId = UUID()
-        self.changes = changes
-        self.conflictType = conflictType
-        self.timestamp = Date()
-    }
-}
-
-enum ConflictType {
-    case simultaneousEdit
-    case userVsAI
-    case dataIntegrityViolation
-    case versionMismatch
-}
-
-struct ConflictResolution {
-    let acceptedChanges: [DataChange]
-    let rejectedChanges: [DataChange]
-    let resolutionStrategy: ResolutionStrategy
-}
-
-enum ResolutionStrategy {
-    case userPriority
-    case priorityBased
-    case timestampBased
-    case manualResolution
-}
+// ConflictResolution types moved to DataConsistencyTypes.swift
 
 // MARK: - EntityRelationship Model (if not already defined)
 

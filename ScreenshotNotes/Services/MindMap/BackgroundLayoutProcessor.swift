@@ -584,26 +584,7 @@ struct LayoutTask {
     let timestamp: Date
 }
 
-struct DataChange {
-    let type: ChangeType
-    let timestamp: Date
-    
-    init(type: ChangeType) {
-        self.type = type
-        self.timestamp = Date()
-    }
-}
-
-enum ChangeType {
-    case screenshotAdded(UUID)
-    case screenshotDeleted(UUID)
-    case screenshotModified(UUID)
-    case relationshipAdded(UUID, UUID)
-    case relationshipDeleted(UUID, UUID)
-    case userAnnotationChanged(UUID)
-    case aiAnalysisUpdated(UUID)
-    case bulkImport([UUID])
-}
+// DataChange and ChangeType moved to DataConsistencyTypes.swift
 
 enum LayoutChangeType {
     case nodeAdded(UUID)
