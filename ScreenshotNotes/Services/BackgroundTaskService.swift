@@ -18,7 +18,12 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
             forTaskWithIdentifier: backgroundTaskIdentifier,
             using: nil
         ) { [weak self] task in
-            self?.handleAppRefresh(task: task as! BGAppRefreshTask)
+            guard let appRefreshTask = task as? BGAppRefreshTask else {
+                print("❌ Unexpected task type received: \(type(of: task))")
+                task.setTaskCompleted(success: false)
+                return
+            }
+            self?.handleAppRefresh(task: appRefreshTask)
         }
         print("🔄 Background tasks registered")
     }

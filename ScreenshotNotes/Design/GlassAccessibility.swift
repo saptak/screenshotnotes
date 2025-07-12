@@ -109,28 +109,26 @@ struct GlassAccessibility {
     ) {
         guard !UIAccessibility.isReduceMotionEnabled else { return }
         
-        let generator: UIFeedbackGenerator
-        
         switch action {
         case .microphoneActivated:
-            generator = UIImpactFeedbackGenerator(style: .medium)
-            (generator as! UIImpactFeedbackGenerator).impactOccurred(intensity: intensity)
+            let impactGenerator = UIImpactFeedbackGenerator(style: .medium)
+            impactGenerator.impactOccurred(intensity: intensity)
             
         case .searchStarted:
-            generator = UIImpactFeedbackGenerator(style: .light)
-            (generator as! UIImpactFeedbackGenerator).impactOccurred(intensity: intensity * 0.8)
+            let impactGenerator = UIImpactFeedbackGenerator(style: .light)
+            impactGenerator.impactOccurred(intensity: intensity * 0.8)
             
         case .searchCompleted:
-            generator = UINotificationFeedbackGenerator()
-            (generator as! UINotificationFeedbackGenerator).notificationOccurred(.success)
+            let notificationGenerator = UINotificationFeedbackGenerator()
+            notificationGenerator.notificationOccurred(.success)
             
         case .error:
-            generator = UINotificationFeedbackGenerator()
-            (generator as! UINotificationFeedbackGenerator).notificationOccurred(.error)
+            let notificationGenerator = UINotificationFeedbackGenerator()
+            notificationGenerator.notificationOccurred(.error)
             
         case .conversationTurn:
-            generator = UIImpactFeedbackGenerator(style: .soft)
-            (generator as! UIImpactFeedbackGenerator).impactOccurred(intensity: intensity * 0.6)
+            let impactGenerator = UIImpactFeedbackGenerator(style: .soft)
+            impactGenerator.impactOccurred(intensity: intensity * 0.6)
         }
     }
     

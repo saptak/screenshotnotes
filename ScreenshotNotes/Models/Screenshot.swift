@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 @Model
-public final class Screenshot: @unchecked Sendable {
+public final class Screenshot {
     @Attribute(.unique) public var id: UUID
     public var imageData: Data
     public var timestamp: Date

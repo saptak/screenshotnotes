@@ -16,7 +16,16 @@ struct ScreenshotNotesApp: App {
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            print("❌ Failed to create ModelContainer: \(error)")
+            // Fallback to in-memory container for emergency operation
+            let fallbackConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            do {
+                return try ModelContainer(for: schema, configurations: [fallbackConfiguration])
+            } catch {
+                print("❌ Critical: Failed to create fallback ModelContainer: \(error)")
+                // Last resort: create minimal container
+                return try! ModelContainer(for: schema)
+            }
         }
     }()
 
