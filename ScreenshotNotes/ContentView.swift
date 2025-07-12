@@ -28,6 +28,11 @@ struct ContentView: View {
     @State private var bulkImportProgress: (current: Int, total: Int) = (0, 0)
     @State private var isBulkImportInProgress = false
     
+    // Phase 2: Viewport management for predictive loading
+    @State private var scrollOffset: CGFloat = 0
+    @StateObject private var viewportManager = PredictiveViewportManager.shared
+    @StateObject private var qualityManager = AdaptiveQualityManager.shared
+    
     
     // 🎯 Sprint 5.4.1: Glass Search Bar State
     @StateObject private var searchOrchestrator: GlassConversationalSearchOrchestrator
@@ -130,7 +135,10 @@ struct ContentView: View {
                     backgroundSemanticProcessor: backgroundSemanticProcessor,
                     modelContext: modelContext,
                     searchOrchestrator: searchOrchestrator,
-                    selectedScreenshot: $selectedScreenshot
+                    selectedScreenshot: $selectedScreenshot,
+                    scrollOffset: $scrollOffset,
+                    viewportManager: viewportManager,
+                    qualityManager: qualityManager
                 )
             } else {
                 ScreenshotGridView(
@@ -143,7 +151,10 @@ struct ContentView: View {
                     backgroundSemanticProcessor: backgroundSemanticProcessor,
                     modelContext: modelContext,
                     searchOrchestrator: searchOrchestrator,
-                    selectedScreenshot: $selectedScreenshot
+                    selectedScreenshot: $selectedScreenshot,
+                    scrollOffset: $scrollOffset,
+                    viewportManager: viewportManager,
+                    qualityManager: qualityManager
                 )
             }
         }
@@ -596,7 +607,7 @@ struct ContentView: View {
     
     private func extractSuggestionText(from suggestion: String) -> String {
         // Extract quoted text from suggestions like "Did you mean: \"receipt\"?"
-        let pattern = #""([^"]+)""#
+        let pattern = "\"([^\"]+)\"";
         if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
             let range = NSRange(location: 0, length: suggestion.utf16.count)
             if let match = regex.firstMatch(in: suggestion, options: [], range: range) {
@@ -870,6 +881,9 @@ struct ScreenshotGridView: View {
     let modelContext: ModelContext
     let searchOrchestrator: GlassConversationalSearchOrchestrator
     @Binding var selectedScreenshot: Screenshot?
+    @Binding var scrollOffset: CGFloat
+    @ObservedObject var viewportManager: PredictiveViewportManager
+    @ObservedObject var qualityManager: AdaptiveQualityManager
     @Namespace private var heroNamespace
     @StateObject private var performanceMonitor = GalleryPerformanceMonitor.shared
     @StateObject private var thumbnailService = ThumbnailService.shared
@@ -953,7 +967,7 @@ struct ScreenshotGridView: View {
                             items: screenshots,
                             columns: columns,
                             itemHeight: responsiveItemHeight(for: responsiveLayout),
-                            scrollOffset: .constant(0) // Not used for pull offset anymore
+                            scrollOffset: $scrollOffset // Phase 2: Enable viewport tracking
                         ) { screenshot in
                             OptimizedThumbnailView(
                                 screenshot: screenshot,
@@ -1020,6 +1034,9 @@ struct ScreenshotGridView: View {
         .onAppear {
             performanceMonitor.startMonitoring()
             
+            // Phase 2: Update collection size for adaptive optimization
+            qualityManager.updateCollectionSize(screenshots.count)
+            
             // Preload thumbnails for better scrolling performance
             if screenshots.count <= 100 {
                 thumbnailService.preloadThumbnails(for: Array(screenshots.prefix(20)))
@@ -1027,6 +1044,14 @@ struct ScreenshotGridView: View {
         }
         .onDisappear {
             performanceMonitor.stopMonitoring()
+        }
+        .onChange(of: scrollOffset) { _, newOffset in
+            // Phase 2: Update viewport manager with scroll changes
+            viewportManager.updateScrollOffset(newOffset)
+        }
+        .onChange(of: screenshots.count) { _, newCount in
+            // Phase 2: Update collection size when screenshots change
+            qualityManager.updateCollectionSize(newCount)
         }
         .onReceive(NotificationCenter.default.publisher(for: .performanceOptimizationNeeded)) { notification in
             handlePerformanceOptimization(notification)
@@ -1372,4 +1397,3 @@ private extension UIView {
         return nil
     }
 }
-

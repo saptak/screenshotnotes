@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 
 /// Advanced thumbnail cache manager with multi-tier caching system
+/// Phase 2: Enhanced with intelligent LRU hierarchy and thread-safe coordination
 @MainActor
 class AdvancedThumbnailCacheManager {
     
@@ -19,17 +20,21 @@ class AdvancedThumbnailCacheManager {
     /// Cold cache - file system cache (paths only)
     private var coldCache: [String: String] = [:]
     
-    /// Performance configuration
-    private let maxHotCacheSize: Int = 50
-    private let maxWarmCacheSize: Int = 200
-    private let maxColdCacheSize: Int = 1000
-    private let maxMemoryUsageBytes: Int = 50 * 1024 * 1024 // 50MB
+    /// Performance configuration - Phase 2 enhanced with adaptive limits
+    private var maxHotCacheSize: Int = 50
+    private var maxWarmCacheSize: Int = 200
+    private var maxColdCacheSize: Int = 1000
+    private var maxMemoryUsageBytes: Int = 50 * 1024 * 1024 // 50MB
+    
+    /// Phase 2: Collection-aware cache sizing
+    private var collectionSize: Int = 0
+    private var adaptiveCachingEnabled = true
     
     /// Performance targets
     private let targetLoadTime: TimeInterval = 0.2 // 200ms
     private let targetCacheHitRate: Double = 0.9 // 90%
     
-    /// Performance metrics
+    /// Performance metrics - Phase 2 enhanced
     private var cacheHitCount: Int = 0
     private var cacheMissCount: Int = 0
     private var cacheHitRate: Double = 0.0
@@ -40,6 +45,11 @@ class AdvancedThumbnailCacheManager {
     private var warmCacheHitRate: Double = 0.0
     private var coldCacheHitRate: Double = 0.0
     
+    /// Phase 2: Enhanced LRU metrics
+    private var lruEvictionCount: Int = 0
+    private var cachePromotionCount: Int = 0
+    private var cacheDemotionCount: Int = 0
+    
     /// Memory usage tracking
     private var memoryUsage: Int = 0
     private var lastLoadTime: TimeInterval = 0
@@ -47,6 +57,10 @@ class AdvancedThumbnailCacheManager {
     /// File system management
     private let fileManager = FileManager.default
     private let thumbnailsDirectory: URL
+    
+    /// Phase 2: Thread-safe coordination
+    private let cacheQueue = DispatchQueue(label: "com.screenshotnotes.cache", qos: .userInitiated, attributes: .concurrent)
+    private var isOptimizing = false
     
     // MARK: - Initialization
     
@@ -60,19 +74,80 @@ class AdvancedThumbnailCacheManager {
         
         // Load existing cache index
         loadColdCacheIndex()
+        
+        // Phase 2: Initialize adaptive caching
+        optimizeCacheSizesForCollection(size: 0)
+    }
+    
+    // MARK: - Phase 2: Collection-Aware Cache Management
+    
+    /// Update cache configuration based on collection size
+    func updateCollectionSize(_ size: Int) {
+        collectionSize = size
+        if adaptiveCachingEnabled {
+            optimizeCacheSizesForCollection(size: size)
+        }
+    }
+    
+    /// Optimize cache sizes based on collection size and device capabilities
+    private func optimizeCacheSizesForCollection(size: Int) {
+        // Prevent race conditions during optimization
+        guard !isOptimizing else { return }
+        isOptimizing = true
+        defer { isOptimizing = false }
+        
+        let deviceMemory = ProcessInfo.processInfo.physicalMemory
+        let isLowMemoryDevice = deviceMemory < 4_000_000_000 // < 4GB
+        
+        switch size {
+        case 0..<100:
+            // Small collection - conservative settings
+            maxHotCacheSize = isLowMemoryDevice ? 30 : 50
+            maxWarmCacheSize = isLowMemoryDevice ? 120 : 200
+            maxColdCacheSize = isLowMemoryDevice ? 600 : 1000
+            maxMemoryUsageBytes = isLowMemoryDevice ? 30 * 1024 * 1024 : 50 * 1024 * 1024
+            
+        case 100..<500:
+            // Medium collection - balanced settings
+            maxHotCacheSize = isLowMemoryDevice ? 40 : 75
+            maxWarmCacheSize = isLowMemoryDevice ? 150 : 300
+            maxColdCacheSize = isLowMemoryDevice ? 800 : 1500
+            maxMemoryUsageBytes = isLowMemoryDevice ? 40 * 1024 * 1024 : 75 * 1024 * 1024
+            
+        case 500..<1000:
+            // Large collection - aggressive caching
+            maxHotCacheSize = isLowMemoryDevice ? 50 : 100
+            maxWarmCacheSize = isLowMemoryDevice ? 200 : 400
+            maxColdCacheSize = isLowMemoryDevice ? 1000 : 2000
+            maxMemoryUsageBytes = isLowMemoryDevice ? 50 * 1024 * 1024 : 100 * 1024 * 1024
+            
+        default:
+            // Very large collection - maximum caching with careful management
+            maxHotCacheSize = isLowMemoryDevice ? 60 : 150
+            maxWarmCacheSize = isLowMemoryDevice ? 250 : 500
+            maxColdCacheSize = isLowMemoryDevice ? 1200 : 3000
+            maxMemoryUsageBytes = isLowMemoryDevice ? 60 * 1024 * 1024 : 150 * 1024 * 1024
+        }
+        
+        print("📊 Adaptive cache sizing for \(size) screenshots:")
+        print("   Hot: \(maxHotCacheSize), Warm: \(maxWarmCacheSize), Cold: \(maxColdCacheSize)")
+        print("   Memory limit: \(maxMemoryUsageBytes / 1024 / 1024)MB")
+        
+        // Enforce new limits immediately
+        enforceMemoryLimits()
     }
     
     // MARK: - Cache Operations
     
-    /// Get thumbnail from cache or generate if needed
+    /// Get thumbnail from cache or generate if needed - Phase 2 enhanced with thread safety
     func getThumbnail(for screenshotId: UUID, size: CGSize) async -> UIImage? {
         let startTime = CACurrentMediaTime()
         let cacheKey = generateCacheKey(screenshotId: screenshotId, size: size)
         
-        // Check hot cache first
+        // Check hot cache first - with thread-safe access tracking
         if let entry = hotCache[cacheKey] {
-            entry.lastAccessTime = Date()
-            entry.accessCount += 1
+            // Thread-safe access pattern
+            await updateEntryAccess(entry)
             cacheHitCount += 1
             hotCacheHits += 1
             updateCacheMetrics()
@@ -81,16 +156,17 @@ class AdvancedThumbnailCacheManager {
             return entry.image
         }
         
-        // Check warm cache
+        // Check warm cache - with intelligent promotion
         if let entry = warmCache[cacheKey] {
-            entry.lastAccessTime = Date()
-            entry.accessCount += 1
+            // Thread-safe access pattern
+            await updateEntryAccess(entry)
             cacheHitCount += 1
             warmCacheHits += 1
             
-            // Promote to hot cache if frequently accessed
-            if entry.accessCount > 3 {
+            // Phase 2: Enhanced promotion logic based on access patterns
+            if shouldPromoteToHotCache(entry) {
                 promoteToHotCache(cacheKey: cacheKey, entry: entry)
+                cachePromotionCount += 1
             }
             
             updateCacheMetrics()
@@ -186,26 +262,48 @@ class AdvancedThumbnailCacheManager {
         print("🧹 All advanced caches cleared")
     }
     
-    /// Memory pressure optimization - graduated response
+    /// Phase 2: Enhanced memory pressure optimization with intelligent graduated response
     func optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel) {
+        // Prevent concurrent optimization to avoid race conditions
+        guard !isOptimizing else { return }
+        isOptimizing = true
+        defer { isOptimizing = false }
+        
+        let beforeMemory = memoryUsage
+        
         switch level {
         case .normal:
-            // Standard cache management
+            // Standard cache management with collection-aware optimization
             enforceMemoryLimits()
             
         case .warning:
-            // Reduce warm cache by 25%
-            reduceWarmCache(by: 0.25)
-            print("⚠️ Memory warning - reduced warm cache by 25%")
+            // Intelligent graduated reduction based on collection size
+            let warmReductionRatio = collectionSize > 1000 ? 0.3 : 0.25
+            reduceWarmCacheIntelligently(by: warmReductionRatio)
+            print("⚠️ Memory warning - reduced warm cache by \(Int(warmReductionRatio * 100))%")
             
         case .critical:
-            // Aggressive cache reduction
-            reduceWarmCache(by: 0.5)
-            reduceHotCache(by: 0.25)
+            // Aggressive but intelligent cache reduction
+            let warmReductionRatio = collectionSize > 1000 ? 0.6 : 0.5
+            let hotReductionRatio = collectionSize > 1000 ? 0.4 : 0.25
+            
+            reduceWarmCacheIntelligently(by: warmReductionRatio)
+            reduceHotCacheIntelligently(by: hotReductionRatio)
+            
+            // Also clear some cold cache entries for large collections
+            if collectionSize > 1000 {
+                reduceColdCache(by: 0.3)
+            }
+            
             print("🚨 Memory critical - reduced caches significantly")
         }
         
         updateMemoryUsage()
+        
+        let savedMemory = beforeMemory - memoryUsage
+        if savedMemory > 0 {
+            print("💾 Memory optimization saved \(savedMemory / 1024 / 1024)MB")
+        }
     }
     
     /// Preload thumbnails for viewport optimization
@@ -228,6 +326,36 @@ class AdvancedThumbnailCacheManager {
         }
     }
     
+    // MARK: - Phase 2: Enhanced Access Management
+    
+    /// Thread-safe entry access update
+    private func updateEntryAccess(_ entry: CachedThumbnailEntry) async {
+        entry.lastAccessTime = Date()
+        entry.accessCount += 1
+    }
+    
+    /// Enhanced promotion logic based on access patterns and cache pressure
+    private func shouldPromoteToHotCache(_ entry: CachedThumbnailEntry) -> Bool {
+        let accessThreshold = adaptiveAccessThreshold()
+        let timeSinceLastAccess = Date().timeIntervalSince(entry.lastAccessTime)
+        
+        // Promote if frequently accessed and recently used
+        return entry.accessCount >= accessThreshold && timeSinceLastAccess < 300 // 5 minutes
+    }
+    
+    /// Calculate adaptive access threshold based on cache pressure
+    private func adaptiveAccessThreshold() -> Int {
+        let hotCachePressure = Double(hotCache.count) / Double(maxHotCacheSize)
+        
+        if hotCachePressure > 0.8 {
+            return 5 // Higher threshold when hot cache is under pressure
+        } else if hotCachePressure > 0.6 {
+            return 4
+        } else {
+            return 3 // Default threshold
+        }
+    }
+    
     // MARK: - Memory Management
     
     private func enforceMemoryLimits() {
@@ -238,25 +366,43 @@ class AdvancedThumbnailCacheManager {
     }
     
     private func enforceHotCacheLimit() {
-        while hotCache.count > maxHotCacheSize {
-            // Remove least recently used item
-            if let lruKey = findLRUKey(in: hotCache) {
-                if let entry = hotCache.removeValue(forKey: lruKey) {
-                    // Demote to warm cache
-                    warmCache[lruKey] = entry
+        // Phase 2: Enhanced LRU eviction with batch processing to prevent resource starvation
+        let itemsToEvict = max(0, hotCache.count - maxHotCacheSize)
+        
+        if itemsToEvict > 0 {
+            let lruEntries = findLRUEntries(in: hotCache, count: itemsToEvict)
+            
+            for (key, entry) in lruEntries {
+                hotCache.removeValue(forKey: key)
+                
+                // Demote to warm cache if there's room, otherwise skip
+                if warmCache.count < maxWarmCacheSize {
+                    warmCache[key] = entry
+                    cacheDemotionCount += 1
+                } else {
+                    lruEvictionCount += 1
                 }
             }
         }
     }
     
     private func enforceWarmCacheLimit() {
-        while warmCache.count > maxWarmCacheSize {
-            // Remove least recently used item
-            if let lruKey = findLRUKey(in: warmCache) {
-                if warmCache.removeValue(forKey: lruKey) != nil {
-                    // Demote to cold cache (file system only)
-                    let filePath = generateFilePath(for: lruKey)
-                    coldCache[lruKey] = filePath
+        // Phase 2: Enhanced LRU eviction with batch processing
+        let itemsToEvict = max(0, warmCache.count - maxWarmCacheSize)
+        
+        if itemsToEvict > 0 {
+            let lruEntries = findLRUEntries(in: warmCache, count: itemsToEvict)
+            
+            for (key, _) in lruEntries {
+                if warmCache.removeValue(forKey: key) != nil {
+                    // Demote to cold cache (file system only) if there's room
+                    if coldCache.count < maxColdCacheSize {
+                        let filePath = generateFilePath(for: key)
+                        coldCache[key] = filePath
+                        cacheDemotionCount += 1
+                    } else {
+                        lruEvictionCount += 1
+                    }
                 }
             }
         }
@@ -274,6 +420,14 @@ class AdvancedThumbnailCacheManager {
         }
     }
     
+    /// Phase 2: Enhanced LRU finding with batch processing to prevent resource starvation
+    private func findLRUEntries(in cache: [String: CachedThumbnailEntry], count: Int) -> [(String, CachedThumbnailEntry)] {
+        return cache.sorted { $0.value.lastAccessTime < $1.value.lastAccessTime }
+                   .prefix(count)
+                   .map { ($0.key, $0.value) }
+    }
+    
+    /// Legacy method for compatibility
     private func findLRUKey(in cache: [String: CachedThumbnailEntry]) -> String? {
         return cache.min { $0.value.lastAccessTime < $1.value.lastAccessTime }?.key
     }
@@ -284,31 +438,86 @@ class AdvancedThumbnailCacheManager {
         enforceHotCacheLimit()
     }
     
-    private func reduceWarmCache(by fraction: Double) {
+    /// Phase 2: Intelligent warm cache reduction preserving frequently accessed items
+    private func reduceWarmCacheIntelligently(by fraction: Double) {
         let itemsToRemove = Int(Double(warmCache.count) * fraction)
-        let sortedKeys = warmCache.keys.sorted { key1, key2 in
-            warmCache[key1]?.lastAccessTime ?? Date.distantPast <
-            warmCache[key2]?.lastAccessTime ?? Date.distantPast
+        
+        // Sort by both access time and access count for intelligent eviction
+        let sortedEntries = warmCache.sorted { entry1, entry2 in
+            let score1 = calculateEvictionScore(entry1.value)
+            let score2 = calculateEvictionScore(entry2.value)
+            return score1 < score2 // Lower score = more likely to evict
         }
         
-        for key in sortedKeys.prefix(itemsToRemove) {
-            warmCache.removeValue(forKey: key)
+        for (key, _) in sortedEntries.prefix(itemsToRemove) {
+            if warmCache.removeValue(forKey: key) != nil {
+                // Try to demote to cold cache if there's room
+                if coldCache.count < maxColdCacheSize {
+                    let filePath = generateFilePath(for: key)
+                    coldCache[key] = filePath
+                    cacheDemotionCount += 1
+                } else {
+                    lruEvictionCount += 1
+                }
+            }
         }
     }
     
-    private func reduceHotCache(by fraction: Double) {
+    /// Legacy method for compatibility
+    private func reduceWarmCache(by fraction: Double) {
+        reduceWarmCacheIntelligently(by: fraction)
+    }
+    
+    /// Phase 2: Intelligent hot cache reduction preserving high-value items
+    private func reduceHotCacheIntelligently(by fraction: Double) {
         let itemsToRemove = Int(Double(hotCache.count) * fraction)
-        let sortedKeys = hotCache.keys.sorted { key1, key2 in
-            hotCache[key1]?.lastAccessTime ?? Date.distantPast <
-            hotCache[key2]?.lastAccessTime ?? Date.distantPast
+        
+        // Sort by eviction score to preserve high-value items
+        let sortedEntries = hotCache.sorted { entry1, entry2 in
+            let score1 = calculateEvictionScore(entry1.value)
+            let score2 = calculateEvictionScore(entry2.value)
+            return score1 < score2 // Lower score = more likely to evict
         }
         
-        for key in sortedKeys.prefix(itemsToRemove) {
-            if let entry = hotCache.removeValue(forKey: key) {
-                // Demote to warm cache
+        for (key, entry) in sortedEntries.prefix(itemsToRemove) {
+            hotCache.removeValue(forKey: key)
+            
+            // Try to demote to warm cache if there's room
+            if warmCache.count < maxWarmCacheSize {
                 warmCache[key] = entry
+                cacheDemotionCount += 1
+            } else {
+                lruEvictionCount += 1
             }
         }
+    }
+    
+    /// Calculate eviction score for intelligent cache management
+    private func calculateEvictionScore(_ entry: CachedThumbnailEntry) -> Double {
+        let recency = Date().timeIntervalSince(entry.lastAccessTime)
+        let frequency = Double(entry.accessCount)
+        
+        // Lower score = higher priority to keep
+        // Higher frequency and recent access = lower eviction score
+        return recency / max(frequency, 1.0)
+    }
+    
+    /// Phase 2: Cold cache reduction for extreme memory pressure
+    private func reduceColdCache(by fraction: Double) {
+        let itemsToRemove = Int(Double(coldCache.count) * fraction)
+        let keysToRemove = Array(coldCache.keys.prefix(itemsToRemove))
+        
+        for key in keysToRemove {
+            if let filePath = coldCache.removeValue(forKey: key) {
+                try? fileManager.removeItem(atPath: filePath)
+                lruEvictionCount += 1
+            }
+        }
+    }
+    
+    /// Legacy method for compatibility
+    private func reduceHotCache(by fraction: Double) {
+        reduceHotCacheIntelligently(by: fraction)
     }
     
     private func updateMemoryUsage() {
@@ -417,7 +626,7 @@ class AdvancedThumbnailCacheManager {
         print("🔄 Requested thumbnail generation for: \(screenshotId)")
     }
     
-    /// Get cache statistics for debugging
+    /// Get cache statistics for debugging - Phase 2 enhanced
     var cacheStatistics: ThumbnailCacheStatistics {
         return ThumbnailCacheStatistics(
             hotCacheSize: hotCache.count,
@@ -428,7 +637,13 @@ class AdvancedThumbnailCacheManager {
             hotCacheHitRate: hotCacheHitRate,
             warmCacheHitRate: warmCacheHitRate,
             coldCacheHitRate: coldCacheHitRate,
-            averageLoadTime: lastLoadTime
+            averageLoadTime: lastLoadTime,
+            // Phase 2 metrics
+            lruEvictionCount: lruEvictionCount,
+            cachePromotionCount: cachePromotionCount,
+            cacheDemotionCount: cacheDemotionCount,
+            collectionSize: collectionSize,
+            adaptiveCachingEnabled: adaptiveCachingEnabled
         )
     }
 }
@@ -475,4 +690,11 @@ struct ThumbnailCacheStatistics {
     let warmCacheHitRate: Double
     let coldCacheHitRate: Double
     let averageLoadTime: TimeInterval
+    
+    // Phase 2: Enhanced metrics
+    let lruEvictionCount: Int
+    let cachePromotionCount: Int
+    let cacheDemotionCount: Int
+    let collectionSize: Int
+    let adaptiveCachingEnabled: Bool
 } 

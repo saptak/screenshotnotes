@@ -57,10 +57,12 @@ class ThumbnailService: ObservableObject {
     
     private let logger = Logger(subsystem: "com.screenshotnotes.app", category: "ThumbnailService")
     
-    // Enhanced with Advanced Cache Manager
+    // Phase 2: Enhanced with all optimization services
     private let advancedCacheManager = AdvancedThumbnailCacheManager.shared
     private let backgroundProcessor = BackgroundThumbnailProcessor.shared
     private let changeTracker = GalleryChangeTracker.shared
+    private let qualityManager = AdaptiveQualityManager.shared
+    private let viewportManager = PredictiveViewportManager.shared
     
     // Legacy cache for backward compatibility (will be deprecated)
     private let thumbnailCache = NSCache<NSString, UIImage>()
@@ -91,11 +93,32 @@ class ThumbnailService: ObservableObject {
         logger.info("ThumbnailService initialized with advanced cache management and performance optimization")
     }
     
-    /// Set ModelContext for enhanced services
+    /// Set ModelContext for enhanced services - Phase 2 with collection size tracking
     func setModelContext(_ context: ModelContext) {
         // Note: AdvancedThumbnailCacheManager doesn't need ModelContext
         backgroundProcessor.setModelContext(context)
         changeTracker.setModelContext(context)
+        
+        // Update collection size for adaptive optimization
+        Task {
+            await updateCollectionSizeFromContext(context)
+        }
+    }
+    
+    /// Update collection size for adaptive optimization
+    private func updateCollectionSizeFromContext(_ context: ModelContext) async {
+        do {
+            let screenshots = try context.fetch(FetchDescriptor<Screenshot>())
+            let collectionSize = screenshots.count
+            
+            // Update all Phase 2 managers with collection size
+            advancedCacheManager.updateCollectionSize(collectionSize)
+            qualityManager.updateCollectionSize(collectionSize)
+            
+            print("📊 Updated collection size: \(collectionSize) screenshots")
+        } catch {
+            print("❌ Failed to fetch collection size: \(error)")
+        }
     }
     
     /// Check if thumbnail is already cached (memory or disk) without generating
@@ -129,23 +152,26 @@ class ThumbnailService: ObservableObject {
         return nil
     }
     
-    /// Generate and cache thumbnail for a screenshot
+    /// Generate and cache thumbnail for a screenshot - Phase 2: Enhanced with adaptive quality
     func getThumbnail(for screenshotId: UUID, from imageData: Data, size: CGSize = thumbnailSize) async -> UIImage? {
-        // First check if already cached in advanced cache manager
-        if let cachedImage = await advancedCacheManager.getThumbnail(for: screenshotId, size: size) {
+        // Phase 2: Use adaptive quality for optimal size
+        let optimalSize = qualityManager.getOptimalThumbnailSize(baseSize: size)
+        
+        // First check if already cached in advanced cache manager with optimal size
+        if let cachedImage = await advancedCacheManager.getThumbnail(for: screenshotId, size: optimalSize) {
             return cachedImage
         }
         
-        // Request through background processor for better resource management
+        // Request through background processor with optimal size
         backgroundProcessor.requestThumbnail(
             for: screenshotId,
             from: imageData,
-            size: size,
+            size: optimalSize,
             priority: .high // High priority for immediate user requests
         )
         
-        // For immediate UI needs, try legacy path as fallback
-        let cacheKey = "\(screenshotId.uuidString)_\(Int(size.width))x\(Int(size.height))"
+        // For immediate UI needs, try legacy path as fallback with optimal size
+        let cacheKey = "\(screenshotId.uuidString)_\(Int(optimalSize.width))x\(Int(optimalSize.height))"
         
         // Check legacy cache
         if let cachedImage = thumbnailCache.object(forKey: cacheKey as NSString) {
@@ -165,8 +191,8 @@ class ThumbnailService: ObservableObject {
         if fileManager.fileExists(atPath: thumbnailURL.path),
            let diskImage = UIImage(contentsOfFile: thumbnailURL.path) {
             
-            // Migrate to advanced cache
-            advancedCacheManager.storeThumbnail(diskImage, for: screenshotId, size: size)
+            // Migrate to advanced cache with optimal size
+            advancedCacheManager.storeThumbnail(diskImage, for: screenshotId, size: optimalSize)
             return diskImage
         }
         
@@ -180,7 +206,7 @@ class ThumbnailService: ObservableObject {
                 }
             }
             
-            let result = await generateThumbnailOptimized(imageData: imageData, size: size, screenshotId: screenshotId)
+            let result = await generateThumbnailOptimizedPhase2(imageData: imageData, size: optimalSize, screenshotId: screenshotId)
             
             await MainActor.run {
                 self.activeTasks.removeValue(forKey: cacheKey)
@@ -205,8 +231,9 @@ class ThumbnailService: ObservableObject {
         return result
     }
     
-    private func generateThumbnailOptimized(imageData: Data, size: CGSize, screenshotId: UUID) async -> UIImage? {
-        logger.debug("Starting optimized thumbnail generation for screenshot: \(screenshotId)")
+    /// Phase 2: Enhanced thumbnail generation with adaptive quality and resource management
+    private func generateThumbnailOptimizedPhase2(imageData: Data, size: CGSize, screenshotId: UUID) async -> UIImage? {
+        logger.debug("Starting Phase 2 optimized thumbnail generation for screenshot: \(screenshotId)")
         
         // Create UIImage from data (can be done off main thread)
         guard let originalImage = UIImage(data: imageData) else {
@@ -214,8 +241,11 @@ class ThumbnailService: ObservableObject {
             return nil
         }
         
-        // Resize image off main thread using nonisolated method
-        let thumbnail = await resizeImage(originalImage, to: size)
+        // Phase 2: Use adaptive quality compression
+        let compressionQuality = qualityManager.getCompressionQuality()
+        
+        // Resize image with adaptive quality
+        let thumbnail = await resizeImageWithQuality(originalImage, to: size, compressionQuality: compressionQuality)
         
         // Save to advanced cache manager
         advancedCacheManager.storeThumbnail(thumbnail, for: screenshotId, size: size)
@@ -225,8 +255,13 @@ class ThumbnailService: ObservableObject {
         let memoryCost = Int(size.width * size.height * 4)
         thumbnailCache.setObject(thumbnail, forKey: cacheKey as NSString, cost: memoryCost)
         
-        logger.debug("Optimized thumbnail generation completed for screenshot: \(screenshotId)")
+        logger.debug("Phase 2 optimized thumbnail generation completed for screenshot: \(screenshotId)")
         return thumbnail
+    }
+    
+    /// Legacy method maintained for compatibility
+    private func generateThumbnailOptimized(imageData: Data, size: CGSize, screenshotId: UUID) async -> UIImage? {
+        return await generateThumbnailOptimizedPhase2(imageData: imageData, size: size, screenshotId: screenshotId)
     }
     
     // Legacy method maintained for compatibility
@@ -257,13 +292,28 @@ class ThumbnailService: ObservableObject {
         return thumbnail
     }
     
-    nonisolated private func resizeImage(_ image: UIImage, to size: CGSize) async -> UIImage {
+    /// Phase 2: Enhanced image resizing with adaptive quality
+    nonisolated private func resizeImageWithQuality(_ image: UIImage, to size: CGSize, compressionQuality: CGFloat) async -> UIImage {
         return await Task.detached {
-            let renderer = UIGraphicsImageRenderer(size: size)
-            return renderer.image { _ in
+            let renderer = UIGraphicsImageRenderer(size: size, format: UIGraphicsImageRendererFormat())
+            let resizedImage = renderer.image { _ in
                 image.draw(in: CGRect(origin: .zero, size: size))
             }
+            
+            // Apply compression quality for memory optimization
+            if compressionQuality < 1.0,
+               let jpegData = resizedImage.jpegData(compressionQuality: compressionQuality),
+               let compressedImage = UIImage(data: jpegData) {
+                return compressedImage
+            }
+            
+            return resizedImage
         }.value
+    }
+    
+    /// Legacy resize method for compatibility
+    nonisolated private func resizeImage(_ image: UIImage, to size: CGSize) async -> UIImage {
+        return await resizeImageWithQuality(image, to: size, compressionQuality: 0.85)
     }
     
     nonisolated private func saveThumbnailToDisk(_ image: UIImage, at url: URL) async {
