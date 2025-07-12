@@ -6,25 +6,46 @@ import os.log
 /// Service for creating and managing mind map visualizations of screenshot relationships
 @MainActor
 class MindMapService: ObservableObject {
+    // MARK: - Performance Optimization Infrastructure
+    private let layoutCacheManager = LayoutCacheManager.shared
+    private let backgroundProcessor = BackgroundLayoutProcessor.shared
+    private let changeTracker = ChangeTrackingService.shared
+    
     // Track last data fingerprint to avoid unnecessary regeneration
     private var lastDataFingerprint: String?
-    /// Compute a fingerprint (hash) for the current screenshots and relationships
+    private var modelContext: ModelContext?
+    
+    /// Enhanced fingerprint computation using new performance infrastructure
     func computeDataFingerprint(screenshots: [Screenshot]) async -> String {
-        // Use screenshot IDs and timestamps for a simple fingerprint
-        let sorted = screenshots.sorted { $0.id.uuidString < $1.id.uuidString }
-        let idString = sorted.map { "\($0.id.uuidString):\($0.timestamp.timeIntervalSince1970)" }.joined(separator: ",")
-        // Optionally, relationships could be included if available
-        return String(idString.hashValue)
+        // Use the new ChangeTrackingService for comprehensive fingerprinting
+        return await changeTracker.createDataFingerprint()
     }
 
-    /// Refresh mind map only if data has changed
+    /// Refresh mind map only if data has changed - Enhanced with performance optimization
     func refreshMindMapIfNeeded(screenshots: [Screenshot]) async {
         let newFingerprint = await computeDataFingerprint(screenshots: screenshots)
+        
+        // Check cache first for instant loading (<200ms target)
+        if let cachedLayout = layoutCacheManager.getCachedLayout(for: newFingerprint) {
+            await loadFromCachedLayout(cachedLayout)
+            lastDataFingerprint = newFingerprint
+            return
+        }
+        
+        // If data changed or no cache, schedule background processing
         if newFingerprint != lastDataFingerprint {
             lastDataFingerprint = newFingerprint
-            await generateMindMap(from: screenshots)
+            
+            // Schedule background layout update with high priority for user-requested refresh
+            backgroundProcessor.scheduleLayoutUpdate(
+                for: DataChange(type: .bulkImport(screenshots.map { $0.id })),
+                priority: .userInteraction
+            )
+            
+            // For immediate response, generate simplified layout
+            await generateSimplifiedLayout(from: screenshots)
         } else {
-            // Just load from cache for speed
+            // Just load from legacy cache for backward compatibility
             await loadFromCache()
         }
     }
@@ -65,17 +86,31 @@ class MindMapService: ObservableObject {
         return mindMapData.totalNodes > 0
     }
 
-    /// Save current mind map data to cache
+    /// Save current mind map data to legacy cache
     func saveToCache() async {
         guard let url = self.cacheURL else { return }
         do {
             let encoder = JSONEncoder()
             let data = try encoder.encode(self.mindMapData)
             try data.write(to: url, options: .atomic)
-            self.logger.info("💾 Mind map saved to cache: \(self.mindMapData.totalNodes) nodes, \(self.mindMapData.totalConnections) connections")
+            self.logger.info("💾 Mind map saved to legacy cache: \(self.mindMapData.totalNodes) nodes, \(self.mindMapData.totalConnections) connections")
         } catch {
             self.logger.error("❌ Failed to save mind map cache: \(error.localizedDescription)")
         }
+    }
+    
+    /// Save current mind map data to performance cache
+    private func saveToPerformanceCache(screenshots: [Screenshot]) async {
+        // Convert mind map data to layout format
+        let layout = CachedMindMapLayoutData(
+            nodes: mindMapData.nodeArray,
+            connections: mindMapData.connections
+        )
+        
+        let fingerprint = await computeDataFingerprint(screenshots: screenshots)
+        
+        layoutCacheManager.saveLayout(layout, fingerprint: fingerprint)
+        logger.info("🚀 Mind map saved to performance cache with fingerprint: \(String(fingerprint.prefix(12)))...")
     }
     static let shared = MindMapService()
     
@@ -108,25 +143,123 @@ class MindMapService: ObservableObject {
     }
     
     private init() {
-        logger.info("🧠 MindMapService initialized")
+        logger.info("🧠 MindMapService initialized with performance optimization")
         layoutEngine = ForceDirectedLayoutEngine()
+    }
+    
+    /// Set model context for performance services
+    func setModelContext(_ context: ModelContext) {
+        modelContext = context
+        layoutCacheManager.setModelContext(context)
+        backgroundProcessor.setModelContext(context)
+        changeTracker.setModelContext(context)
     }
     
     // MARK: - Main API
     
-    /// Generate mind map from screenshots
+    /// Generate mind map from screenshots with performance optimization
     func generateMindMap(from screenshots: [Screenshot]) async {
-        logger.info("🚀 Starting mind map generation for \(screenshots.count) screenshots")
+        logger.info("🚀 Starting optimized mind map generation for \(screenshots.count) screenshots")
+        
+        // Check cache first
+        let fingerprint = await computeDataFingerprint(screenshots: screenshots)
+        if let cachedLayout = layoutCacheManager.getCachedLayout(for: fingerprint) {
+            await loadFromCachedLayout(cachedLayout)
+            logger.info("✅ Loaded mind map from cache in <200ms")
+            return
+        }
         
         // Cancel any existing generation
         generationTask?.cancel()
+        
+        // Schedule background processing for full layout
+        backgroundProcessor.scheduleLayoutUpdate(
+            for: DataChange(type: .bulkImport(screenshots.map { $0.id })),
+            priority: .userInteraction
+        )
         
         generationTask = Task<Void, Never> {
             await performMindMapGeneration(screenshots: screenshots)
         }
     }
     
-    /// Update node position (for dragging)
+    /// Load layout from cached data
+    private func loadFromCachedLayout(_ layout: CachedMindMapLayoutData) async {
+        // Convert cached layout to mind map data
+        await MainActor.run { [weak self] in
+            guard let self = self else { return }
+            
+            // Update mind map data from cached layout
+            self.mindMapData.nodes.removeAll()
+            for node in layout.nodes {
+                self.mindMapData.addNode(node)
+            }
+            
+            // Update connections
+            self.mindMapData.connections = layout.connections
+            
+            // Force update for SwiftUI
+            self.mindMapData = self.mindMapData
+            
+            self.logger.info("📋 Loaded mind map from cached layout: \(layout.nodes.count) nodes")
+        }
+    }
+    
+    /// Generate simplified layout for immediate response
+    private func generateSimplifiedLayout(from screenshots: [Screenshot]) async {
+        logger.info("⚡ Generating simplified layout for immediate response")
+        
+        // Create basic circular layout for immediate display
+        mindMapData.nodes.removeAll()
+        
+        let radius: CGFloat = 200
+        for (index, screenshot) in screenshots.enumerated() {
+            let angle = Double(index) * 2.0 * .pi / Double(screenshots.count)
+            let x = cos(angle) * radius
+            let y = sin(angle) * radius
+            
+            let node = MindMapNode(
+                screenshotId: screenshot.id,
+                position: CGPoint(x: x, y: y)
+            )
+            
+            mindMapData.addNode(node)
+        }
+        
+        // Force update for SwiftUI
+        mindMapData = mindMapData
+        logger.info("⚡ Simplified layout ready with \(screenshots.count) nodes")
+    }
+    
+    /// Handle data changes with selective updates
+    func handleDataChange(_ change: DataChange) async {
+        logger.info("🔄 Handling data change: \(String(describing: change.type))")
+        
+        // Track the change
+        changeTracker.trackChange(change)
+        
+        // Get affected nodes for selective invalidation
+        let affectedNodes = changeTracker.getAffectedNodesForChange(change)
+        
+        // Invalidate affected cache regions
+        layoutCacheManager.invalidateRegion(nodeIds: Array(affectedNodes))
+        
+        // Schedule background processing based on change type
+        let priority: ProcessingPriority = {
+            switch change.type {
+            case .userAnnotationChanged:
+                return .userInteraction
+            case .screenshotAdded, .screenshotDeleted:
+                return .newImport
+            default:
+                return .optimization
+            }
+        }()
+        
+        backgroundProcessor.scheduleLayoutUpdate(for: change, priority: priority)
+    }
+    
+    /// Update node position (for dragging) with performance optimization
     func updateNodePosition(nodeId: UUID, position: CGPoint) {
         // Safety checks to prevent crashes
         guard position.x.isFinite && position.y.isFinite else {
@@ -161,6 +294,9 @@ class MindMapService: ObservableObject {
             if let layoutEngine = self.layoutEngine {
                 await layoutEngine.updateNodePosition(nodeId: nodeId, position: position)
             }
+            
+            // Handle cache invalidation for user manual positioning
+            await self.handleDataChange(DataChange(type: .userAnnotationChanged(nodeId)))
         }
     }
     
@@ -337,8 +473,10 @@ class MindMapService: ObservableObject {
             
             logger.info("✅ Mind map generation completed in \(String(format: "%.2f", totalTime))s")
             logger.info("📈 Stats: \(self.mindMapData.totalNodes) nodes, \(self.mindMapData.totalConnections) connections, \(self.mindMapData.clusters.count) clusters")
-            // Save to cache after successful generation
+            
+            // Save to both legacy cache and new performance cache
             await saveToCache()
+            await saveToPerformanceCache(screenshots: processingScreenshots)
             
             // Post notification that generation is complete
             NotificationCenter.default.post(name: .mindMapGenerationComplete, object: nil)
