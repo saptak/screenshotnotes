@@ -56,6 +56,13 @@ class ThumbnailService: ObservableObject {
     static let shared = ThumbnailService()
     
     private let logger = Logger(subsystem: "com.screenshotnotes.app", category: "ThumbnailService")
+    
+    // Enhanced with Advanced Cache Manager
+    private let advancedCacheManager = AdvancedThumbnailCacheManager.shared
+    private let backgroundProcessor = BackgroundThumbnailProcessor.shared
+    private let changeTracker = GalleryChangeTracker.shared
+    
+    // Legacy cache for backward compatibility (will be deprecated)
     private let thumbnailCache = NSCache<NSString, UIImage>()
     private let fileManager = FileManager.default
     private let thumbnailsDirectory: URL
@@ -70,7 +77,7 @@ class ThumbnailService: ObservableObject {
     nonisolated private let thumbnailQuality: CGFloat = 0.8
     
     private init() {
-        // Set up cache configuration
+        // Set up legacy cache configuration for backward compatibility
         thumbnailCache.countLimit = 500 // Keep 500 thumbnails in memory (increased for bulk imports)
         thumbnailCache.totalCostLimit = 100 * 1024 * 1024 // 100MB memory limit (increased for bulk imports)
         
@@ -81,52 +88,69 @@ class ThumbnailService: ObservableObject {
         // Create directory if it doesn't exist
         try? fileManager.createDirectory(at: thumbnailsDirectory, withIntermediateDirectories: true)
         
-        logger.info("ThumbnailService initialized with cache limit: \(self.thumbnailCache.countLimit) items")
+        logger.info("ThumbnailService initialized with advanced cache management and performance optimization")
+    }
+    
+    /// Set ModelContext for enhanced services
+    func setModelContext(_ context: ModelContext) {
+        // Note: AdvancedThumbnailCacheManager doesn't need ModelContext
+        backgroundProcessor.setModelContext(context)
+        changeTracker.setModelContext(context)
     }
     
     /// Check if thumbnail is already cached (memory or disk) without generating
     func getCachedThumbnail(for screenshotId: UUID, size: CGSize = thumbnailSize) -> UIImage? {
+        // Note: For synchronous cache checking, use legacy cache
+        // Advanced cache manager will be used in async generation paths
+        
+        // Fallback: Check legacy cache for backward compatibility
         let cacheKey = "\(screenshotId.uuidString)_\(Int(size.width))x\(Int(size.height))"
         
-        // Check memory cache first
+        // Check legacy memory cache
         if let cachedImage = thumbnailCache.object(forKey: cacheKey as NSString) {
-            logger.debug("🎯 Memory cache HIT for: \(cacheKey)")
+            logger.debug("🎯 Legacy cache HIT for: \(cacheKey)")
+            // Migrate to advanced cache
+            advancedCacheManager.storeThumbnail(cachedImage, for: screenshotId, size: size)
             return cachedImage
         }
         
-        // Check disk cache
+        // Check legacy disk cache
         let thumbnailURL = thumbnailsDirectory.appendingPathComponent("\(cacheKey).jpg")
         if fileManager.fileExists(atPath: thumbnailURL.path),
            let diskImage = UIImage(contentsOfFile: thumbnailURL.path) {
             
-            logger.debug("💾 Disk cache HIT for: \(cacheKey), loading to memory")
-            // Cache in memory for faster subsequent access
-            thumbnailCache.setObject(diskImage, forKey: cacheKey as NSString, cost: Int(size.width * size.height * 4))
+            logger.debug("💾 Legacy disk cache HIT for: \(cacheKey), migrating to advanced cache")
+            // Migrate to advanced cache
+            advancedCacheManager.storeThumbnail(diskImage, for: screenshotId, size: size)
             return diskImage
         }
         
-        logger.debug("❌ Cache MISS for: \(cacheKey), checking disk files...")
-        
-        // Debug: List available files in thumbnail directory
-        do {
-            let files = try fileManager.contentsOfDirectory(at: thumbnailsDirectory, includingPropertiesForKeys: nil)
-            let matchingFiles = files.filter { $0.lastPathComponent.contains(screenshotId.uuidString) }
-            if !matchingFiles.isEmpty {
-                logger.debug("🔍 Found related files: \(matchingFiles.map { $0.lastPathComponent })")
-            }
-        } catch {
-            logger.error("Failed to list thumbnail directory: \(error)")
-        }
-        
+        logger.debug("❌ Cache MISS for: \(cacheKey)")
         return nil
     }
     
     /// Generate and cache thumbnail for a screenshot
     func getThumbnail(for screenshotId: UUID, from imageData: Data, size: CGSize = thumbnailSize) async -> UIImage? {
+        // First check if already cached in advanced cache manager
+        if let cachedImage = await advancedCacheManager.getThumbnail(for: screenshotId, size: size) {
+            return cachedImage
+        }
+        
+        // Request through background processor for better resource management
+        backgroundProcessor.requestThumbnail(
+            for: screenshotId,
+            from: imageData,
+            size: size,
+            priority: .high // High priority for immediate user requests
+        )
+        
+        // For immediate UI needs, try legacy path as fallback
         let cacheKey = "\(screenshotId.uuidString)_\(Int(size.width))x\(Int(size.height))"
         
-        // Check memory cache first
+        // Check legacy cache
         if let cachedImage = thumbnailCache.object(forKey: cacheKey as NSString) {
+            // Migrate to advanced cache
+            advancedCacheManager.storeThumbnail(cachedImage, for: screenshotId, size: size)
             return cachedImage
         }
         
@@ -136,31 +160,28 @@ class ThumbnailService: ObservableObject {
             return await existingTask.value
         }
         
-        // Check disk cache
+        // Check legacy disk cache
         let thumbnailURL = thumbnailsDirectory.appendingPathComponent("\(cacheKey).jpg")
         if fileManager.fileExists(atPath: thumbnailURL.path),
            let diskImage = UIImage(contentsOfFile: thumbnailURL.path) {
             
-            // Cache in memory for faster subsequent access
-            thumbnailCache.setObject(diskImage, forKey: cacheKey as NSString, cost: Int(size.width * size.height * 4))
+            // Migrate to advanced cache
+            advancedCacheManager.storeThumbnail(diskImage, for: screenshotId, size: size)
             return diskImage
         }
         
-        // Wait for semaphore to control concurrency
+        // Generate thumbnail using optimized path
         await semaphore.wait()
         
-        // Create a new task for generating the thumbnail
         let task = Task {
             defer {
-                // Always signal the semaphore when done
                 Task {
                     await self.semaphore.signal()
                 }
             }
             
-            let result = await generateThumbnail(imageData: imageData, size: size, cacheKey: cacheKey, thumbnailURL: thumbnailURL)
+            let result = await generateThumbnailOptimized(imageData: imageData, size: size, screenshotId: screenshotId)
             
-            // Clean up task reference when done
             await MainActor.run {
                 self.activeTasks.removeValue(forKey: cacheKey)
                 if result != nil {
@@ -173,22 +194,44 @@ class ThumbnailService: ObservableObject {
             return result
         }
         
-        // Store the task to avoid duplicate work
         activeTasks[cacheKey] = task
         
-        logger.debug("🔄 Awaiting thumbnail generation for \(cacheKey)")
+        logger.debug("🔄 Generating thumbnail for immediate use: \(cacheKey)")
         
-        // Add timeout to prevent hanging tasks
-        let result = await withTimeout(seconds: 30) {
+        let result = await withTimeout(seconds: 10) { // Reduced timeout for immediate UI
             await task.value
         }
         
-        logger.debug("🎯 Thumbnail generation returned for \(cacheKey): \(result != nil ? "SUCCESS" : "TIMEOUT/FAILED")")
         return result
     }
     
+    private func generateThumbnailOptimized(imageData: Data, size: CGSize, screenshotId: UUID) async -> UIImage? {
+        logger.debug("Starting optimized thumbnail generation for screenshot: \(screenshotId)")
+        
+        // Create UIImage from data (can be done off main thread)
+        guard let originalImage = UIImage(data: imageData) else {
+            logger.error("Failed to create UIImage from data for screenshot: \(screenshotId)")
+            return nil
+        }
+        
+        // Resize image off main thread using nonisolated method
+        let thumbnail = await resizeImage(originalImage, to: size)
+        
+        // Save to advanced cache manager
+        advancedCacheManager.storeThumbnail(thumbnail, for: screenshotId, size: size)
+        
+        // Also save to legacy cache for backward compatibility
+        let cacheKey = "\(screenshotId.uuidString)_\(Int(size.width))x\(Int(size.height))"
+        let memoryCost = Int(size.width * size.height * 4)
+        thumbnailCache.setObject(thumbnail, forKey: cacheKey as NSString, cost: memoryCost)
+        
+        logger.debug("Optimized thumbnail generation completed for screenshot: \(screenshotId)")
+        return thumbnail
+    }
+    
+    // Legacy method maintained for compatibility
     private func generateThumbnail(imageData: Data, size: CGSize, cacheKey: String, thumbnailURL: URL) async -> UIImage? {
-        logger.debug("Starting thumbnail generation for \(cacheKey)")
+        logger.debug("Starting legacy thumbnail generation for \(cacheKey)")
         
         // Create UIImage from data (can be done off main thread)
         guard let originalImage = UIImage(data: imageData) else {
@@ -234,20 +277,36 @@ class ThumbnailService: ObservableObject {
         }
     }
     
-    /// Preload thumbnails for a batch of screenshots
+    /// Preload thumbnails for a batch of screenshots using advanced background processing
     func preloadThumbnails(for screenshots: [Screenshot], size: CGSize = thumbnailSize) {
+        // Use background processor for efficient batch processing
+        backgroundProcessor.requestThumbnailBatch(
+            for: screenshots,
+            size: size,
+            priority: .background
+        )
+        
+        logger.info("Requested preload of \(screenshots.count) thumbnails via background processor")
+    }
+    
+    /// Legacy preload method for immediate processing (use sparingly)
+    func preloadThumbnailsImmediate(for screenshots: [Screenshot], size: CGSize = thumbnailSize) {
         Task {
-            for screenshot in screenshots.prefix(10) { // Reduced from 20 to 10 for better performance
+            for screenshot in screenshots.prefix(5) { // Reduced for immediate processing
                 _ = await getThumbnail(for: screenshot.id, from: screenshot.imageData, size: size)
                 
-                // Increased delay to prevent overwhelming the system during bulk imports
-                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms (increased from 10ms)
+                // Small delay to prevent overwhelming the system
+                try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
             }
         }
     }
     
-    /// Clear thumbnail cache to free memory
+    /// Clear thumbnail cache to free memory (graduated response instead of nuclear clearing)
     func clearCache() {
+        // Use graduated memory pressure response instead of nuclear clearing
+        advancedCacheManager.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.warning)
+        
+        // Also clear legacy cache for immediate memory relief
         thumbnailCache.removeAllObjects()
         
         // Cancel any active tasks
@@ -256,7 +315,21 @@ class ThumbnailService: ObservableObject {
         }
         activeTasks.removeAll()
         
-        logger.info("Thumbnail cache cleared")
+        logger.info("Thumbnail cache optimized for memory pressure")
+    }
+    
+    /// Force clear all caches (nuclear option for critical memory pressure)
+    func forceClearAllCaches() {
+        advancedCacheManager.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.critical)
+        thumbnailCache.removeAllObjects()
+        
+        // Cancel any active tasks
+        for (_, task) in activeTasks {
+            task.cancel()
+        }
+        activeTasks.removeAll()
+        
+        logger.warning("All thumbnail caches forcibly cleared due to critical memory pressure")
     }
     
     /// Clear old disk cache files
@@ -291,11 +364,54 @@ class ThumbnailService: ObservableObject {
         
         return (memoryCount: memoryCount, diskCount: diskCount)
     }
+    
+    // MARK: - Advanced Cache Integration
+    
+    /// Get comprehensive performance metrics from all thumbnail services
+    var enhancedPerformanceMetrics: EnhancedThumbnailMetrics {
+        return EnhancedThumbnailMetrics(
+            cacheStatistics: advancedCacheManager.cacheStatistics,
+            processingMetrics: backgroundProcessor.performanceMetrics,
+            changeTrackingMetrics: changeTracker.changeTrackingMetrics,
+            legacyCacheSize: thumbnailCache.totalCostLimit,
+            activeTaskCount: activeTasks.count
+        )
+    }
+    
+    /// Track screenshot changes for cache invalidation
+    func trackScreenshotAdded(_ screenshot: Screenshot) {
+        changeTracker.trackScreenshotAdded(screenshot)
+    }
+    
+    func trackScreenshotDeleted(_ screenshotId: UUID) {
+        changeTracker.trackScreenshotDeleted(screenshotId)
+    }
+    
+    func trackScreenshotModified(_ screenshot: Screenshot) {
+        changeTracker.trackScreenshotModified(screenshot)
+    }
+    
+    func trackBulkImport(_ screenshotIds: [UUID]) {
+        changeTracker.trackBulkImport(screenshotIds)
+    }
+    
+    func trackGalleryViewChange(visibleScreenshots: [UUID], collectionSize: Int) {
+        changeTracker.trackGalleryViewChange(visibleScreenshots: visibleScreenshots, collectionSize: collectionSize)
+    }
 }
 
-// MARK: - Thumbnail Task Coordination Actor
+// MARK: - Enhanced Metrics
 
-/// Actor to provide async-safe coordination for thumbnail generation tasks
+struct EnhancedThumbnailMetrics {
+    let cacheStatistics: ThumbnailCacheStatistics
+    let processingMetrics: ProcessingMetrics
+    let changeTrackingMetrics: ChangeTrackingMetrics
+    let legacyCacheSize: Int
+    let activeTaskCount: Int
+}
+
+// MARK: - Legacy Task Coordinator
+
 actor ThumbnailTaskCoordinator {
     private var activeTasks: [String: Task<UIImage?, Never>] = [:]
     

@@ -377,6 +377,9 @@ struct ContentView: View {
             .onAppear {
                 photoLibraryService.setModelContext(modelContext)
                 
+                // Set up enhanced thumbnail services with ModelContext
+                ThumbnailService.shared.setModelContext(modelContext)
+                
                 // Initialize enhanced vision processing
                 backgroundVisionProcessor.setModelContext(modelContext)
                 
@@ -392,6 +395,8 @@ struct ContentView: View {
                 Task {
                     await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
                 }
+                
+                print("ContentView: ModelContext set up for all services including enhanced gallery infrastructure")
             }
             .onDisappear {
                 // 🔧 Sprint 5.2.4: Cleanup search task to prevent memory leaks

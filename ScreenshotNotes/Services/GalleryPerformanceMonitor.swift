@@ -47,14 +47,14 @@ class GalleryPerformanceMonitor: ObservableObject {
     }
     
     func startMonitoring() {
-        guard !isMonitoring else { return }
+        guard !self.isMonitoring else { return }
         
-        isMonitoring = true
-        thermalState = ProcessInfo.processInfo.thermalState
+        self.isMonitoring = true
+        self.thermalState = ProcessInfo.processInfo.thermalState
         
         // Start FPS monitoring
-        displayLink = CADisplayLink(target: self, selector: #selector(displayLinkFired))
-        displayLink?.add(to: .main, forMode: .common)
+        self.displayLink = CADisplayLink(target: self, selector: #selector(displayLinkFired))
+        self.displayLink?.add(to: .main, forMode: .common)
         
         // Start memory monitoring
         startMemoryMonitoring()
@@ -63,26 +63,26 @@ class GalleryPerformanceMonitor: ObservableObject {
     }
     
     func stopMonitoring() {
-        guard isMonitoring else { return }
+        guard self.isMonitoring else { return }
         
-        isMonitoring = false
-        displayLink?.invalidate()
-        displayLink = nil
+        self.isMonitoring = false
+        self.displayLink?.invalidate()
+        self.displayLink = nil
         
         logger.info("Gallery performance monitoring stopped")
     }
     
     @objc private func displayLinkFired(displayLink: CADisplayLink) {
-        frameCount += 1
+        self.frameCount += 1
         
-        if lastTimestamp == 0 {
-            lastTimestamp = displayLink.timestamp
+        if self.lastTimestamp == 0 {
+            self.lastTimestamp = displayLink.timestamp
             return
         }
         
-        let elapsed = displayLink.timestamp - lastTimestamp
+        let elapsed = displayLink.timestamp - self.lastTimestamp
         if elapsed >= 1.0 { // Update every second
-            let fps = Double(frameCount) / elapsed
+            let fps = Double(self.frameCount) / elapsed
             
             DispatchQueue.main.async {
                 self.currentFPS = fps
@@ -90,8 +90,8 @@ class GalleryPerformanceMonitor: ObservableObject {
                 self.checkPerformanceThresholds()
             }
             
-            frameCount = 0
-            lastTimestamp = displayLink.timestamp
+            self.frameCount = 0
+            self.lastTimestamp = displayLink.timestamp
         }
     }
     
@@ -127,29 +127,29 @@ class GalleryPerformanceMonitor: ObservableObject {
     }
     
     private func updateFPSHistory(fps: Double) {
-        fpsHistory.append(fps)
-        if fpsHistory.count > maxFPSHistory {
-            fpsHistory.removeFirst()
+        self.fpsHistory.append(fps)
+        if self.fpsHistory.count > self.maxFPSHistory {
+            self.fpsHistory.removeFirst()
         }
     }
     
     private func checkPerformanceThresholds() {
         // Check for low FPS
-        if currentFPS < lowFPSThreshold {
+        if self.currentFPS < self.lowFPSThreshold {
             logger.warning("Low FPS detected: \(self.currentFPS, format: .fixed(precision: 1))")
             optimizeForLowFPS()
         }
         
         // Check for high memory usage with different thresholds for bulk import
-        let currentThreshold = isBulkImporting ? bulkImportMemoryThreshold : highMemoryThreshold
-        if memoryUsage > currentThreshold {
+        let currentThreshold = self.isBulkImporting ? self.bulkImportMemoryThreshold : self.highMemoryThreshold
+        if self.memoryUsage > currentThreshold {
             logger.warning("High memory usage detected: \(self.memoryUsage, format: .fixed(precision: 1))MB (threshold: \(currentThreshold)MB, bulk importing: \(self.isBulkImporting))")
             optimizeForHighMemory()
         }
     }
     
     private func handleThermalStateChange() {
-        switch thermalState {
+        switch self.thermalState {
         case .serious, .critical:
             logger.warning("Thermal throttling detected: \(String(describing: self.thermalState))")
             optimizeForThermalPressure()
@@ -162,56 +162,69 @@ class GalleryPerformanceMonitor: ObservableObject {
         // Reduce thumbnail quality
         NotificationCenter.default.post(name: .performanceOptimizationNeeded, object: nil, userInfo: [
             "type": "lowFPS",
-            "fps": currentFPS
+            "fps": self.currentFPS
         ])
     }
     
     private func optimizeForHighMemory() {
-        // More aggressive memory management during scrolling
-        if !isBulkImporting {
-            // If not bulk importing, clear cache more aggressively
-            logger.info("Thumbnail cache cleared (bulk importing: \(self.isBulkImporting))")
-            ThumbnailService.shared.clearCache()
-        } else if memoryUsage > bulkImportMemoryThreshold + 50 {
-            // During bulk import, only clear if memory usage is critically high
-            logger.info("🧠 Critical memory pressure - clearing cache during bulk import")
-            ThumbnailService.shared.clearCache()
+        // Graduated memory pressure response instead of nuclear cache clearing
+        if !self.isBulkImporting {
+            // If not bulk importing, use graduated cache optimization
+            logger.info("🧠 Memory pressure detected - optimizing cache (bulk importing: \(self.isBulkImporting))")
+            ThumbnailService.shared.clearCache() // This now uses graduated response
+        } else if self.memoryUsage > self.bulkImportMemoryThreshold + 50 {
+            // During bulk import, only use aggressive clearing if memory usage is critically high
+            logger.info("🧠 Critical memory pressure - forcing cache optimization during bulk import")
+            ThumbnailService.shared.forceClearAllCaches() // Use nuclear option only for critical situations
         } else {
-            logger.info("🧠 Optimizing for high memory usage - cache clearing suspended during bulk import")
+            logger.info("🧠 Optimizing for high memory usage - using graduated cache management during bulk import")
+            ThumbnailService.shared.clearCache() // Graduated response even during bulk import
         }
         
         // Post notification for other components to optimize
         NotificationCenter.default.post(name: .performanceOptimizationNeeded, object: nil, userInfo: [
             "type": "highMemory",
-            "memoryMB": memoryUsage,
-            "isBulkImporting": isBulkImporting
+            "memoryMB": self.memoryUsage,
+            "isBulkImporting": self.isBulkImporting,
+            "optimizationLevel": self.memoryUsage > self.bulkImportMemoryThreshold + 50 ? "critical" : "warning"
         ])
     }
     
     private func optimizeForThermalPressure() {
-        // Aggressive optimization for thermal throttling
-        ThumbnailService.shared.clearCache()
+        // Graduated optimization for thermal throttling
+        switch self.thermalState {
+        case .serious:
+            logger.warning("🌡️ Serious thermal state - using graduated cache optimization")
+            ThumbnailService.shared.clearCache() // Graduated response
+        case .critical:
+            logger.warning("🌡️ Critical thermal state - forcing aggressive cache clearing")
+            ThumbnailService.shared.forceClearAllCaches() // Nuclear option for critical thermal state
+        default:
+            logger.info("🌡️ Thermal optimization for state: \(String(describing: self.thermalState))")
+            ThumbnailService.shared.clearCache() // Graduated response
+        }
         
         NotificationCenter.default.post(name: .performanceOptimizationNeeded, object: nil, userInfo: [
             "type": "thermal",
-            "thermalState": thermalState
+            "thermalState": self.thermalState,
+            "optimizationLevel": self.thermalState == .critical ? "critical" : "warning"
         ])
     }
     
     // Bulk import state management
     func setBulkImportState(_ isImporting: Bool) {
-        isBulkImporting = isImporting
+        self.isBulkImporting = isImporting
         logger.info("Bulk import state changed: \(isImporting)")
     }
     
     // Performance metrics for debugging
     var performanceMetrics: PerformanceMetrics {
         return PerformanceMetrics(
-            averageFPS: fpsHistory.isEmpty ? 0 : fpsHistory.reduce(0, +) / Double(fpsHistory.count),
-            currentFPS: currentFPS,
-            memoryUsageMB: memoryUsage,
-            thermalState: thermalState,
-            isOptimizing: thermalState == .serious || thermalState == .critical || currentFPS < lowFPSThreshold
+            averageFPS: self.fpsHistory.isEmpty ? 0 : self.fpsHistory.reduce(0, +) / Double(self.fpsHistory.count),
+            currentFPS: self.currentFPS,
+            memoryUsageMB: self.memoryUsage,
+            thermalState: self.thermalState,
+            isOptimizing: self.thermalState == .serious || self.thermalState == .critical || self.currentFPS < self.lowFPSThreshold
         )
     }
 }
