@@ -955,9 +955,8 @@ struct ScreenshotGridView: View {
             Group {
                 if screenshots.count > 100 {
                     VStack(spacing: 0) {
-                        UIScrollViewIntrospector(contentOffset: $pullOffset)
-                            .frame(width: 0, height: 0)
-                        if pullOffset > 10 && isRefreshing == false && !isBulkImportInProgress {
+                        // Show pull message when scroll offset indicates pull down
+                        if scrollOffset > 10 && isRefreshing == false && !isBulkImportInProgress {
                             PullToImportMessageView()
                                 .opacity(0.8)
                                 .padding(.top, 8)
@@ -979,10 +978,6 @@ struct ScreenshotGridView: View {
                             )
                         }
                         .frame(maxWidth: .infinity)
-                    }
-                    .coordinateSpace(name: "pullArea")
-                    .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
-                        pullOffset = offset
                     }
                 } else {
                     ScrollView {

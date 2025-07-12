@@ -200,7 +200,7 @@ struct SettingsView: View {
                                     .foregroundColor(.orange)
                                 Spacer()
                                 let stats = thumbnailService.getCacheStats()
-                                Text("\(stats.diskCount) cached")
+                                Text("\(stats.memoryCount) cached")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -211,7 +211,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Performance Monitoring")
                 } footer: {
-                    Text("Monitor gallery performance and clear cache to free up memory. Performance monitoring is active when viewing the gallery.")
+                    Text("Monitor gallery performance and clear cache to free up memory. Multiple thumbnail sizes are cached per image for optimal performance. Performance monitoring is active when viewing the gallery.")
                 }
                 
                 Section {

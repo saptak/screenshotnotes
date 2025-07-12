@@ -402,7 +402,9 @@ class ThumbnailService: ObservableObject {
     
     /// Get cache statistics for monitoring
     func getCacheStats() -> (memoryCount: Int, diskCount: Int) {
-        let memoryCount = thumbnailCache.countLimit
+        // Get actual memory cache count from advanced cache manager
+        let advancedStats = advancedCacheManager.cacheStatistics
+        let memoryCount = advancedStats.hotCacheSize + advancedStats.warmCacheSize
         
         let diskCount: Int
         do {

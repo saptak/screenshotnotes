@@ -63,8 +63,8 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
             }
             .coordinateSpace(name: "scrollView")
             .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
-                scrollOffset = offset
-                self.scrollOffset = offset // Update the binding
+                scrollOffset = -offset // Convert to positive for pull-down detection
+                self.scrollOffset = scrollOffset // Update the binding
                 updateVisibleRange(containerHeight: geometry.size.height)
             }
             .onAppear {
