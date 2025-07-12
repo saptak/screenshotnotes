@@ -22,8 +22,8 @@ class GalleryPerformanceMonitor: ObservableObject {
     
     // Performance thresholds
     private let lowFPSThreshold: Double = 45
-    private let highMemoryThreshold: Double = 150 // MB - Reduced from 200 for better performance
-    private let bulkImportMemoryThreshold: Double = 250 // MB - Reduced from 400 for better performance
+    private let highMemoryThreshold: Double = 300 // MB - Increased to prevent aggressive cache clearing during normal operation
+    private let bulkImportMemoryThreshold: Double = 400 // MB - Restored higher threshold for bulk imports
     
     private init() {
         // Monitor thermal state changes

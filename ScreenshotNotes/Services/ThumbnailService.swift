@@ -353,19 +353,33 @@ class ThumbnailService: ObservableObject {
     
     /// Clear thumbnail cache to free memory (graduated response instead of nuclear clearing)
     func clearCache() {
-        // Use graduated memory pressure response instead of nuclear clearing
-        advancedCacheManager.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.warning)
+        // Get current collection size for intelligent cache management
+        let currentCollectionSize = advancedCacheManager.getCollectionSize()
         
-        // Also clear legacy cache for immediate memory relief
-        thumbnailCache.removeAllObjects()
-        
-        // Cancel any active tasks
-        for (_, task) in activeTasks {
-            task.cancel()
+        if currentCollectionSize < 100 {
+            // For smaller collections, use minimal optimization to maintain user experience
+            advancedCacheManager.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.normal)
+            logger.info("Thumbnail cache lightly optimized for small collection (\(currentCollectionSize) screenshots)")
+        } else if currentCollectionSize < 500 {
+            // For medium collections, use moderate optimization
+            advancedCacheManager.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.warning)
+            // Don't clear legacy cache completely for medium collections
+            logger.info("Thumbnail cache moderately optimized for medium collection (\(currentCollectionSize) screenshots)")
+        } else {
+            // For large collections, use more aggressive optimization
+            advancedCacheManager.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.warning)
+            // Clear legacy cache for large collections
+            thumbnailCache.removeAllObjects()
+            logger.info("Thumbnail cache aggressively optimized for large collection (\(currentCollectionSize) screenshots)")
         }
-        activeTasks.removeAll()
         
-        logger.info("Thumbnail cache optimized for memory pressure")
+        // Cancel any active tasks only if memory pressure is critical
+        if currentCollectionSize > 500 {
+            for (_, task) in activeTasks {
+                task.cancel()
+            }
+            activeTasks.removeAll()
+        }
     }
     
     /// Force clear all caches (nuclear option for critical memory pressure)

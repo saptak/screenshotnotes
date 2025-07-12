@@ -89,6 +89,11 @@ class AdvancedThumbnailCacheManager {
         }
     }
     
+    /// Get current collection size for intelligent cache management
+    func getCollectionSize() -> Int {
+        return collectionSize
+    }
+    
     /// Optimize cache sizes based on collection size and device capabilities
     private func optimizeCacheSizesForCollection(size: Int) {
         // Prevent race conditions during optimization
@@ -278,9 +283,16 @@ class AdvancedThumbnailCacheManager {
             
         case .warning:
             // Intelligent graduated reduction based on collection size
-            let warmReductionRatio = collectionSize > 1000 ? 0.3 : 0.25
+            let warmReductionRatio: Double
+            if collectionSize < 100 {
+                warmReductionRatio = 0.1  // Very light reduction for small collections
+            } else if collectionSize < 500 {
+                warmReductionRatio = 0.15  // Light reduction for medium collections  
+            } else {
+                warmReductionRatio = collectionSize > 1000 ? 0.3 : 0.25  // Standard reduction for large collections
+            }
             reduceWarmCacheIntelligently(by: warmReductionRatio)
-            print("⚠️ Memory warning - reduced warm cache by \(Int(warmReductionRatio * 100))%")
+            print("⚠️ Memory warning - reduced warm cache by \(Int(warmReductionRatio * 100))% for collection of \(collectionSize) screenshots")
             
         case .critical:
             // Aggressive but intelligent cache reduction

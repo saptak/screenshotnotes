@@ -888,74 +888,25 @@ struct ScreenshotGridView: View {
     @StateObject private var performanceMonitor = GalleryPerformanceMonitor.shared
     @StateObject private var thumbnailService = ThumbnailService.shared
     @State private var pullOffset: CGFloat = 0
-    
-    // Responsive grid configuration for optimal layout
-    private func gridColumns(for layout: GlassDesignSystem.ResponsiveLayout) -> [GridItem] {
-        let minItemWidth: CGFloat
-        let spacing: CGFloat
+
+    private func computeColumns(for width: CGFloat) -> [GridItem] {
+        let minThumbnailWidth: CGFloat = 160
+        let columnSpacing: CGFloat = 16
+        let sidePadding: CGFloat = 20 * 2 // 20 on each side
         
-        switch layout.deviceType {
-        case .iPhoneSE:
-            minItemWidth = 140
-            spacing = layout.spacing.small
-        case .iPhoneStandard:
-            minItemWidth = 160
-            spacing = layout.spacing.medium
-        case .iPhoneMax:
-            minItemWidth = 180
-            spacing = layout.spacing.medium
-        case .iPadMini:
-            minItemWidth = 200
-            spacing = layout.spacing.large
-        case .iPad:
-            minItemWidth = 220
-            spacing = layout.spacing.large
-        case .iPadPro:
-            minItemWidth = 240
-            spacing = layout.spacing.xl
-        }
+        let effectiveWidth = width - sidePadding
+        let numberOfColumns = max(1, Int(effectiveWidth / (minThumbnailWidth + columnSpacing)))
         
-        return [GridItem(.adaptive(minimum: minItemWidth), spacing: spacing)]
+        return Array(repeating: GridItem(.flexible(), spacing: columnSpacing), count: numberOfColumns)
     }
-    
-    // Responsive thumbnail size for different devices
-    private func responsiveThumbnailSize(for layout: GlassDesignSystem.ResponsiveLayout) -> CGSize {
-        switch layout.deviceType {
-        case .iPhoneSE:
-            return CGSize(width: 140, height: 180)
-        case .iPhoneStandard:
-            return CGSize(width: 160, height: 200)
-        case .iPhoneMax:
-            return CGSize(width: 180, height: 220)
-        case .iPadMini:
-            return CGSize(width: 200, height: 240)
-        case .iPad:
-            return CGSize(width: 220, height: 260)
-        case .iPadPro:
-            return CGSize(width: 240, height: 280)
-        }
-    }
-    
-    // Responsive item height for virtualized grid
-    private func responsiveItemHeight(for layout: GlassDesignSystem.ResponsiveLayout) -> CGFloat {
-        let thumbnailSize = responsiveThumbnailSize(for: layout)
-        return thumbnailSize.height + layout.spacing.large // thumbnail + text + spacing
-    }
-    
+
     var body: some View {
         GeometryReader { geometry in
-            let responsiveLayout = GlassDesignSystem.ResponsiveLayout(
-                horizontalSizeClass: nil,
-                verticalSizeClass: nil,
-                screenWidth: geometry.size.width,
-                screenHeight: geometry.size.height
-            )
-            let columns = gridColumns(for: responsiveLayout)
+            let columns = computeColumns(for: geometry.size.width)
             
             Group {
                 if screenshots.count > 100 {
                     VStack(spacing: 0) {
-                        // Show pull message when scroll offset indicates pull down
                         if scrollOffset > 10 && isRefreshing == false && !isBulkImportInProgress {
                             PullToImportMessageView()
                                 .opacity(0.8)
@@ -965,13 +916,12 @@ struct ScreenshotGridView: View {
                         VirtualizedGridView(
                             items: screenshots,
                             columns: columns,
-                            itemHeight: responsiveItemHeight(for: responsiveLayout),
-                            scrollOffset: $scrollOffset // Phase 2: Enable viewport tracking
+                            itemHeight: 220,
+                            scrollOffset: $scrollOffset
                         ) { screenshot in
                             OptimizedThumbnailView(
                                 screenshot: screenshot,
-                                size: responsiveThumbnailSize(for: responsiveLayout),
-                                responsiveLayout: responsiveLayout,
+                                size: CGSize(width: 160, height: 200),
                                 onTap: {
                                     selectedScreenshot = screenshot
                                 }
@@ -990,12 +940,11 @@ struct ScreenshotGridView: View {
                                     .padding(.top, 8)
                                     .padding(.bottom, 4)
                             }
-                            LazyVGrid(columns: columns, spacing: responsiveLayout.spacing.medium) {
+                            LazyVGrid(columns: columns, spacing: 16) {
                                 ForEach(screenshots, id: \.id) { screenshot in
                                     OptimizedThumbnailView(
                                         screenshot: screenshot,
-                                        size: responsiveThumbnailSize(for: responsiveLayout),
-                                        responsiveLayout: responsiveLayout,
+                                        size: CGSize(width: 160, height: 200),
                                         onTap: {
                                             selectedScreenshot = screenshot
                                         }
@@ -1003,9 +952,9 @@ struct ScreenshotGridView: View {
                                 }
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.horizontal, responsiveLayout.spacing.horizontalPadding)
-                            .padding(.top, responsiveLayout.spacing.large)
-                            .padding(.bottom, responsiveLayout.spacing.medium)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 16)
+                            .padding(.bottom, 16)
                         }
                     }
                     .coordinateSpace(name: "pullArea")

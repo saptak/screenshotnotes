@@ -69,11 +69,24 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
             }
             .onAppear {
                 containerHeight = geometry.size.height
+                // Initialize with a reasonable range for immediate display
+                if visibleRange.isEmpty && !items.isEmpty {
+                    let initialCount = min(items.count, 20) // Show first 20 items initially
+                    visibleRange = 0..<initialCount
+                }
                 updateVisibleRange(containerHeight: geometry.size.height)
             }
             .onChange(of: geometry.size.height) { _, newHeight in
                 containerHeight = newHeight
                 updateVisibleRange(containerHeight: newHeight)
+            }
+            .onChange(of: items.count) { _, newCount in
+                // When items change, ensure we have a visible range
+                if visibleRange.isEmpty && newCount > 0 {
+                    let initialCount = min(newCount, 20)
+                    visibleRange = 0..<initialCount
+                }
+                updateVisibleRange(containerHeight: containerHeight)
             }
         }
     }
@@ -88,12 +101,22 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
         let itemsPerRow = max(1, columns.count) // Ensure at least 1 item per row
         let rowHeight = itemHeight + 16 // Include spacing
         
-        let visibleRows = Int(ceil(containerHeight / rowHeight))
-        let firstVisibleRow = max(0, Int(scrollOffset / rowHeight))
+        // For small collections or when container height is small, show all items
+        if items.count <= 50 || containerHeight < rowHeight * 3 {
+            let newRange = 0..<items.count
+            if newRange != visibleRange {
+                visibleRange = newRange
+            }
+            return
+        }
         
-        // Add buffer for smooth scrolling
-        let startRow = max(0, firstVisibleRow - overscanBuffer)
-        let endRow = min(Int(ceil(Double(items.count) / Double(itemsPerRow))), firstVisibleRow + visibleRows + overscanBuffer)
+        let visibleRows = Int(ceil(containerHeight / rowHeight))
+        let firstVisibleRow = max(0, Int(abs(scrollOffset) / rowHeight))
+        
+        // Add buffer for smooth scrolling - increased for better experience
+        let bufferRows = max(overscanBuffer, visibleRows) // Use larger buffer
+        let startRow = max(0, firstVisibleRow - bufferRows)
+        let endRow = min(Int(ceil(Double(items.count) / Double(itemsPerRow))), firstVisibleRow + visibleRows + bufferRows)
         
         let newStart = startRow * itemsPerRow
         let newEnd = min(items.count, endRow * itemsPerRow)
