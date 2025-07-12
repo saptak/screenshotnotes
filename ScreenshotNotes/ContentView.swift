@@ -6,10 +6,10 @@ import UIKit
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Screenshot.timestamp, order: .reverse) private var screenshots: [Screenshot]
-    @StateObject private var photoLibraryService = PhotoLibraryService()
+    @StateObject private var backgroundSemanticProcessor = BackgroundSemanticProcessor()
     @StateObject private var queryParser = QueryParserService()
     @StateObject private var backgroundVisionProcessor = BackgroundVisionProcessor()
-    @StateObject private var backgroundSemanticProcessor = BackgroundSemanticProcessor()
+    @StateObject private var photoLibraryService = PhotoLibraryService()
     @EnvironmentObject private var backgroundOCRProcessor: BackgroundOCRProcessor
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var showingImportSheet = false

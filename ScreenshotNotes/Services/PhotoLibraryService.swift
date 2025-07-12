@@ -523,6 +523,13 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
                     hapticService.triggerHaptic(.successFeedback)
                     print("📸 Auto-imported screenshot: \(asset.localIdentifier)")
                 }
+                
+                // Trigger background OCR and AI processing for the newly imported screenshot
+                Task.detached { @MainActor in
+                    // Small delay to ensure the screenshot is fully saved
+                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                    await BackgroundSemanticProcessor().processScreenshotsNeedingAnalysis(in: modelContext)
+                }
             } catch {
                 print("❌ Failed to auto-import screenshot with retry: \(error)")
                 await MainActor.run {
