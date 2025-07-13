@@ -437,6 +437,13 @@ struct SettingsView: View {
             // Start monitoring when Enhanced Interface is active
             if interfaceSettings.isUsingEnhancedInterface {
                 liquidGlassMonitor.startMonitoring()
+                
+                // Run Sprint 8.1.3 performance validation
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    let renderer = LiquidGlassRenderer.shared
+                    _ = renderer.validateProMotionPerformance()
+                    renderer.testGracefulDegradation()
+                }
             }
         }
         .onDisappear {
@@ -665,13 +672,13 @@ struct SettingsView: View {
                 }
             }
             
-            // Performance Metrics Grid
+            // Performance Metrics Grid (Enhanced for Sprint 8.1.3)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
                 performanceMetricCard(
                     title: "FPS",
-                    value: "\(Int(liquidGlassMonitor.liquidGlassFPS))",
+                    value: "\(Int(liquidGlassMonitor.liquidGlassFPS))/\(Int(liquidGlassMonitor.targetFrameRate))",
                     icon: "speedometer",
-                    color: liquidGlassMonitor.liquidGlassFPS >= 45 ? .green : .orange
+                    color: liquidGlassMonitor.liquidGlassFPS >= liquidGlassMonitor.targetFrameRate * 0.8 ? .green : .orange
                 )
                 
                 performanceMetricCard(
@@ -682,17 +689,37 @@ struct SettingsView: View {
                 )
                 
                 performanceMetricCard(
-                    title: "Session",
-                    value: formatDuration(liquidGlassMonitor.enhancedInterfaceSessionDuration),
-                    icon: "clock",
-                    color: .blue
+                    title: "Display",
+                    value: liquidGlassMonitor.displayRefreshRate >= 120 ? "ProMotion" : "\(Int(liquidGlassMonitor.displayRefreshRate))Hz",
+                    icon: liquidGlassMonitor.displayRefreshRate >= 120 ? "display" : "tv",
+                    color: liquidGlassMonitor.displayRefreshRate >= 120 ? .blue : .gray
                 )
                 
                 performanceMetricCard(
-                    title: "Switches",
-                    value: "\(liquidGlassMonitor.materialSwitchCount)",
-                    icon: "arrow.triangle.2.circlepath",
-                    color: .purple
+                    title: "GPU",
+                    value: LiquidGlassRenderer.shared.isGPUAccelerationEnabled ? "Active" : "CPU",
+                    icon: LiquidGlassRenderer.shared.isGPUAccelerationEnabled ? "cpu" : "cpu.fill",
+                    color: LiquidGlassRenderer.shared.isGPUAccelerationEnabled ? .green : .orange
+                )
+                
+                performanceMetricCard(
+                    title: "Quality",
+                    value: LiquidGlassRenderer.shared.renderingQuality.rawValue.capitalized,
+                    icon: "paintpalette",
+                    color: {
+                        switch LiquidGlassRenderer.shared.renderingQuality {
+                        case .performance: return .orange
+                        case .balanced: return .blue
+                        case .quality: return .purple
+                        }
+                    }()
+                )
+                
+                performanceMetricCard(
+                    title: "Thermal",
+                    value: thermalStateText(LiquidGlassRenderer.shared.thermalState),
+                    icon: "thermometer",
+                    color: thermalStateColor(LiquidGlassRenderer.shared.thermalState)
                 )
             }
         }

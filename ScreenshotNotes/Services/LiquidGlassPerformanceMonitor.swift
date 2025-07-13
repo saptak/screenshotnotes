@@ -33,6 +33,17 @@ class LiquidGlassPerformanceMonitor: ObservableObject {
     /// Rendering optimization mode
     @Published var optimizationMode: OptimizationMode = .balanced
     
+    /// ProMotion display refresh rate tracking (Sprint 8.1.3)
+    @Published var displayRefreshRate: Double = 60.0
+    
+    /// Target frame rate for current session
+    @Published var targetFrameRate: Double = 120.0
+    
+    /// Advanced renderer integration (Sprint 8.1.3)
+    private var renderer: LiquidGlassRenderer {
+        return LiquidGlassRenderer.shared
+    }
+    
     // MARK: - A/B Testing Metrics
     
     /// Material switch frequency for A/B testing analysis
@@ -96,6 +107,8 @@ class LiquidGlassPerformanceMonitor: ObservableObject {
     private init() {
         loadSavedMetrics()
         setupPerformanceMonitoring()
+        setupMemoryPressureMonitoring() // Sprint 8.1.3
+        detectProMotionCapability() // Sprint 8.1.3
     }
     
     // MARK: - Public Interface
@@ -188,9 +201,25 @@ class LiquidGlassPerformanceMonitor: ObservableObject {
             liquidGlassMemoryUsage = Double(memoryInfo.resident_size) / 1024.0 / 1024.0
         }
         
-        // Update FPS (simplified - real implementation would use CADisplayLink)
-        liquidGlassFPS = optimizationMode == .performance ? 60.0 : 
-                        optimizationMode == .balanced ? 45.0 : 30.0
+        // Update FPS based on renderer metrics and target frame rate (Sprint 8.1.3)
+        let rendererMetrics = renderer.renderingMetrics
+        liquidGlassFPS = min(targetFrameRate, 
+            1000.0 / max(rendererMetrics.averageFrameTime, 1.0))
+        
+        // Sync with renderer thermal state
+        if renderer.thermalState != .nominal {
+            performanceWarningLevel = switch renderer.thermalState {
+            case .fair: .mild
+            case .serious: .moderate
+            case .critical: .severe
+            default: .none
+            }
+        }
+        
+        // Optimize for display if performance is suboptimal
+        if !rendererMetrics.isPerformanceOptimal {
+            optimizeForDisplay()
+        }
         
         // Update warning level based on metrics
         updateWarningLevel()
@@ -234,6 +263,95 @@ class LiquidGlassPerformanceMonitor: ObservableObject {
         }
         
         return recommendations
+    }
+    
+    // MARK: - ProMotion Detection & Optimization (Sprint 8.1.3)
+    
+    private func detectProMotionCapability() {
+        // Detect ProMotion capability using CADisplayLink
+        let displayLink = CADisplayLink(target: self, selector: #selector(detectRefreshRate))
+        displayLink.add(to: .main, forMode: .default)
+        
+        // Remove after brief detection period
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            displayLink.invalidate()
+        }
+    }
+    
+    @objc private func detectRefreshRate() {
+        if #available(iOS 15.0, *) {
+            // Use preferredFrameRateRange for ProMotion detection
+            let displayLink = CADisplayLink(target: self, selector: #selector(detectRefreshRate))
+            displayRefreshRate = Double(displayLink.targetTimestamp - displayLink.timestamp) > 0 ? 
+                1.0 / (displayLink.targetTimestamp - displayLink.timestamp) : 60.0
+            
+            // Set optimal target frame rate based on display capability
+            if displayRefreshRate >= 120.0 {
+                targetFrameRate = 120.0
+                print("✅ ProMotion 120Hz display detected")
+            } else if displayRefreshRate >= 90.0 {
+                targetFrameRate = 90.0
+                print("✅ 90Hz display detected")
+            } else {
+                targetFrameRate = 60.0
+                print("✅ Standard 60Hz display detected")
+            }
+        } else {
+            displayRefreshRate = 60.0
+            targetFrameRate = 60.0
+        }
+        
+        // Sync with renderer
+        renderer.targetFrameRate = switch targetFrameRate {
+        case 120.0: .promotion120
+        case 90.0: .promotion90
+        default: .standard60
+        }
+    }
+    
+    /// Optimizes rendering for current display capabilities
+    private func optimizeForDisplay() {
+        // Adaptive quality based on display refresh rate and performance
+        if displayRefreshRate >= 120.0 {
+            // ProMotion device - can handle higher quality at 120fps
+            if renderer.renderingMetrics.isPerformanceOptimal {
+                renderer.setRenderingQuality(.balanced)
+            } else {
+                renderer.setRenderingQuality(.performance)
+            }
+        } else {
+            // Standard display - optimize for 60fps
+            renderer.setRenderingQuality(.quality)
+        }
+        
+        // Sync optimization modes
+        optimizationMode = switch renderer.renderingQuality {
+        case .performance: .performance
+        case .balanced: .balanced
+        case .quality: .quality
+        }
+    }
+    
+    // MARK: - Memory Pressure Handling (Sprint 8.1.3)
+    
+    private func setupMemoryPressureMonitoring() {
+        // Monitor memory warnings
+        NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)
+            .sink { [weak self] _ in
+                self?.handleMemoryPressure()
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func handleMemoryPressure() {
+        // Immediately reduce quality to free memory
+        renderer.setRenderingQuality(.performance)
+        performanceWarningLevel = .severe
+        
+        // Clear any cached rendering data
+        materialSwitchCount = max(0, materialSwitchCount - 10) // Reset some tracking
+        
+        print("🚨 Memory pressure detected - reducing Liquid Glass quality")
     }
     
     private func loadSavedMetrics() {
