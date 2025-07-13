@@ -7,6 +7,7 @@ struct SettingsView: View {
     @ObservedObject private var photoLibraryService: PhotoLibraryService
     @StateObject private var performanceMonitor = GalleryPerformanceMonitor.shared
     @StateObject private var thumbnailService = ThumbnailService.shared
+    @StateObject private var interfaceSettings = InterfaceSettings()
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Query private var screenshots: [Screenshot]
@@ -272,9 +273,94 @@ struct SettingsView: View {
                     Text("⚠️ WARNING: This will permanently delete ALL imported screenshots from your Photos app. Screenshots will remain in Screenshot Vault. This action cannot be undone.")
                 }
                 
+                // Enhanced Interface Section (Sprint 8.1.1)
+                if interfaceSettings.showEnhancedInterfaceOptions {
+                    Section {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Image(systemName: "sparkles.rectangle.stack")
+                                    .foregroundColor(.blue)
+                                    .font(.title2)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Enhanced Interface")
+                                        .font(.headline)
+                                    Text("Advanced Liquid Glass design with voice controls")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                            }
+                            
+                            InterfaceTypeSelectionView(settings: interfaceSettings)
+                            
+                            if interfaceSettings.isUsingEnhancedInterface {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Enhanced Features Available:")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.secondary)
+                                    
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                            .font(.caption)
+                                        Text("Single-click voice commands")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                            .font(.caption)
+                                        Text("Content constellation grouping")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                            .font(.caption)
+                                        Text("Liquid Glass materials")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                            .font(.caption)
+                                        Text("Intelligent triage system")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                .padding(.top, 8)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 12)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(8)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    } header: {
+                        Text("Advanced")
+                    } footer: {
+                        if interfaceSettings.isUsingEnhancedInterface {
+                            Text("You are using the Enhanced Interface with advanced features. You can switch back to the Legacy Interface at any time.")
+                        } else {
+                            Text("The Enhanced Interface includes advanced Liquid Glass design, voice controls, and intelligent content organization. The Legacy Interface remains fully functional.")
+                        }
+                    }
+                }
+                
                 Section {
                     Button("Reset to Defaults") {
                         settingsService.resetToDefaults()
+                        interfaceSettings.resetToDefaults()
                     }
                     .foregroundColor(.blue)
                 }

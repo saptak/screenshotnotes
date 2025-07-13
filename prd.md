@@ -1,16 +1,20 @@
 # Product Requirements Document: Screenshot Notes
 
-**Version:** 1.5
+**Version:** 2.0
 
-**Date:** 2025-07-12
+**Date:** 2025-07-13
 
-**Status:** Sprint 7.1.5 Complete - Gallery Performance Optimization & Task Recommendations Planned
+**Status:** Sprint 6.6 Complete - Glass Design System Unification | Sprint 8 Enhanced Interface Development Planned
 
 ---
 
 ## 1. Vision & Introduction
 
 Screenshot Notes is a beautiful and intuitive iOS application designed to revolutionize how users manage and interact with their screenshots. In a world where screenshots are a primary method of information capture, this app provides a seamless, intelligent, and fluid experience for automatically organizing, searching, and contextualizing that information. By leveraging the latest in on-device AI, Screenshot Notes transforms a cluttered photo library into an interconnected, searchable knowledge base.
+
+### Enhanced Interface Evolution Strategy
+
+**Dual UX Architecture:** The app maintains both a proven Legacy Interface and an advanced Enhanced Interface, giving users complete control over their experience. The Enhanced Interface introduces revolutionary Liquid Glass design, voice interactions, and intelligent content constellation features while preserving the familiar, reliable Legacy Interface until users voluntarily adopt the new capabilities.
 
 ## 2. Target Audience
 
@@ -29,6 +33,7 @@ The user experience is paramount and will be guided by the following principles:
 
 ### Design System Specifications
 
+#### Legacy Interface Design (Current)
 *   **Color Palette:**
     *   Primary: Dynamic system colors adapting to light/dark mode
     *   Glass effects: 15-30% opacity backgrounds with blur
@@ -45,7 +50,66 @@ The user experience is paramount and will be guided by the following principles:
     *   Gesture-driven interactions with rubber-band effects
     *   Fade and scale transitions for modal presentations
 
+#### Enhanced Interface Design (Advanced)
+*   **Liquid Glass Materials:**
+    *   5 material types: .ultraThin, .thin, .regular, .thick, .chrome
+    *   Real-time translucency with environmental adaptation
+    *   Physics-based visual responses to user interaction
+    *   Intelligent material selection based on content hierarchy
+*   **Responsive Layout System:**
+    *   Device-adaptive design (iPhone SE → iPad Pro)
+    *   6 device classifications with optimized spacing/typography
+    *   Dynamic layout calculation with environmental context
+*   **Voice-Enhanced Interactions:**
+    *   Ambient voice detection with visual Glass feedback
+    *   Multimodal interaction (touch + voice seamlessly combined)
+    *   Conversational AI with 6-state orchestration system
+*   **Content Constellation Features:**
+    *   Intelligent content relationship detection and visualization
+    *   Smart workspace creation (travel, projects, home management)
+    *   Progressive disclosure interface with 4 complexity levels
+*   **Advanced Performance:**
+    *   120fps ProMotion optimization with GPU acceleration
+    *   Intelligent caching with 80%+ hit rate
+    *   Memory management with pressure handling (50MB budget)
+
 ## 4. Features
+
+### 4.0. Interface Selection & Transition Strategy
+
+#### **Dual UX Architecture**
+*   **Legacy Interface:** Current proven interface remains fully functional and unchanged
+*   **Enhanced Interface:** Advanced Liquid Glass + voice + constellation features built in parallel
+*   **Settings Toggle:** "Enable Enhanced Interface" (disabled by default, located in Advanced Settings)
+*   **Instant Switching:** No app restart required, immediate interface transition
+*   **Zero Risk:** Users can switch back to Legacy Interface at any time
+
+#### **Enhanced Interface Evaluation Process**
+**Phase 1: Parallel Development** (Sprint 8)
+- Enhanced Interface built alongside Legacy Interface with zero disruption
+- All existing functionality preserved and accessible through both interfaces
+- User choice determines which interface experience they receive
+
+**Phase 2: Beta Evaluation** (60-90 days post-Sprint 8)
+- Comprehensive evaluation criteria including performance parity, user satisfaction (≥90%), and stability (<0.1% crash rate)
+- Minimum 500 user beta evaluation with voluntary opt-in
+- Accessibility compliance (WCAG AA) maintained or improved
+
+**Phase 3: Gradual Transition** (90-180 days, only if all criteria met)
+- Enhanced Interface becomes default for new users only
+- Existing users maintain Legacy Interface unless they choose to migrate
+- Migration wizard and support resources provided
+
+**Phase 4: Legacy Retirement** (Only after ≥95% voluntary adoption)
+- Legacy Interface removed only after 6+ months of Enhanced Interface stability
+- 120 days advance notice with migration assistance
+- Final removal only after ≥98% voluntary user adoption
+
+#### **Risk Mitigation**
+*   **Zero Disruption Guarantee:** Legacy Interface never modified during Enhanced development
+*   **Data Safety:** Both interfaces share identical data layer - no migration required
+*   **Performance Monitoring:** Real-time metrics ensure Enhanced Interface doesn't degrade experience
+*   **Complete User Control:** Users maintain autonomy in interface choice throughout entire process
 
 ### 4.1. Automated Screenshot Management
 *   **Automatic Import:** The app will monitor the device for new screenshots and automatically import them into its library in the background.
@@ -59,17 +123,18 @@ The user experience is paramount and will be guided by the following principles:
     *   **Incremental Layout Updates:** When data changes occur, layout recalculation is localized to affected nodes and their immediate connections to avoid full map regeneration
     *   **Data Consistency Management:** Robust handling of edge cases including screenshot deletion, user annotation changes, AI re-analysis updates, and manual relationship modifications
 
-### 4.3. Search & Discovery
+### 4.4. Search & Discovery
 *   **Universal Search:** A powerful, fast search engine to find screenshots based on:
     *   Any text content within the screenshot.
     *   Automatically or manually assigned tags.
     *   Recognized objects or scenes.
     *   Metadata (e.g., date, time, source application if identifiable).
 *   **Conversational AI Search:** Natural language search powered by Apple Intelligence, allowing users to:
-    *   Type or speak queries like "find screenshots with blue dress", "show me receipts from Marriott", "find the link to website selling lens"
-    *   Use contextual phrases like "find that restaurant menu from last week" or "show me screenshots about travel plans"
+    *   Type or speak queries (tap microphone button to activate voice) like "find screenshots with blue dress", "show me receipts from Marriott", "find the link to website selling lens"
+    *   Use contextual phrases like "find that restaurant menu from last week" or "show me screenshots about travel plans"  
     *   Search by visual descriptions: "screenshots with QR codes", "images with charts or graphs", "pictures of text messages"
     *   Combine multiple criteria: "find recent screenshots with phone numbers from shopping apps"
+    *   Each voice search requires deliberate microphone button activation for privacy and control
 *   **Siri Integration:** Hands-free search through Apple's virtual assistant with App Intents:
     *   "Hey Siri, search Screenshot Vault for blue dress"
     *   "Hey Siri, find receipts from Marriott in Screenshot Vault"
@@ -83,7 +148,7 @@ The user experience is paramount and will be guided by the following principles:
     *   Provides intelligent query suggestions and auto-completion
 *   **Visual Navigation:** Users can explore their screenshot library through the interconnected mind map, discovering relationships between notes.
 
-### 4.4. User Interaction & Organization
+### 4.5. User Interaction & Organization
 *   **Contextual Menu System:** Long-press contextual menus with haptic feedback providing quick actions (share, copy, delete, tag, favorite, export, duplicate)
 *   **Batch Operations:** Multi-select capabilities with batch selection toolbar for bulk operations
 *   **Swipe Navigation:** Full screen gesture recognition (swipe down to dismiss, left/right to navigate, up for actions)
@@ -106,7 +171,45 @@ The user experience is paramount and will be guided by the following principles:
     *   **QR Code Integration:** Automatic QR code detection with direct action buttons (open URL, save contact, connect to WiFi)
     *   **Text Search & Highlight:** Search within extracted text with copy functionality for specific matches
 
-### 4.5. Intelligent Task Recommendations
+### 4.3. Enhanced Interface Exclusive Features
+
+#### **🎨 Liquid Glass Design System**
+*   **Adaptive Materials:** 5 glass material types that respond to content hierarchy and user interaction
+*   **Environmental Awareness:** Materials adapt to device lighting and ambient conditions
+*   **Physics-Based Interactions:** Visual responses that follow realistic physics for enhanced tactile feedback
+*   **Responsive Layout:** Device-specific optimizations from iPhone SE to iPad Pro with intelligent spacing
+
+#### **🎙️ Voice & Conversational AI**
+*   **Single-Click Activation:** Voice mode activated/deactivated with a single tap on the microphone button
+*   **Session-Based Voice Control:** Each tap starts a voice session that automatically terminates after command completion
+*   **Visual State Feedback:** Clear microphone button states (inactive/listening/processing) with Glass visual effects
+*   **Multimodal Commands:** Seamless combination of touch and voice interactions
+*   **Conversational Search:** Natural language queries like "find my Paris trip planning" or "show receipts from last month"
+*   **Privacy-First Design:** No ambient listening - voice activated only when user explicitly taps microphone button
+*   **Session Management:** 10-second timeout with automatic return to inactive state
+
+#### **🌌 Content Constellation Intelligence**
+*   **Smart Content Grouping:** AI-powered detection of related screenshots (travel, projects, events, shopping)
+*   **Workspace Creation:** Automatic workspace generation for detected content groups with progress tracking
+*   **Relationship Visualization:** Interactive mind map showing connections between related screenshots
+*   **Temporal Context:** Time-aware content organization with completion tracking and milestone suggestions
+*   **Proactive Insights:** AI suggests missing components and next steps for incomplete content groups
+
+#### **🧠 Intelligent Triage System**
+*   **Relevancy Analysis:** AI-powered assessment of screenshot value and freshness
+*   **Smart Cleanup Suggestions:** Identification of outdated, duplicate, or obsolete content
+*   **Voice-Driven Triage:** Single-tap voice commands for content cleanup ("delete old marketing screenshots")
+*   **Deliberate Voice Actions:** Each voice command requires separate microphone button activation for safety
+*   **Batch Operations:** Efficient bulk management with undo functionality
+*   **Preservation Logic:** Intelligent protection of important content while suggesting cleanup candidates
+
+#### **⚡ Progressive Disclosure Interface**
+*   **4 Complexity Levels:** Interface adapts from simple gallery to advanced constellation view based on user needs
+*   **Mode Switching:** Gallery → Constellation → Exploration → Search modes with fluid transitions
+*   **Context Pills Navigation:** Horizontal navigation between content workspaces and categories
+*   **Unified Action Bar:** Bottom-mounted controls that adapt to current mode and selected content
+
+### 4.6. Intelligent Task Recommendations
 *   **Context-Aware Task Suggestions:** AI-powered analysis of screenshot content to suggest relevant actions and follow-up tasks:
     *   **Event Creation:** Automatically detect event information (dates, times, locations, event names) and suggest creating calendar events
     *   **Task Management:** Identify actionable items and suggest creating reminders or tasks (apply for job, buy item, follow up on inquiry)
@@ -159,7 +262,7 @@ The user experience is paramount and will be guided by the following principles:
     *   **Photos Framework:** For observing and fetching screenshots from the user's library.
     *   **SwiftUI:** To build a modern, responsive, and fluid user interface that embodies the design principles.
     *   **SwiftData:** For robust, on-device storage (preferred over Core Data for new projects).
-    *   **Speech Framework:** For voice-to-text conversion enabling spoken search queries.
+    *   **Speech Framework:** For session-based voice-to-text conversion with single-tap activation enabling spoken search queries.
     *   **Foundation Framework:** For comprehensive text processing, pattern matching, and data type recognition (URLs, phone numbers, emails, addresses).
     *   **AVFoundation:** For QR code detection and processing with real-time camera integration.
     *   **MessageUI & EventKit:** For smart actions like creating contacts, calendar events, and sending messages from extracted data.
@@ -266,100 +369,87 @@ The user experience is paramount and will be guided by the following principles:
 *   **Performance Testing**: Comprehensive testing frameworks for all animation and interaction systems
 *   **Accessibility Integration**: Full VoiceOver support and assistive technology compatibility
 
-### Current: Sprint 5 - Conversational AI Search & Intelligence ⏳ **IN PROGRESS**
+### Sprint 5 - Conversational AI Search & Intelligence ✅ **COMPLETE**
 **Goal:** Implement natural language search capabilities using Apple Intelligence for intuitive, conversational screenshot discovery.
 
-**Latest Achievement:** Successfully resolved conversational search issue where natural language queries with intent words (like "find", "show", "search") were failing to return results. Enhanced search robustness analysis completed with comprehensive improvement roadmap.
+**Achievement:** Successfully implemented comprehensive conversational AI search with 5-tier progressive fallback system, entity extraction across 16 types, and Glass design integration with 6-state orchestration.
 
-**Progress:** Sub-Sprint 5.1.3 Complete ✅ | Phase 5.1.4 Search Robustness Enhancement In Progress ⏳
+**Status:** All Sub-Sprints 5.1-5.4 Complete with Glass conversational experience and performance optimization
 
-**Atomic Implementation Approach:** Sprint 5 is broken down into 4 sub-sprints with 12 atomic units, each designed for 1-3 day implementation cycles with clear deliverables, integration tests, and functional tests.
+### Sprint 6 - Advanced Intelligence & Visualization ✅ **COMPLETE**  
+**Goal:** Implement comprehensive semantic processing pipeline and mind map generation with Glass design system unification.
 
-**Sub-Sprint 5.1 - Natural Language Processing Foundation** (Week 1)
-*Atomic Units: 5.1.1-5.1.3*
-*   **5.1.1 Core ML Setup & Query Parser Foundation:** ✅ **COMPLETED** - Basic QueryParserService with tokenization and intent classification
-    *   ✅ Integration Test: Parse "find blue dress" → returns SearchIntent with visual attributes
-    *   ✅ Functional Test: Verified 95% accuracy on natural language queries including temporal filtering
-    *   ✅ Implementation: SimpleQueryParser with NLLanguageRecognizer, temporal filtering, real-time AI search indicator
-*   **5.1.2 Entity Extraction Engine:** ✅ **COMPLETED** - Advanced entity recognition with 16 entity types and 90%+ accuracy
-    *   ✅ Integration Test: "blue dress from last Tuesday" → extract color:blue, object:dress, time:lastTuesday
-    *   ✅ Functional Test: Achieved 90%+ entity extraction accuracy across all entity types
-    *   ✅ Implementation: EntityExtractionService with NLTagger, custom pattern matching, multi-language support (11 languages)
-    *   ✅ Performance: <5ms processing time, confidence scoring, enhanced search integration
-*   **5.1.3 Semantic Mapping & Intent Classification:** ✅ **COMPLETED** - Advanced intent classifier with enhanced conversational query handling
-    *   ✅ Integration Test: "show me receipts" maps to SearchIntent(type: textual, category: receipt)
-    *   ✅ Functional Test: 95% intent classification accuracy with confidence >0.8
-    *   ✅ Implementation: Intent word filtering, enhanced query processing, improved conversational search robustness
-    *   ✅ Bug Fix: Resolved issue where queries like "Find red dress in screenshots" returned no results
+**Latest Achievement:** Sprint 6.6 Glass Design System Unification completed - migrated all views from Material Design to responsive Glass Design with complete dark mode support and device-adaptive layouts.
 
-**Sub-Sprint 5.2 - Enhanced Content Analysis** (Week 2)
-*Atomic Units: 5.2.1-5.2.3*
-*   **5.2.1 Enhanced Vision Processing:** Advanced object detection and scene classification with 85% accuracy
-    *   Integration Test: Process receipt image → detect objects:[receipt, text], scene:document, colors:[white, black]
-    *   Functional Test: 85% object detection accuracy on diverse screenshot types
-*   **5.2.2 Color Analysis & Visual Embeddings:** Color extraction with K-means clustering and visual similarity embeddings
-    *   Integration Test: Blue dress image → colors:[navy, blue, white], embedding:vector[512]
-    *   Functional Test: Color queries match 90% of manually tagged images
-*   **5.2.3 Semantic Tagging & Content Understanding:** AI-generated semantic tags for enhanced searchability with business entity recognition
-    *   Integration Test: Receipt screenshot → tags:[receipt, marriott, hotel, expense, payment]
-    *   Functional Test: Semantic tags improve search relevance by 40% over keyword matching
+**Status:** Sub-Sprints 6.5.1, 6.5.2, 6.6 Complete ✅ | Ready for Sprint 8 Enhanced Interface Development
 
-**Sub-Sprint 5.3 - Conversational Search Interface & Siri Integration** (Week 3)
-*Atomic Units: 5.3.1-5.3.3*
-*   **5.3.1 Speech Recognition & Voice Input:** Real-time voice-to-text with 95% transcription accuracy in quiet environments
-    *   Integration Test: Voice input "find blue dress" → parsed SearchQuery with correct intent
-    *   Functional Test: 95% transcription accuracy in quiet environment, 85% with background noise
-*   **5.3.2 Siri App Intents Foundation:** Custom SearchScreenshotsIntent with parameter validation and error handling
-    *   Integration Test: "Hey Siri, search Screenshot Vault for receipts" → launches intent successfully
-    *   Functional Test: Siri recognizes and executes 10 different search phrases correctly
-*   **5.3.3 Conversational Search UI & Siri Response Interface:** Enhanced search interface with voice feedback and Siri result presentation
-    *   Integration Test: Voice search shows live transcription and query understanding hints
-    *   Functional Test: Users complete voice searches 50% faster than typing
+### Current: Sprint 8 - Enhanced Interface Development ⏳ **PLANNED**
+**Goal:** Develop comprehensive Enhanced Interface with Liquid Glass design, voice interactions, content constellation features, and intelligent triage capabilities while maintaining complete Legacy Interface functionality.
 
-**Sub-Sprint 5.4 - Performance & Optimization** (Week 4)
-*Atomic Units: 5.4.1-5.4.3*
-*   **5.4.1 On-Device AI Performance Optimization:** Optimized AI pipeline with <200ms query response time for 95% of queries
-    *   Integration Test: Complex query "blue dress receipts last week" processes in <200ms
-    *   Functional Test: 95% of queries respond within performance threshold
-*   **5.4.2 Intelligent Semantic Caching:** Smart caching system with >80% hit rate and <100MB memory usage
-    *   Integration Test: Repeated semantic queries use cached results and respond in <50ms
-    *   Functional Test: Cache hit rate >80% for common queries, memory usage <100MB
-*   **5.4.3 Memory Management & Background Processing:** Efficient memory usage with <150MB peak footprint during AI processing
-    *   Integration Test: App maintains <150MB memory footprint during intensive AI processing
-    *   Functional Test: Background processing doesn't impact main thread performance
+**Dual UX Strategy:** Build Enhanced Interface in parallel with Legacy Interface, giving users complete control over their experience through Settings toggle.
 
-**Sprint 5 Success Criteria:**
-*   ✅ Natural language search with 95% query understanding accuracy (ACHIEVED)
-*   ✅ Entity extraction with 90%+ accuracy across 16 entity types (ACHIEVED)
-*   ✅ Multi-language support for 11 languages (ACHIEVED)
-*   ✅ Intent word filtering for improved conversational search (ACHIEVED)
-*   ✅ <100ms response time for enhanced search queries (ACHIEVED - exceeded target)
-*   ✅ <50MB memory usage during AI processing (ACHIEVED - exceeded target)
-*   ⏳ Voice input with 95% transcription accuracy in normal conditions (PLANNED)
-*   ⏳ Siri integration with 10+ supported search phrases and reliable recognition (PLANNED)
-*   ⏳ Semantic content analysis with 85% object detection accuracy (PLANNED)
-*   ⏳ Intelligent caching with >80% hit rate for common searches (PLANNED)
-*   ⏳ Search robustness enhancements (fuzzy matching, synonyms, progressive fallback) (IN PROGRESS)
-**Example Queries to Support:**
-*   "find screenshots with blue dress" → Visual object detection + color analysis
-*   "show me receipts from Marriott" → Text recognition + business entity extraction
-*   "find the link to website selling lens" → URL detection + e-commerce classification
-*   "screenshots from last Tuesday with phone numbers" → Temporal filtering + pattern recognition
-*   "find that restaurant menu I saved" → Content type classification + temporal context
+**Implementation Approach:** 25 atomic daily iterations across 5 weeks, each maintaining app functionality while incrementally building Enhanced Interface capabilities.
 
-**Siri Integration Examples:**
-*   "Hey Siri, search Screenshot Vault for blue dress"
-*   "Hey Siri, find receipts from Marriott in Screenshot Vault"  
-*   "Hey Siri, show me screenshots with website links"
-*   "Hey Siri, find screenshots from last Tuesday with phone numbers"
-*   "Hey Siri, search Screenshot Vault for restaurant menus"
+#### **Sprint 8 Structure:**
+*   **Iteration 8.1**: Liquid Glass Foundation (Days 1-5) - Core material system and Settings toggle
+*   **Iteration 8.2**: Adaptive Content Hub Foundation (Days 6-10) - Mode infrastructure and UI preparation  
+*   **Iteration 8.3**: Voice Integration Foundation (Days 11-15) - Voice recognition and command processing
+*   **Iteration 8.4**: Constellation Content Integration (Days 16-20) - Content relationship detection and workspace creation
+*   **Iteration 8.5**: Intelligent Triage Integration (Days 21-25) - Content cleanup and relevancy management
+
+#### **Success Criteria:**
+*   Enhanced Interface achieves feature parity with Legacy Interface
+*   Settings toggle allows instant switching between interfaces
+*   Performance maintained (≤110% memory usage, ≥Legacy response times)
+*   Voice commands functional for Enhanced Interface users only
+*   Content constellation detection and workspace creation working
+*   Intelligent triage system operational with voice and touch controls
+
+**Legacy Interface Preservation:** Zero changes to existing user experience - all current functionality remains identical for Legacy Interface users throughout Sprint 8 development.
+
+**Atomic Implementation Approach:** Sprint 8 uses 25 atomic daily iterations, each designed for 1-day implementation cycles with clear deliverables, integration strategies, verification criteria, and rollback plans.
+
+### Enhanced Interface Transition Roadmap
+
+#### **Post-Sprint 8: Enhanced Interface Evaluation**
+**Timeline:** 60-90 days minimum
+**Objective:** Comprehensive evaluation before any Legacy Interface considerations
+
+**Phase 1: Technical Validation**
+*   Performance benchmarking against Legacy Interface
+*   Memory usage optimization and battery impact analysis
+*   Accessibility compliance verification (WCAG AA)
+*   Crash rate monitoring (<0.1% requirement)
+
+**Phase 2: User Experience Validation**  
+*   Beta user program (minimum 500 participants)
+*   User satisfaction measurement (≥90% target)
+*   Task completion efficiency comparison
+*   Learning curve assessment for new users
+
+**Phase 3: Stability Confirmation**
+*   6+ months operational stability requirement
+*   Support load impact analysis
+*   App Store rating maintenance verification
+*   User retention impact assessment
+
+#### **Enhanced Interface Feature Adoption Strategy**
+**Conservative Approach:** Only after proven success
+*   ≥95% voluntary user adoption of Enhanced Interface
+*   ≥98% user satisfaction with Enhanced Interface experience  
+*   Zero decrease in overall app usage metrics
+*   Complete feature parity achievement
+
+**Migration Support:**
+*   120-day advance notice for any Legacy Interface changes
+*   Personal migration assistance for users needing support
+*   Migration wizard with preview mode
+*   Instant rollback capability maintained throughout transition
 
 ### Future Roadmap:
-*   **Sprint 6:** Intelligent Mind Map - AI-powered contextual mind map with semantic relationship discovery
-*   **Sprint 7:** Advanced Intelligence & Contextual Understanding - Multi-modal AI analysis with collaborative features
-*   **Sprint 8:** Production Excellence & Task Recommendations - Enterprise-grade quality with intelligent task suggestions and workflow automation
-*   **Sprint 9:** Ecosystem Integration & Advanced Workflows - Cross-platform sync and professional automation
-*   **Sprint 10:** Comprehensive Optimization & Final Polish - 120fps ProMotion, accessibility compliance, and production readiness
+*   **Sprint 9:** Advanced Personalization & Intelligence - Machine learning user preference adaptation and predictive content organization
+*   **Sprint 10:** Ecosystem Integration & Automation - Cross-platform sync, professional workflow automation, and enterprise features  
+*   **Sprint 11:** Production Excellence & Performance - Final optimization, comprehensive testing, and App Store readiness
 
 ## 7. Optimized User Workflows
 

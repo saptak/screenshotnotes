@@ -53,9 +53,27 @@ ScreenshotNotes is an iOS app for intelligent screenshot organization with OCR c
 - **Dark Mode Support**: Complete dark/light theme adaptation across all views
 
 ### Current Sprint
-**Sprint 6: Advanced Intelligence & Visualization** (Phase 6.6 Complete, Phase 6.7+ Available)
+**Sprint 8: Enhanced Interface Development** (Planned - 25 atomic daily iterations with Dual UX Architecture)
 
 ## Key Technical Decisions
+
+### Enhanced Interface Development Strategy (Sprint 8)
+- **Implementation**: Dual UX Architecture with Legacy Interface + Enhanced Interface
+- **Status**: Planned for Sprint 8 with 25 atomic daily iterations
+- **User Control**: Settings toggle "Enable Enhanced Interface" (disabled by default)
+- **Zero Risk Strategy**: Legacy Interface remains completely unchanged and functional
+- **Features**:
+  - **Single-Click Voice**: Tap-to-activate voice commands with session management
+  - **Content Constellation**: Smart grouping of travel, projects, events with workspace creation
+  - **Intelligent Triage**: AI-powered content cleanup with voice and touch controls
+  - **Progressive Disclosure**: 4-level complexity adaptation (Gallery → Constellation → Exploration → Search)
+  - **Liquid Glass Foundation**: Advanced material system with responsive device adaptation
+- **Evaluation Process**: 60-90 day beta evaluation with strict criteria before any Legacy Interface changes
+- **Files**:
+  - `Settings/InterfaceSettings.swift` (interface toggle management)
+  - `Voice/VoiceSessionManager.swift` (single-click voice activation)
+  - `AI/ContentConstellationDetector.swift` (smart content grouping)
+  - `Services/IntelligentTriageService.swift` (content relevancy analysis)
 
 ### Glass Design System Unification (Sub-Sprint 6.6)
 - **Implementation**: Complete migration from Material Design to Glass Design system
@@ -243,6 +261,39 @@ All major functionality is implemented as services:
 5. **Handle minimum data requirements** (3+ screenshots with semantic data)
 6. **Test incremental updates** when new screenshots are added
 
+### When Working on Enhanced Interface (Sprint 8)
+1. **Maintain Dual UX Architecture** - Legacy Interface must remain unchanged and functional
+2. **Use InterfaceSettings.swift** for all interface toggle management
+3. **Test both interfaces** ensure feature parity and performance consistency
+4. **Implement feature flags** to control Enhanced Interface feature access
+5. **Document rollback strategies** for each atomic iteration
+6. **Validate Settings toggle** ensures instant switching without app restart
+
+### When Working on Voice Features
+1. **Use single-click activation** - no ambient listening or continuous voice detection
+2. **Implement session management** with VoiceSessionManager for clear start/end boundaries
+3. **Add visual state feedback** with microphone button states (inactive/listening/processing)
+4. **Include session timeout** (10 seconds) with automatic return to inactive state
+5. **Test deliberate activation** ensure each voice command requires explicit user intent
+6. **Integrate haptic feedback** for voice session start/end confirmation
+7. **Validate privacy compliance** no voice data stored or transmitted
+
+### When Working on Content Constellation
+1. **Use ContentConstellationDetector** for smart content grouping algorithms
+2. **Implement workspace creation** for detected content groups (travel, projects, events)
+3. **Leverage existing semantic data** entities, tags, relationships from semantic processing
+4. **Add progress tracking** for workspace completion and milestone suggestions
+5. **Test relationship accuracy** validate content grouping with user scenarios
+6. **Monitor performance** ensure constellation detection doesn't impact app responsiveness
+
+### When Working on Intelligent Triage
+1. **Use IntelligentTriageService** for relevancy analysis and cleanup suggestions
+2. **Implement safety mechanisms** confirmation dialogs and undo functionality
+3. **Add voice triage support** with single-click activation for each command
+4. **Preserve important content** intelligent protection logic for valuable screenshots
+5. **Test batch operations** ensure efficient bulk management with performance monitoring
+6. **Validate accessibility** triage operations accessible via VoiceOver and assistive technologies
+
 ### When Adding New Features
 1. **Create service layer** for complex functionality
 2. **Include performance tests** for animation-heavy features
@@ -251,6 +302,7 @@ All major functionality is implemented as services:
 5. **Integrate haptic feedback** for enhanced user experience
 6. **Monitor Glass performance** if using Glass components
 7. **Integrate with semantic pipeline** if AI processing is needed
+8. **Consider interface compatibility** ensure features work appropriately in both Legacy and Enhanced interfaces
 
 ## Common Commands for Development
 
@@ -274,6 +326,10 @@ xcodebuild test -project ScreenshotNotes.xcodeproj -scheme ScreenshotNotes -dest
 - Validate mind map generation performance and cache hit rates
 - Monitor entity extraction accuracy and processing times
 - Test haptic feedback efficiency and responsiveness
+- **Enhanced Interface Testing**: Validate interface toggle switching, feature parity, performance consistency
+- **Voice Session Testing**: Verify single-click activation, session management, timeout handling
+- **Content Constellation Testing**: Validate grouping accuracy, workspace creation, relationship detection
+- **Triage Performance Testing**: Monitor relevancy analysis efficiency, batch operation performance
 
 ## Known Issues & Workarounds
 

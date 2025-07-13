@@ -466,7 +466,7 @@ class BackgroundLayoutProcessor: ObservableObject {
         // Implement force-directed layout algorithm
         // Simplified implementation for now
         
-        guard let modelContext = modelContext else { return CachedMindMapLayoutData(nodes: [], connections: []) }
+        guard modelContext != nil else { return CachedMindMapLayoutData(nodes: [], connections: []) }
         
         // Generate nodes using screenshot IDs to avoid Sendable issues
         let nodes = screenshotIDs.enumerated().map { index, _ in
