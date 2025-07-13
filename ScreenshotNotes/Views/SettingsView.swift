@@ -8,6 +8,7 @@ struct SettingsView: View {
     @StateObject private var performanceMonitor = GalleryPerformanceMonitor.shared
     @StateObject private var thumbnailService = ThumbnailService.shared
     @StateObject private var interfaceSettings = InterfaceSettings()
+    @StateObject private var liquidGlassMonitor = LiquidGlassPerformanceMonitor.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Query private var screenshots: [Screenshot]
@@ -357,6 +358,17 @@ struct SettingsView: View {
                     }
                 }
                 
+                // A/B Testing Section (Sprint 8.1.2)
+                if interfaceSettings.isUsingEnhancedInterface {
+                    Section {
+                        abTestingControls
+                    } header: {
+                        Text("Material Testing")
+                    } footer: {
+                        Text("Help us improve the Enhanced Interface by testing different Liquid Glass materials and providing feedback.")
+                    }
+                }
+                
                 Section {
                     Button("Reset to Defaults") {
                         settingsService.resetToDefaults()
@@ -367,6 +379,23 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .background {
+                // Sprint 8.1.2: Liquid Glass Preview Integration with smooth transitions
+                ZStack {
+                    // Legacy background always present for smooth transitions
+                    legacyBackground
+                    
+                    // Liquid Glass background with animated opacity
+                    if interfaceSettings.isUsingEnhancedInterface {
+                        liquidGlassBackground
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .scale(scale: 1.05)),
+                                removal: .opacity.combined(with: .scale(scale: 0.95))
+                            ))
+                    }
+                }
+                .animation(.easeInOut(duration: 0.6), value: interfaceSettings.isUsingEnhancedInterface)
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
@@ -404,6 +433,386 @@ struct SettingsView: View {
                 )
             }
         }
+        .onAppear {
+            // Start monitoring when Enhanced Interface is active
+            if interfaceSettings.isUsingEnhancedInterface {
+                liquidGlassMonitor.startMonitoring()
+            }
+        }
+        .onDisappear {
+            // Stop monitoring when leaving settings
+            liquidGlassMonitor.stopMonitoring()
+        }
+        .onChange(of: interfaceSettings.isUsingEnhancedInterface) { _, isUsing in
+            // Track interface state changes
+            if isUsing {
+                liquidGlassMonitor.startMonitoring()
+            } else {
+                liquidGlassMonitor.stopMonitoring()
+            }
+        }
+        .onChange(of: interfaceSettings.abTestMaterialType) { _, newMaterial in
+            // Track material switches for A/B testing
+            liquidGlassMonitor.recordMaterialSwitch()
+        }
+        .onChange(of: interfaceSettings.abTestRating) { _, newRating in
+            // Record user rating for current material
+            if newRating > 0 {
+                liquidGlassMonitor.recordMaterialRating(
+                    material: interfaceSettings.abTestMaterialType.rawValue,
+                    rating: newRating
+                )
+            }
+        }
+    }
+    
+    // MARK: - Background Views (Sprint 8.1.2)
+    
+    /// Liquid Glass background for Enhanced Interface
+    @ViewBuilder
+    private var liquidGlassBackground: some View {
+        // Create a beautiful gradient backdrop for the Liquid Glass effect
+        LinearGradient(
+            colors: [
+                Color.blue.opacity(0.15),
+                Color.purple.opacity(0.12),
+                Color.cyan.opacity(0.08),
+                Color.pink.opacity(0.10)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea(.all)
+        .overlay {
+            // Add the Liquid Glass material overlay with A/B testing support
+            Rectangle()
+                .liquidGlassBackground(
+                    material: interfaceSettings.isABTestingEnabled ? 
+                        interfaceSettings.abTestMaterialType : .gossamer,
+                    cornerRadius: 0,
+                    specularHighlights: true
+                )
+                .ignoresSafeArea(.all)
+        }
+    }
+    
+    /// Legacy background for standard interface
+    @ViewBuilder
+    private var legacyBackground: some View {
+        // Standard system background - maintains existing appearance
+        Color(.systemGroupedBackground)
+            .ignoresSafeArea(.all)
+    }
+    
+    // MARK: - A/B Testing Controls (Sprint 8.1.2)
+    
+    @ViewBuilder
+    private var abTestingControls: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // A/B Testing Toggle
+            HStack {
+                Image(systemName: "flask")
+                    .foregroundColor(.orange)
+                    .font(.title2)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Material Testing Mode")
+                        .font(.headline)
+                    Text("Test different Liquid Glass materials")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Toggle("", isOn: $interfaceSettings.isABTestingEnabled)
+            }
+            
+            if interfaceSettings.isABTestingEnabled {
+                Divider()
+                
+                // Material Selection
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Test Material")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    
+                    materialSelectionGrid
+                }
+                
+                Divider()
+                
+                // Feedback Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Rate this material")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    
+                    ratingStars
+                    
+                    if interfaceSettings.hasProvidedABTestFeedback {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("Thank you for your feedback!")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                
+                // Performance Monitoring Display
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Performance Metrics")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    
+                    performanceMetricsView
+                }
+                
+                Divider()
+                
+                // Enhanced Interface Feedback Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Share Your Experience")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    
+                    feedbackSection
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    
+    @ViewBuilder
+    private var materialSelectionGrid: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+            ForEach(LiquidGlassMaterial.MaterialType.allCases, id: \.self) { material in
+                Button(action: {
+                    interfaceSettings.abTestMaterialType = material
+                    interfaceSettings.abTestRating = 0 // Reset rating when material changes
+                }) {
+                    VStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 8)
+                            .frame(height: 40)
+                            .liquidGlassBackground(material: material, cornerRadius: 8)
+                            .overlay {
+                                if interfaceSettings.abTestMaterialType == material {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .strokeBorder(.blue, lineWidth: 2)
+                                }
+                            }
+                        
+                        Text(material.rawValue.capitalized)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var ratingStars: some View {
+        HStack(spacing: 8) {
+            ForEach(1...5, id: \.self) { star in
+                Button(action: {
+                    interfaceSettings.abTestRating = star
+                }) {
+                    Image(systemName: star <= interfaceSettings.abTestRating ? "star.fill" : "star")
+                        .foregroundColor(star <= interfaceSettings.abTestRating ? .yellow : .gray)
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            if interfaceSettings.abTestRating > 0 {
+                Text("(\(interfaceSettings.abTestRating)/5)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var performanceMetricsView: some View {
+        VStack(spacing: 8) {
+            // Performance Status
+            HStack {
+                Circle()
+                    .fill(liquidGlassMonitor.performanceWarningLevel.color)
+                    .frame(width: 8, height: 8)
+                
+                Text(liquidGlassMonitor.performanceWarningLevel.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                if liquidGlassMonitor.isLiquidGlassActive {
+                    HStack(spacing: 4) {
+                        Image(systemName: "circle.fill")
+                            .foregroundColor(.green)
+                            .font(.caption2)
+                        Text("Active")
+                            .font(.caption2)
+                            .foregroundColor(.green)
+                    }
+                }
+            }
+            
+            // Performance Metrics Grid
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                performanceMetricCard(
+                    title: "FPS",
+                    value: "\(Int(liquidGlassMonitor.liquidGlassFPS))",
+                    icon: "speedometer",
+                    color: liquidGlassMonitor.liquidGlassFPS >= 45 ? .green : .orange
+                )
+                
+                performanceMetricCard(
+                    title: "Memory",
+                    value: "\(Int(liquidGlassMonitor.liquidGlassMemoryUsage))MB",
+                    icon: "memorychip",
+                    color: liquidGlassMonitor.liquidGlassMemoryUsage < 100 ? .green : .orange
+                )
+                
+                performanceMetricCard(
+                    title: "Session",
+                    value: formatDuration(liquidGlassMonitor.enhancedInterfaceSessionDuration),
+                    icon: "clock",
+                    color: .blue
+                )
+                
+                performanceMetricCard(
+                    title: "Switches",
+                    value: "\(liquidGlassMonitor.materialSwitchCount)",
+                    icon: "arrow.triangle.2.circlepath",
+                    color: .purple
+                )
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func performanceMetricCard(title: String, value: String, icon: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .foregroundColor(color)
+                    .font(.caption)
+                Text(title)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            
+            Text(value)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(Color(.systemGray6))
+        .cornerRadius(8)
+    }
+    
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        if duration < 60 {
+            return "\(Int(duration))s"
+        } else if duration < 3600 {
+            return "\(Int(duration / 60))m"
+        } else {
+            return "\(Int(duration / 3600))h"
+        }
+    }
+    
+    @ViewBuilder
+    private var feedbackSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Quick feedback buttons
+            VStack(alignment: .leading, spacing: 8) {
+                Text("How do you feel about the Enhanced Interface?")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                HStack(spacing: 12) {
+                    feedbackButton(emoji: "😍", label: "Love it", action: {
+                        interfaceSettings.enhancedInterfaceFeedback = "Love it - " + (interfaceSettings.enhancedInterfaceFeedback.isEmpty ? "Amazing experience!" : interfaceSettings.enhancedInterfaceFeedback)
+                    })
+                    
+                    feedbackButton(emoji: "👍", label: "Like it", action: {
+                        interfaceSettings.enhancedInterfaceFeedback = "Like it - " + (interfaceSettings.enhancedInterfaceFeedback.isEmpty ? "Good improvements!" : interfaceSettings.enhancedInterfaceFeedback)
+                    })
+                    
+                    feedbackButton(emoji: "😐", label: "Neutral", action: {
+                        interfaceSettings.enhancedInterfaceFeedback = "Neutral - " + (interfaceSettings.enhancedInterfaceFeedback.isEmpty ? "It's okay." : interfaceSettings.enhancedInterfaceFeedback)
+                    })
+                    
+                    feedbackButton(emoji: "👎", label: "Dislike", action: {
+                        interfaceSettings.enhancedInterfaceFeedback = "Dislike - " + (interfaceSettings.enhancedInterfaceFeedback.isEmpty ? "Needs improvement." : interfaceSettings.enhancedInterfaceFeedback)
+                    })
+                }
+            }
+            
+            // Beta participation toggle
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Join Beta Testing")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                    Text("Get early access to new features")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Toggle("", isOn: $interfaceSettings.wantsBetaParticipation)
+                    .scaleEffect(0.8)
+            }
+            
+            // Feedback summary
+            if !interfaceSettings.enhancedInterfaceFeedback.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Your Feedback:")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+                    
+                    Text(interfaceSettings.enhancedInterfaceFeedback)
+                        .font(.caption2)
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(6)
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func feedbackButton(emoji: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                Text(emoji)
+                    .font(.title3)
+                Text(label)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(Color(.systemGray6))
+            .cornerRadius(8)
+        }
+        .buttonStyle(.plain)
     }
     
     // MARK: - Bulk Deletion Functions

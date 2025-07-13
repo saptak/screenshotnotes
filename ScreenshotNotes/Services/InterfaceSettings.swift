@@ -90,6 +90,14 @@ class InterfaceSettings: ObservableObject {
         // In production, this would be false by default
         self.showEnhancedInterfaceOptions = UserDefaults.standard.object(forKey: "showEnhancedInterfaceOptions") as? Bool ?? true
         
+        // Load A/B testing settings (Sprint 8.1.2)
+        self.isABTestingEnabled = UserDefaults.standard.bool(forKey: "isABTestingEnabled")
+        let savedMaterialType = UserDefaults.standard.string(forKey: "abTestMaterialType")
+        self.abTestMaterialType = LiquidGlassMaterial.MaterialType(rawValue: savedMaterialType ?? "crystal") ?? .crystal
+        self.abTestRating = UserDefaults.standard.integer(forKey: "abTestRating")
+        self.enhancedInterfaceFeedback = UserDefaults.standard.string(forKey: "enhancedInterfaceFeedback") ?? ""
+        self.wantsBetaParticipation = UserDefaults.standard.bool(forKey: "wantsBetaParticipation")
+        
         // Ensure consistency between properties
         if savedEnabled && preference == .legacy {
             self.isEnhancedInterfaceEnabled = false
@@ -178,6 +186,48 @@ class InterfaceSettings: ObservableObject {
     /// Whether Liquid Glass materials are available (Enhanced Interface only)
     var isLiquidGlassEnabled: Bool {
         return isUsingEnhancedInterface
+    }
+    
+    // MARK: - A/B Testing Support (Sprint 8.1.2)
+    
+    /// Whether A/B testing mode is enabled for material comparison
+    @Published var isABTestingEnabled: Bool = false {
+        didSet {
+            UserDefaults.standard.set(isABTestingEnabled, forKey: "isABTestingEnabled")
+        }
+    }
+    
+    /// Current material being tested in A/B mode
+    @Published var abTestMaterialType: LiquidGlassMaterial.MaterialType = .crystal {
+        didSet {
+            UserDefaults.standard.set(abTestMaterialType.rawValue, forKey: "abTestMaterialType")
+        }
+    }
+    
+    /// User rating for current A/B test (1-5 stars)
+    @Published var abTestRating: Int = 0 {
+        didSet {
+            UserDefaults.standard.set(abTestRating, forKey: "abTestRating")
+        }
+    }
+    
+    /// Whether user has provided feedback for current A/B test
+    var hasProvidedABTestFeedback: Bool {
+        return abTestRating > 0
+    }
+    
+    /// User feedback comments for Enhanced Interface
+    @Published var enhancedInterfaceFeedback: String = "" {
+        didSet {
+            UserDefaults.standard.set(enhancedInterfaceFeedback, forKey: "enhancedInterfaceFeedback")
+        }
+    }
+    
+    /// Whether user wants to participate in future beta testing
+    @Published var wantsBetaParticipation: Bool = false {
+        didSet {
+            UserDefaults.standard.set(wantsBetaParticipation, forKey: "wantsBetaParticipation")
+        }
     }
 }
 
