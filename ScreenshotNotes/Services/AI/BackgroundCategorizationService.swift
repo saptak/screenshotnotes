@@ -170,7 +170,7 @@ public final class BackgroundCategorizationService: ObservableObject {
         await withTaskGroup(of: Void.self) { group in
             for screenshotID in screenshotIDs {
                 group.addTask { [weak self] in
-                    if let screenshot = await modelContext.model(for: screenshotID) as? Screenshot {
+                    if let screenshot = modelContext.model(for: screenshotID) as? Screenshot {
                         await self?.processScreenshotWithRetry(screenshot, modelContext: modelContext)
                     }
                 }

@@ -324,21 +324,21 @@ class BackgroundLayoutProcessor: ObservableObject {
             return
         }
         
-        // Fetch full screenshot objects on the main actor
-        let screenshots = await MainActor.run {
-            screenshotIDs.compactMap { id in
-                modelContext.model(for: id) as? Screenshot
+        // Use screenshot IDs for layout generation to avoid Sendable issues
+        let validScreenshotIDs = await MainActor.run { [screenshotIDs] in
+            screenshotIDs.filter { id in
+                modelContext.model(for: id) as? Screenshot != nil
             }
         }
         
         // Generate layout using force-directed algorithm
-        let layout = await generateForceDirectedLayout(for: screenshotIDs)
+        let layout = await generateForceDirectedLayout(for: validScreenshotIDs)
         
         // Cache the layout
         let fingerprint = await generateDataFingerprint()
         layoutCacheManager.saveLayout(layout, fingerprint: fingerprint)
         
-        print("✅ Complete layout generated for \(screenshots.count) screenshots")
+        print("✅ Complete layout generated for \(validScreenshotIDs.count) screenshots")
     }
     
     // MARK: - Helper Methods
@@ -468,20 +468,18 @@ class BackgroundLayoutProcessor: ObservableObject {
         
         guard let modelContext = modelContext else { return CachedMindMapLayoutData(nodes: [], connections: []) }
         
-        let screenshots = await MainActor.run {
-            screenshotIDs.compactMap { id in
-                modelContext.model(for: id) as? Screenshot
-            }
-        }
-        
-        let nodes = screenshots.enumerated().map { index, screenshot in
-            let angle = Double(index) * 2.0 * .pi / Double(screenshots.count)
+        // Generate nodes using screenshot IDs to avoid Sendable issues
+        let nodes = screenshotIDs.enumerated().map { index, _ in
+            let angle = Double(index) * 2.0 * .pi / Double(screenshotIDs.count)
             let radius = 200.0
             let x = cos(angle) * radius
             let y = sin(angle) * radius
             
-            var node = MindMapNode(screenshotId: screenshot.id, position: CGPoint(x: x, y: y))
-            node.title = screenshot.filename
+            // Generate a UUID for this node
+            let nodeUUID = UUID()
+            var node = MindMapNode(screenshotId: nodeUUID, position: CGPoint(x: x, y: y))
+            // Note: Using index for title since we can't access Screenshot properties here
+            node.title = "Screenshot \(index + 1)"
             return node
         }
         

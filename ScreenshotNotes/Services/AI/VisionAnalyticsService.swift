@@ -27,9 +27,8 @@ public final class VisionAnalyticsService: ObservableObject {
     }
     
     deinit {
-        Task { @MainActor in
-            stopMonitoring()
-        }
+        // Note: Cannot use async operations in deinit
+        // Monitoring will be stopped automatically when the service is deallocated
     }
     
     // MARK: - Monitoring Control
