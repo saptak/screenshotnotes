@@ -489,6 +489,143 @@ struct ScreenshotDetailView: View {
     }
 }
 
+// MARK: - Collapsible Section Components
+
+struct CollapsibleSection<Content: View>: View {
+    let title: String
+    let icon: String
+    let defaultExpanded: Bool
+    let content: () -> Content
+    
+    @State private var isExpanded: Bool
+    @StateObject private var glassSystem = GlassDesignSystem.shared
+    private let hapticService = HapticService.shared
+    
+    init(
+        title: String,
+        icon: String,
+        defaultExpanded: Bool = true,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.title = title
+        self.icon = icon
+        self.defaultExpanded = defaultExpanded
+        self.content = content
+        
+        // Restore saved state or use default
+        let savedKey = "section_\(title.lowercased().replacingOccurrences(of: " ", with: "_"))_expanded"
+        let savedState = UserDefaults.standard.object(forKey: savedKey) as? Bool ?? defaultExpanded
+        self._isExpanded = State(initialValue: savedState)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Section Header
+            Button(action: toggleExpansion) {
+                HStack(spacing: 12) {
+                    // Section Icon
+                    Image(systemName: icon)
+                        .font(.body)
+                        .foregroundColor(.blue)
+                        .frame(width: 20, height: 20)
+                    
+                    // Section Title
+                    Text(title)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    // Expand/Collapse Indicator
+                    Image(systemName: "chevron.down")
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(isExpanded ? 0 : -90))
+                        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isExpanded)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(.regularMaterial)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(.quaternary, lineWidth: 0.5)
+                )
+            }
+            .buttonStyle(.plain)
+            
+            // Section Content
+            if isExpanded {
+                content()
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .top).combined(with: .opacity),
+                        removal: .move(edge: .top).combined(with: .opacity)
+                    ))
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isExpanded)
+    }
+    
+    private func toggleExpansion() {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            isExpanded.toggle()
+        }
+        hapticService.impact(.light)
+        
+        // Save expanded state preference
+        UserDefaults.standard.set(isExpanded, forKey: "section_\(title.lowercased().replacingOccurrences(of: " ", with: "_"))_expanded")
+    }
+}
+
+// MARK: - Enhanced Section Header
+
+struct SectionHeader: View {
+    let title: String
+    let icon: String
+    let isExpanded: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.body)
+                    .foregroundColor(.blue)
+                    .frame(width: 20, height: 20)
+                
+                Text(title)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Image(systemName: "chevron.down")
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+                    .rotationEffect(.degrees(isExpanded ? 0 : -90))
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isExpanded)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(.regularMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(.quaternary, lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Unified Details Panel
 
 struct UnifiedDetailsPanel: View {
@@ -502,29 +639,58 @@ struct UnifiedDetailsPanel: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Extracted Text Section (expanded to take most of the panel)
-            if let extractedText = screenshot.extractedText, !extractedText.isEmpty {
-                extractedTextSection(extractedText)
-            }
+            // Pull-down indicator and panel controls
+            panelHeader
             
-            // Attributes Section (scrollable, compact)
+            // Collapsible Sections
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Object Tags (if available)
-                    if let objectTags = screenshot.objectTags, !objectTags.isEmpty {
-                        objectTagsSection(objectTags)
+                VStack(alignment: .leading, spacing: 12) {
+                    // Key Content Section (Extracted Text)
+                    if let extractedText = screenshot.extractedText, !extractedText.isEmpty {
+                        CollapsibleSection(
+                            title: "Key Content",
+                            icon: "text.quote",
+                            defaultExpanded: true
+                        ) {
+                            keyContentSection(extractedText)
+                        }
                     }
                     
-                    // Semantic Tags (if available)
+                    // AI Analysis Section (Semantic Tags)
                     if let semanticTags = screenshot.semanticTags, !semanticTags.tags.isEmpty {
-                        semanticTagsSection(semanticTags.tags)
+                        CollapsibleSection(
+                            title: "AI Analysis",
+                            icon: "brain.head.profile",
+                            defaultExpanded: false
+                        ) {
+                            aiAnalysisSection(semanticTags.tags)
+                        }
                     }
                     
-                    // Quick Actions
+                    // Vision Detection Section (Object Tags)
+                    if let objectTags = screenshot.objectTags, !objectTags.isEmpty {
+                        CollapsibleSection(
+                            title: "Vision Detection",
+                            icon: "camera.viewfinder",
+                            defaultExpanded: false
+                        ) {
+                            visionDetectionSection(objectTags)
+                        }
+                    }
+                    
+                    // Metadata Section
+                    CollapsibleSection(
+                        title: "Metadata",
+                        icon: "info.circle",
+                        defaultExpanded: false
+                    ) {
+                        metadataSection
+                    }
+                    
+                    // Quick Actions Section (always visible)
                     quickActionsSection
                 }
-                .padding(.vertical, 16)
-                .padding(.horizontal, 16)
+                .padding(16)
             }
         }
         .background(
@@ -535,97 +701,118 @@ struct UnifiedDetailsPanel: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
     
+    // MARK: - Panel Header
+    
+    @ViewBuilder
+    private var panelHeader: some View {
+        VStack(spacing: 8) {
+            // Pull-down indicator
+            RoundedRectangle(cornerRadius: 2.5)
+                .fill(.secondary.opacity(0.4))
+                .frame(width: 36, height: 5)
+                .padding(.top, 8)
+            
+            // Header with collapse all control
+            HStack {
+                Text("Screenshot Details")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Button(action: {
+                    UIPasteboard.general.string = getAllDataAsText()
+                    hapticService.impact(.light)
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc.on.doc")
+                        Text("Copy All")
+                    }
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+        }
+        .background(.regularMaterial)
+        .gesture(
+            DragGesture()
+                .onEnded { value in
+                    // Pull down to close
+                    if value.translation.height > 50 && value.velocity.height > 0 {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            showingUnifiedPanel = false
+                        }
+                        hapticService.impact(.medium)
+                    }
+                    // Pull up to expand to full screen
+                    else if value.translation.height < -50 && value.velocity.height < 0 {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            isTextPanelExpanded = true
+                        }
+                        hapticService.impact(.medium)
+                    }
+                }
+        )
+    }
+    
     // MARK: - Section Views
     
     @ViewBuilder
-    private func extractedTextSection(_ text: String) -> some View {
+    private func keyContentSection(_ text: String) -> some View {
         let contentItems = extractContentItems(from: text)
         let hasContent = !contentItems.isEmpty
         
-        VStack(alignment: .leading, spacing: 0) {
-            // Pull-down indicator and header
-            VStack(spacing: 8) {
-                // Pull-down indicator
-                RoundedRectangle(cornerRadius: 2.5)
-                    .fill(.secondary.opacity(0.4))
-                    .frame(width: 36, height: 5)
-                    .padding(.top, 8)
-                
-                // Header
-                HStack(spacing: 8) {
-                    Image(systemName: "text.quote")
-                        .font(.body)
-                        .foregroundColor(.blue)
-                    
-                    Text("Key Content")
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        UIPasteboard.general.string = text
-                        hapticService.impact(.light)
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "doc.on.doc")
-                            Text("Copy All")
-                        }
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.blue)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            Capsule()
-                                .fill(.ultraThinMaterial)
+        VStack(alignment: .leading, spacing: 12) {
+            // Copy button for extracted text
+            HStack {
+                Spacer()
+                Button(action: {
+                    UIPasteboard.general.string = text
+                    hapticService.impact(.light)
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc.on.doc")
+                        Text("Copy Text")
+                    }
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            
+            // Content items
+            if hasContent {
+                LazyVGrid(columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible())
+                ], alignment: .leading, spacing: 8) {
+                    ForEach(contentItems, id: \.text) { item in
+                        ContentItemView(
+                            item: item,
+                            onCopy: {
+                                UIPasteboard.general.string = item.text
+                                hapticService.impact(.light)
+                            }
                         )
                     }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
-            }
-            .background(.regularMaterial)
-            .gesture(
-                DragGesture()
-                    .onEnded { value in
-                        // Pull down to close
-                        if value.translation.height > 50 && value.velocity.height > 0 {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                showingUnifiedPanel = false
-                            }
-                            hapticService.impact(.medium)
-                        }
-                        // Pull up to expand to full screen
-                        else if value.translation.height < -50 && value.velocity.height < 0 {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                isTextPanelExpanded = true
-                            }
-                            hapticService.impact(.medium)
-                        }
-                    }
-            )
-            
-            // Content
-            if hasContent {
-                ScrollView {
-                    LazyVGrid(columns: [
-                        GridItem(.flexible()),
-                        GridItem(.flexible())
-                    ], alignment: .leading, spacing: 8) {
-                        ForEach(contentItems, id: \.text) { item in
-                            ContentItemView(
-                                item: item,
-                                onCopy: {
-                                    UIPasteboard.general.string = item.text
-                                    hapticService.impact(.light)
-                                }
-                            )
-                        }
-                    }
-                    .padding(16)
                 }
             } else {
                 VStack(spacing: 12) {
@@ -639,46 +826,46 @@ struct UnifiedDetailsPanel: View {
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(24)
+                .padding(16)
             }
         }
+        .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(.regularMaterial)
                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
         )
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
     }
     
     
     @ViewBuilder
-    private func objectTagsSection(_ tags: [String]) -> some View {
-        sectionCard(title: "Detected Objects", icon: "camera.viewfinder") {
-            VStack(alignment: .leading, spacing: 12) {
-                LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ], spacing: 8) {
-                    ForEach(tags, id: \.self) { tag in
-                        Text(tag)
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(Color.blue.opacity(0.1))
-                                    .overlay(
-                                        Capsule()
-                                            .stroke(Color.blue.opacity(0.2), lineWidth: 0.5)
-                                    )
-                            )
-                    }
+    private func visionDetectionSection(_ tags: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 8) {
+                ForEach(tags, id: \.self) { tag in
+                    Text(tag)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.green)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(Color.green.opacity(0.1))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.green.opacity(0.2), lineWidth: 0.5)
+                                )
+                        )
                 }
-                
+            }
+            
+            HStack {
+                Spacer()
                 Button(action: {
                     let tagsText = tags.joined(separator: ", ")
                     UIPasteboard.general.string = tagsText
@@ -690,7 +877,7 @@ struct UnifiedDetailsPanel: View {
                     }
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundColor(.blue)
+                    .foregroundColor(.green)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(
@@ -701,40 +888,47 @@ struct UnifiedDetailsPanel: View {
                 .buttonStyle(.plain)
             }
         }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        )
     }
     
     @ViewBuilder
-    private func semanticTagsSection(_ tags: [SemanticTag]) -> some View {
-        sectionCard(title: "AI Semantic Tags", icon: "brain.head.profile") {
-            VStack(alignment: .leading, spacing: 12) {
-                LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ], spacing: 8) {
-                    ForEach(tags, id: \.id) { tag in
-                        VStack(spacing: 2) {
-                            Text(tag.displayName)
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundColor(.purple)
-                            
-                            Text("\(Int(tag.confidence * 100))%")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.purple.opacity(0.1))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.purple.opacity(0.2), lineWidth: 0.5)
-                                )
-                        )
+    private func aiAnalysisSection(_ tags: [SemanticTag]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 8) {
+                ForEach(tags, id: \.id) { tag in
+                    VStack(spacing: 2) {
+                        Text(tag.displayName)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(.purple)
+                        
+                        Text("\(Int(tag.confidence * 100))%")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.purple.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color.purple.opacity(0.2), lineWidth: 0.5)
+                            )
+                    )
                 }
-                
+            }
+            
+            HStack {
+                Spacer()
                 Button(action: {
                     let tagsText = tags.map { $0.displayName }.joined(separator: ", ")
                     UIPasteboard.general.string = tagsText
@@ -742,7 +936,7 @@ struct UnifiedDetailsPanel: View {
                 }) {
                     HStack(spacing: 6) {
                         Image(systemName: "doc.on.doc")
-                        Text("Copy Semantic Tags")
+                        Text("Copy Tags")
                     }
                     .font(.caption)
                     .fontWeight(.medium)
@@ -757,13 +951,48 @@ struct UnifiedDetailsPanel: View {
                 .buttonStyle(.plain)
             }
         }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        )
     }
     
     
     
     @ViewBuilder
+    private var metadataSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            infoRow(label: "Date", value: formatTimestamp(), copyable: true)
+            infoRow(label: "File Size", value: formatFileSize(), copyable: false)
+            if let dimensions = getImageDimensions() {
+                infoRow(label: "Dimensions", value: dimensions, copyable: false)
+            }
+            infoRow(label: "Processing", value: getProcessingStatus(), copyable: false)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        )
+    }
+    
+    @ViewBuilder
     private var quickActionsSection: some View {
-        sectionCard(title: "Quick Actions", icon: "bolt") {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "bolt")
+                    .font(.body)
+                    .foregroundColor(.orange)
+                
+                Text("Quick Actions")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+            }
+            
             LazyVGrid(columns: [
                 GridItem(.flexible()),
                 GridItem(.flexible())
@@ -777,30 +1006,6 @@ struct UnifiedDetailsPanel: View {
                 }
             }
         }
-    }
-    
-    // MARK: - Helper Views
-    
-    @ViewBuilder
-    private func sectionCard<Content: View>(
-        title: String,
-        icon: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.body)
-                    .foregroundColor(.blue)
-                
-                Text(title)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-            }
-            
-            content()
-        }
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -808,6 +1013,8 @@ struct UnifiedDetailsPanel: View {
                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
         )
     }
+    
+    // MARK: - Helper Views
     
     @ViewBuilder
     private func infoRow(label: String, value: String, copyable: Bool) -> some View {
@@ -938,6 +1145,33 @@ struct UnifiedDetailsPanel: View {
         
         UIPasteboard.general.string = data.joined(separator: "\n")
         hapticService.impact(.medium)
+    }
+    
+    private func getAllDataAsText() -> String {
+        var data: [String] = []
+        
+        data.append("Filename: \(screenshot.filename)")
+        data.append("Date: \(formatTimestamp())")
+        
+        if let extractedText = screenshot.extractedText, !extractedText.isEmpty {
+            data.append("Text: \(extractedText)")
+        }
+        
+        if let objectTags = screenshot.objectTags, !objectTags.isEmpty {
+            data.append("Objects: \(objectTags.joined(separator: ", "))")
+        }
+        
+        if let semanticTags = screenshot.semanticTags, !semanticTags.tags.isEmpty {
+            let tags = semanticTags.tags.map { $0.displayName }.joined(separator: ", ")
+            data.append("Semantic Tags: \(tags)")
+        }
+        
+        if !screenshot.dominantColors.isEmpty {
+            let colors = screenshot.dominantColors.map { "\($0.colorName) (\(Int($0.prominence * 100))%)" }.joined(separator: ", ")
+            data.append("Colors: \(colors)")
+        }
+        
+        return data.joined(separator: "\n")
     }
     
     private func exportAsJSON() {
