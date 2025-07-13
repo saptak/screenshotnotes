@@ -274,6 +274,39 @@ struct SettingsView: View {
                     Text("⚠️ WARNING: This will permanently delete ALL imported screenshots from your Photos app. Screenshots will remain in Screenshot Vault. This action cannot be undone.")
                 }
                 
+                // Accessibility Audit Section (Sprint 8.1.4)
+                if interfaceSettings.showEnhancedInterfaceOptions {
+                    Section {
+                        NavigationLink(destination: AccessibilityAuditView()) {
+                            HStack {
+                                Image(systemName: "accessibility")
+                                    .foregroundColor(.blue)
+                                    .font(.title2)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Accessibility Audit")
+                                        .font(.headline)
+                                    Text("Comprehensive accessibility compliance testing")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                        .accessibilityLabel("Accessibility Audit")
+                        .accessibilityHint("Double tap to review accessibility compliance and run tests")
+                    } header: {
+                        Text("Accessibility")
+                    } footer: {
+                        Text("Review accessibility compliance, run tests, and generate reports for the Enhanced Interface.")
+                    }
+                }
+                
                 // Enhanced Interface Section (Sprint 8.1.1)
                 if interfaceSettings.showEnhancedInterfaceOptions {
                     Section {
@@ -293,6 +326,16 @@ struct SettingsView: View {
                                 
                                 Spacer()
                             }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel(GlassDescriptions.enhancedInterfaceSettingsDescription(
+                                isEnabled: interfaceSettings.isUsingEnhancedInterface,
+                                featuresAvailable: [
+                                    "Single-click voice commands",
+                                    "Content constellation grouping",
+                                    "Liquid Glass materials",
+                                    "Intelligent triage"
+                                ]
+                            ))
                             
                             InterfaceTypeSelectionView(settings: interfaceSettings)
                             
