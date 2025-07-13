@@ -11,7 +11,7 @@ final class BackgroundSemanticProcessor: ObservableObject {
     @Published var lastError: Error?
     
     private let semanticTaggingService: SemanticTaggingService
-    private let enhancedVisionService: EnhancedVisionService
+    private let advancedVisionService: AdvancedVisionService
     private let ocrService: OCRServiceProtocol
     private let mindMapService: MindMapService
     private let batchSize = 1 // Reduced to 1 for minimal resource usage during bulk imports
@@ -34,12 +34,12 @@ final class BackgroundSemanticProcessor: ObservableObject {
     
     init(
         semanticTaggingService: SemanticTaggingService? = nil,
-        enhancedVisionService: EnhancedVisionService? = nil,
+        advancedVisionService: AdvancedVisionService? = nil,
         ocrService: OCRServiceProtocol = OCRService(),
         mindMapService: MindMapService? = nil
     ) {
         self.semanticTaggingService = semanticTaggingService ?? SemanticTaggingService()
-        self.enhancedVisionService = enhancedVisionService ?? EnhancedVisionService()
+        self.advancedVisionService = advancedVisionService ?? AdvancedVisionService.shared
         self.ocrService = ocrService
         self.mindMapService = mindMapService ?? MindMapService.shared
     }
@@ -127,9 +127,8 @@ final class BackgroundSemanticProcessor: ObservableObject {
             var visualAttributes: VisualAttributes?
             if screenshot.needsVisionAnalysis {
                 await updatePhase(.vision)
-                // TODO: Implement vision analysis when VisualAttributes structure is aligned
-                // visualAttributes = await enhancedVisionService.analyzeScreenshot(screenshot.imageData)
-                // screenshot.visualAttributes = visualAttributes
+                visualAttributes = await advancedVisionService.analyzeScreenshot(screenshot.imageData)
+                screenshot.visualAttributes = visualAttributes
             } else {
                 visualAttributes = screenshot.visualAttributes
             }

@@ -5,7 +5,7 @@ import Vision
 
 public class ColorAnalysisService {
 
-    public struct ColorInfo {
+    public struct ColorInfo: Codable, Sendable {
         public var red: Double
         public var green: Double
         public var blue: Double
@@ -14,7 +14,7 @@ public class ColorAnalysisService {
         public var hexValue: String
     }
 
-    public enum AdvancedColorScheme {
+    public enum AdvancedColorScheme: Codable, Sendable {
         case monochromatic
         case analogous
         case complementary
@@ -28,7 +28,7 @@ public class ColorAnalysisService {
         case artificial
     }
 
-    public enum AdvancedColorTemperature {
+    public enum AdvancedColorTemperature: Codable, Sendable {
         case veryWarm
         case warm
         case neutral
@@ -37,7 +37,7 @@ public class ColorAnalysisService {
         case mixed
     }
 
-    public struct ColorAnalysisResult {
+    public struct ColorAnalysisResult: Codable, Sendable {
         public var dominantColors: [ColorInfo]
         public var brightness: Double
         public var contrast: Double
@@ -66,8 +66,8 @@ public class ColorAnalysisService {
             brightness: brightness,
             contrast: contrast,
             saturation: saturation,
-            temperature: .neutral, // Placeholder
-            colorScheme: .natural, // Placeholder
+            temperature: calculateTemperature(dominantColors: dominantColors),
+            colorScheme: calculateColorScheme(dominantColors: dominantColors),
             visualEmbedding: visualEmbedding
         )
     }
@@ -98,9 +98,18 @@ public class ColorAnalysisService {
     }
 
     private func calculateContrast(ciImage: CIImage) -> Double {
-        // A simplified contrast calculation. A more robust method would involve histograms.
-        let _ = CIFilter(name:"CIColorControls", parameters: [kCIInputImageKey: ciImage, "inputContrast": 1.0])!
-        return 0.5 // Placeholder
+        guard let filter = CIFilter(name: "CIImageStatistics", parameters: [kCIInputImageKey: ciImage]),
+              let outputImage = filter.outputImage else {
+            return 0.5
+        }
+
+        let context = CIContext(options: nil)
+        let bitmap = context.createCGImage(outputImage, from: outputImage.extent)!
+        let pixelData = bitmap.dataProvider!.data
+        let data: UnsafePointer<UInt8> = CFDataGetBytePtr(pixelData)
+
+        let contrast = (Double(data[0]) + Double(data[1]) + Double(data[2])) / 3.0 / 255.0
+        return contrast
     }
 
     private func calculateSaturation(ciImage: CIImage) -> Double {
@@ -155,6 +164,68 @@ public class ColorAnalysisService {
         }
         
         return dominantColors
+    }
+
+    private func calculateTemperature(dominantColors: [ColorInfo]) -> AdvancedColorTemperature {
+        guard !dominantColors.isEmpty else { return .neutral }
+
+        let totalWarmth = dominantColors.reduce(0.0) { total, color in
+            let warmth = (color.red - color.blue) * color.prominence
+            return total + warmth
+        }
+
+        if totalWarmth > 0.1 {
+            return .warm
+        } else if totalWarmth < -0.1 {
+            return .cool
+        } else {
+            return .neutral
+        }
+    }
+
+    private func calculateColorScheme(dominantColors: [ColorInfo]) -> AdvancedColorScheme {
+        guard dominantColors.count >= 2 else { return .monochromatic }
+
+        let firstColor = dominantColors[0]
+        let secondColor = dominantColors[1]
+
+        let hue1 = getHue(red: firstColor.red, green: firstColor.green, blue: firstColor.blue)
+        let hue2 = getHue(red: secondColor.red, green: secondColor.green, blue: secondColor.blue)
+
+        let hueDifference = abs(hue1 - hue2)
+
+        if hueDifference < 0.1 {
+            return .monochromatic
+        } else if hueDifference < 0.3 {
+            return .analogous
+        } else if hueDifference > 0.4 && hueDifference < 0.6 {
+            return .complementary
+        } else {
+            return .triadic
+        }
+    }
+
+    private func getHue(red: Double, green: Double, blue: Double) -> Double {
+        let maxC = max(red, green, blue)
+        let minC = min(red, green, blue)
+        let delta = maxC - minC
+
+        var hue: Double = 0
+
+        if delta != 0 {
+            if maxC == red {
+                hue = (green - blue) / delta
+            } else if maxC == green {
+                hue = (blue - red) / delta + 2
+            } else {
+                hue = (red - green) / delta + 4
+            }
+            hue *= 60
+            if hue < 0 {
+                hue += 360
+            }
+        }
+        return hue / 360
     }
     
     private func generateVisualEmbedding(cgImage: CGImage) async throws -> [Double] {

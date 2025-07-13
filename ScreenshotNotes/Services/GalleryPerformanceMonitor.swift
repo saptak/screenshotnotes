@@ -218,8 +218,8 @@ class GalleryPerformanceMonitor: ObservableObject {
     }
     
     // Performance metrics for debugging
-    var performanceMetrics: PerformanceMetrics {
-        return PerformanceMetrics(
+    var performanceMetrics: GalleryPerformanceMetrics {
+        return GalleryPerformanceMetrics(
             averageFPS: self.fpsHistory.isEmpty ? 0 : self.fpsHistory.reduce(0, +) / Double(self.fpsHistory.count),
             currentFPS: self.currentFPS,
             memoryUsageMB: self.memoryUsage,
@@ -229,7 +229,7 @@ class GalleryPerformanceMonitor: ObservableObject {
     }
 }
 
-struct PerformanceMetrics {
+struct GalleryPerformanceMetrics {
     let averageFPS: Double
     let currentFPS: Double
     let memoryUsageMB: Double
