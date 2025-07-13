@@ -561,16 +561,14 @@ class LiquidGlassAccessibilityService: ObservableObject {
     
     private func testSwitchControlSupport() -> AccessibilityTestResult {
         let hasSwitchSupportCode = true // Assume actions are implemented
-        
         let score = (isSwitchControlRunning ? 40 : 0) + (hasSwitchSupportCode ? 60 : 0)
-        
         return AccessibilityTestResult(
             testName: "Switch Control Support",
             score: score,
             passed: score >= 70,
             details: [
                 "Switch control system active: \(isSwitchControlRunning ? "✓" : "✗")",
-                "App-side switch control support: \(hasSwitchSupportCode ? "✓" : "✗")"
+                "App-side switch control support: ✓"
             ]
         )
     }
@@ -594,9 +592,9 @@ class LiquidGlassAccessibilityService: ObservableObject {
         let hasTransparencyFallbacks = shouldUseSimplifiedMaterials
         let hasHighlightDisabling = shouldDisableSpecularHighlights
         let hasAccessibilityLabels = true // Material labels are implemented
-        
+
         let score = (hasTransparencyFallbacks ? 40 : 0) + (hasHighlightDisabling ? 30 : 0) + (hasAccessibilityLabels ? 30 : 0)
-        
+
         return AccessibilityTestResult(
             testName: "Material Accessibility",
             score: score,
@@ -604,7 +602,7 @@ class LiquidGlassAccessibilityService: ObservableObject {
             details: [
                 "Transparency fallbacks: \(hasTransparencyFallbacks ? "✓" : "✗")",
                 "Specular highlight disabling: \(hasHighlightDisabling ? "✓" : "✗")",
-                "Accessibility labels: \(hasAccessibilityLabels ? "✓" : "✗")"
+                "Accessibility labels: ✓"
             ]
         )
     }
