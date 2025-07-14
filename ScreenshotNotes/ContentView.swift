@@ -188,7 +188,7 @@ struct ContentView: View {
                 galleryModeContent
                     .tag(InterfaceMode.gallery)
 
-                ConstellationView()
+                ConstellationModeRenderer(screenshots: screenshots)
                     .tag(InterfaceMode.constellation)
 
                 explorationModeContent
