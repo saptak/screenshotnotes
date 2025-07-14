@@ -15,6 +15,15 @@ class VoiceCommandRegistry: ObservableObject {
         register(
             VoiceCommand(phrases: ["switch to gallery", "gallery mode", "show gallery"], intent: .switchToGallery)
         )
+        register(
+            VoiceCommand(phrases: ["switch to constellation", "constellation mode", "show constellation", "show my workspaces", "activity mode"], intent: .switchToConstellation)
+        )
+        register(
+            VoiceCommand(phrases: ["switch to exploration", "exploration mode", "show exploration", "explore content", "relationship mode"], intent: .switchToExploration)
+        )
+        register(
+            VoiceCommand(phrases: ["switch to search", "search mode", "show search", "find content", "search for screenshots"], intent: .switchToSearch)
+        )
     }
 
     /// Register a new voice command (with synonyms/variations)
@@ -58,6 +67,9 @@ struct VoiceCommand: Identifiable, Hashable {
     enum Intent: String, Hashable, CaseIterable {
         case showSettings
         case switchToGallery
+        case switchToConstellation
+        case switchToExploration
+        case switchToSearch
         // Add more intents as needed
     }
 } 
