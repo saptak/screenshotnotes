@@ -326,7 +326,6 @@ struct ConstellationView: View {
                     emoji: emoji,
                     type: index == 0 ? .project : (index == 1 ? .travel : .work),
                     screenshotIds: Array(screenshotIds),
-                    completionPercentage: Double.random(in: 0.3...0.9),
                     lastUpdated: Date(),
                     isActive: true
                 ))

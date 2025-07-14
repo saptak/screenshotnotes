@@ -1,70 +1,433 @@
+
 import SwiftUI
 import SwiftData
 
-/// Renders the primary gallery interface, handling both the empty state and the screenshot grid.
-/// This view is responsible for orchestrating the display of screenshots and managing user interactions
-/// like pull-to-refresh for importing.
 struct GalleryModeRenderer: View {
-    // MARK: - Data Source
-    let screenshots: [Screenshot]
-    let modelContext: ModelContext
+    @StateObject private var viewModel: GalleryModeViewModel
     
-    // MARK: - Services
-    let photoLibraryService: PhotoLibraryService
-    let backgroundOCRProcessor: BackgroundOCRProcessor
-    let backgroundSemanticProcessor: BackgroundSemanticProcessor
+    let screenshots: [Screenshot]
     let searchOrchestrator: GlassConversationalSearchOrchestrator
     let viewportManager: PredictiveViewportManager
     let qualityManager: AdaptiveQualityManager
 
-    // MARK: - State Bindings from ContentView
-    @Binding var isRefreshing: Bool
-    @Binding var bulkImportProgress: (current: Int, total: Int)
-    @Binding var isBulkImportInProgress: Bool
-    @Binding var selectedScreenshot: Screenshot?
-    @Binding var galleryScrollOffset: CGFloat
-    @Binding var showingImportSheet: Bool
-    @Binding var isImporting: Bool
-
-    // MARK: - Feature Flags
-    /// Hook for future constellation hint features. (Sprint 8.2.2)
-    var showConstellationHints: Bool = false
+    init(
+        screenshots: [Screenshot],
+        modelContext: ModelContext,
+        photoLibraryService: PhotoLibraryService,
+        backgroundOCRProcessor: BackgroundOCRProcessor,
+        backgroundSemanticProcessor: BackgroundSemanticProcessor,
+        searchOrchestrator: GlassConversationalSearchOrchestrator,
+        viewportManager: PredictiveViewportManager,
+        qualityManager: AdaptiveQualityManager
+    ) {
+        self.screenshots = screenshots
+        self.searchOrchestrator = searchOrchestrator
+        self.viewportManager = viewportManager
+        self.qualityManager = qualityManager
+        _viewModel = StateObject(wrappedValue: GalleryModeViewModel(
+            modelContext: modelContext,
+            photoLibraryService: photoLibraryService,
+            backgroundOCRProcessor: backgroundOCRProcessor,
+            backgroundSemanticProcessor: backgroundSemanticProcessor
+        ))
+    }
 
     var body: some View {
         Group {
-                if screenshots.isEmpty && !isImporting {
-                    EmptyStateView(
-                        onImportTapped: { showingImportSheet = true },
-                        photoLibraryService: photoLibraryService,
-                        isRefreshing: $isRefreshing,
-                        bulkImportProgress: $bulkImportProgress,
-                        isBulkImportInProgress: $isBulkImportInProgress,
-                        backgroundOCRProcessor: backgroundOCRProcessor,
-                        backgroundSemanticProcessor: backgroundSemanticProcessor,
-                        modelContext: modelContext,
-                        scrollOffset: $galleryScrollOffset
-                        // The .refreshable modifier in EmptyStateView will call its own refreshScreenshots method.
-                        // This will be refactored in a later step to use a centralized function.
-                    )
-                    .id("enhanced-gallery-empty-state")
+            if screenshots.isEmpty && !viewModel.isImporting {
+                EmptyStateView(
+                    onImportTapped: { viewModel.showingImportSheet = true },
+                    photoLibraryService: viewModel.photoLibraryService,
+                    isRefreshing: $viewModel.isRefreshing,
+                    bulkImportProgress: $viewModel.bulkImportProgress,
+                    isBulkImportInProgress: $viewModel.isBulkImportInProgress,
+                    backgroundOCRProcessor: viewModel.backgroundOCRProcessor,
+                    backgroundSemanticProcessor: viewModel.backgroundSemanticProcessor,
+                    modelContext: viewModel.modelContext,
+                    scrollOffset: $viewModel.galleryScrollOffset
+                )
+                .id("enhanced-gallery-empty-state")
             } else {
                 ScreenshotGridView(
                     screenshots: screenshots,
-                    photoLibraryService: photoLibraryService,
-                    isRefreshing: $isRefreshing,
-                    bulkImportProgress: $bulkImportProgress,
-                    isBulkImportInProgress: $isBulkImportInProgress,
-                    backgroundOCRProcessor: backgroundOCRProcessor,
-                    backgroundSemanticProcessor: backgroundSemanticProcessor,
-                    modelContext: modelContext,
+                    photoLibraryService: viewModel.photoLibraryService,
+                    isRefreshing: $viewModel.isRefreshing,
+                    bulkImportProgress: $viewModel.bulkImportProgress,
+                    isBulkImportInProgress: $viewModel.isBulkImportInProgress,
+                    backgroundOCRProcessor: viewModel.backgroundOCRProcessor,
+                    backgroundSemanticProcessor: viewModel.backgroundSemanticProcessor,
+                    modelContext: viewModel.modelContext,
                     searchOrchestrator: searchOrchestrator,
-                    selectedScreenshot: $selectedScreenshot,
-                    scrollOffset: $galleryScrollOffset,
+                    selectedScreenshot: $viewModel.selectedScreenshot,
+                    scrollOffset: $viewModel.galleryScrollOffset,
                     viewportManager: viewportManager,
-                    qualityManager: qualityManager
+                    qualityManager: qualityManager,
+                    onRefresh: viewModel.refreshScreenshots
                 )
                 .id("enhanced-gallery-grid")
             }
         }
     }
 }
+
+struct EmptyStateView: View {
+    let onImportTapped: () -> Void
+    let photoLibraryService: PhotoLibraryService
+    @Binding var isRefreshing: Bool
+    @Binding var bulkImportProgress: (current: Int, total: Int)
+    @Binding var isBulkImportInProgress: Bool
+    let backgroundOCRProcessor: BackgroundOCRProcessor
+    let backgroundSemanticProcessor: BackgroundSemanticProcessor
+    let modelContext: ModelContext
+    @Binding var scrollOffset: CGFloat
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Pull-to-import message (shows when user pulls down)
+                    if scrollOffset > 10 && isRefreshing == false && !isBulkImportInProgress {
+                        PullToImportMessageView()
+                            .opacity(0.8)
+                            .padding(.top, 8) // Visible at the top
+                            .padding(.bottom, 8)
+                    }
+                    
+                    // Progressive import progress indicator
+                    if isRefreshing && bulkImportProgress.total > 0 {
+                        VStack(spacing: 16) {
+                            Text("Importing \(bulkImportProgress.current) of \(bulkImportProgress.total) screenshots")
+                                .font(.title3)
+                                .fontWeight(.medium)
+                                .foregroundColor(.blue)
+                            
+                            ProgressView(value: Double(bulkImportProgress.current), total: Double(bulkImportProgress.total))
+                                .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                                .frame(width: 280)
+                                .scaleEffect(1.2)
+                        }
+                        .padding(.horizontal, 40)
+                    } else if isRefreshing {
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .controlSize(.large)
+                            
+                            Text("Importing screenshots...")
+                                .font(.title3)
+                                .fontWeight(.medium)
+                                .foregroundColor(.blue)
+                        }
+                    } else {
+                        // Main empty state content - focused on pull-to-refresh
+                        VStack(spacing: 24) {
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 72, weight: .thin))
+                                .foregroundColor(.blue)
+                                .symbolEffect(.bounce, options: .repeating)
+                            
+                            Text("Pull down to import screenshots")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+                                .multilineTextAlignment(.center)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 20)
+                                .id("pull-to-import-text") // Add unique ID to force re-rendering
+                            
+                            Text("Import up to 20 latest screenshots from Apple Photos")
+                                .font(.title3)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 30)
+                            
+                            // Photo access guidance
+                            VStack(spacing: 12) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "info.circle")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.blue)
+                                    
+                                    Text("Photo Access Required")
+                                        .font(.headline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.primary)
+                                }
+                                
+                                VStack(spacing: 8) {
+                                    Text("When prompted, grant access to \"All Photos\" to import your screenshots.")
+                                        .font(.body)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                    
+                                    Text("You can also enable photo access in Settings > Screenshot Vault > Photos.")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary.opacity(0.7))
+                                        .multilineTextAlignment(.center)
+                                }
+                                .padding(.horizontal, 20)
+                            }
+                            .padding(.top, 20)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .stroke(.blue.opacity(0.2), lineWidth: 1)
+                                    )
+                            )
+                            .padding(.horizontal, 20)
+                        }
+                    }
+                    
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minHeight: 500) // Ensure enough space for pull gesture
+                .background(
+                    GeometryReader {
+                        Color.clear
+                            .preference(key: ScrollOffsetPreferenceKey.self, value: $0.frame(in: .global).minY)
+                    }
+                )
+            }
+            .coordinateSpace(name: "pullArea")
+            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
+                // Convert the global position to a proper scroll offset
+                let containerTop = geometry.frame(in: .global).minY
+                scrollOffset = max(0, offset - containerTop)
+            }
+            .refreshable {
+                await refreshScreenshots()
+            }
+        }
+    }
+    
+    private func refreshScreenshots() async {
+        // Prevent concurrent bulk imports
+        if isBulkImportInProgress {
+            print("📸 Bulk import already in progress, skipping")
+            return
+        }
+        
+        isBulkImportInProgress = true
+        isRefreshing = true
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+
+        // Check and request photo permission if needed
+        let currentStatus = photoLibraryService.authorizationStatus
+        if currentStatus != .authorized {
+            print("📸 Photo permission not granted (\(currentStatus)), requesting permission...")
+            let newStatus = await photoLibraryService.requestPhotoLibraryPermission()
+            
+            if newStatus != .authorized {
+                print("📸 Photo permission denied, cannot import screenshots")
+                let notificationFeedback = UINotificationFeedbackGenerator()
+                notificationFeedback.notificationOccurred(.error)
+                isRefreshing = false
+                isBulkImportInProgress = false
+                return
+            }
+            
+            print("📸 Photo permission granted, proceeding with import")
+        }
+
+        // Extremely lazy, incremental import in batches with 20-screenshot limit
+        let batchSize = 10
+        let maxImportLimit = 20
+        var totalImported = 0
+        var totalSkipped = 0
+        var hasMore = true
+        var batchIndex = 0
+
+        while hasMore && totalImported < maxImportLimit {
+            let result = await photoLibraryService.importPastScreenshotsBatch(batch: batchIndex, batchSize: batchSize)
+            totalImported += result.imported
+            totalSkipped += result.skipped
+            batchIndex += 1
+            hasMore = result.hasMore
+            
+            // Stop if we've reached the import limit
+            if totalImported >= maxImportLimit {
+                hasMore = false
+            }
+            
+            // Update progress for UI feedback
+            bulkImportProgress = (current: totalImported, total: min(totalImported + totalSkipped, maxImportLimit))
+
+            // Allow UI to update immediately after each batch import
+            if result.imported > 0 {
+                // Schedule background processing (rate-limited to prevent overlapping tasks)
+                Task {
+                    // Small delay to allow UI update
+                    try? await Task.sleep(nanoseconds: 50_000_000) // 0.05s
+                    
+                    backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
+                    
+                    // Wait briefly for OCR to initialize  
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+                    
+                    await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+                    await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
+                    
+                    print("✅ Background processing completed for batch")
+                }
+            }
+
+            // Shorter yield for more responsive UI updates
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s between batches
+        }
+
+        let notificationFeedback = UINotificationFeedbackGenerator()
+        if totalImported > 0 {
+            notificationFeedback.notificationOccurred(.success)
+        } else {
+            notificationFeedback.notificationOccurred(.warning)
+        }
+        print("📸 Pull-to-refresh import completed: \(totalImported) imported, \(totalSkipped) skipped (limit: \(maxImportLimit))")
+        isRefreshing = false
+        isBulkImportInProgress = false
+        bulkImportProgress = (0, 0) // Reset progress
+    }
+}
+
+struct ScreenshotGridView: View {
+    let screenshots: [Screenshot]
+    let photoLibraryService: PhotoLibraryService
+    @Binding var isRefreshing: Bool
+    @Binding var bulkImportProgress: (current: Int, total: Int)
+    @Binding var isBulkImportInProgress: Bool
+    let backgroundOCRProcessor: BackgroundOCRProcessor
+    let backgroundSemanticProcessor: BackgroundSemanticProcessor
+    let modelContext: ModelContext
+    let searchOrchestrator: GlassConversationalSearchOrchestrator
+    @Binding var selectedScreenshot: Screenshot?
+    @Binding var scrollOffset: CGFloat
+    @ObservedObject var viewportManager: PredictiveViewportManager
+    @ObservedObject var qualityManager: AdaptiveQualityManager
+    let onRefresh: () async -> Void
+    @Namespace private var heroNamespace
+    @StateObject private var performanceMonitor = GalleryPerformanceMonitor.shared
+    @StateObject private var thumbnailService = ThumbnailService.shared
+    
+
+    private func computeColumns(for width: CGFloat) -> [GridItem] {
+        let minThumbnailWidth: CGFloat = 150
+        let columnSpacing: CGFloat = 16
+        let sidePadding: CGFloat = 20 * 2 // 20 on each side
+        
+        let effectiveWidth = width - sidePadding
+        let numberOfColumns = max(1, Int(effectiveWidth / (minThumbnailWidth + columnSpacing)))
+        
+        return Array(repeating: GridItem(.flexible(), spacing: columnSpacing), count: numberOfColumns)
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let columns = computeColumns(for: geometry.size.width)
+            
+            VirtualizedGridView(
+                items: screenshots,
+                columns: columns,
+                itemHeight: 220,
+                scrollOffset: $scrollOffset,
+                showPullMessage: true,
+                isRefreshing: isRefreshing,
+                isBulkImportInProgress: isBulkImportInProgress,
+                onRefresh: onRefresh
+            ) { screenshot in
+                OptimizedThumbnailView(
+                    screenshot: screenshot,
+                    size: CGSize(width: 160, height: 200),
+                    onTap: {
+                        selectedScreenshot = screenshot
+                    }
+                )
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .fullScreenCover(item: $selectedScreenshot) { screenshot in
+            ScreenshotDetailView(
+                screenshot: screenshot,
+                heroNamespace: heroNamespace,
+                allScreenshots: screenshots,
+                onDelete: nil
+            )
+        }
+        .onAppear {
+            performanceMonitor.startMonitoring()
+            
+            // Phase 2: Update collection size for adaptive optimization
+            qualityManager.updateCollectionSize(screenshots.count)
+            
+            // Preload thumbnails for better scrolling performance
+            if screenshots.count <= 100 {
+                thumbnailService.preloadThumbnails(for: Array(screenshots.prefix(20)))
+            }
+        }
+        .onDisappear {
+            performanceMonitor.stopMonitoring()
+        }
+        .onChange(of: scrollOffset) { _, newOffset in
+            // Phase 2: Update viewport manager with scroll changes
+            viewportManager.updateScrollOffset(newOffset)
+        }
+        .onChange(of: screenshots.count) { _, newCount in
+            // Phase 2: Update collection size when screenshots change
+            qualityManager.updateCollectionSize(newCount)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .performanceOptimizationNeeded)) { notification in
+            handlePerformanceOptimization(notification)
+        }
+    }
+    
+    private func handlePerformanceOptimization(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let type = userInfo["type"] as? String else { return }
+        
+        switch type {
+        case "lowFPS":
+            print("🐌 Optimizing for low FPS")
+            // Already using optimized thumbnails, could reduce quality further if needed
+            
+        case "highMemory":
+            print("🧠 Optimizing for high memory usage")
+            thumbnailService.clearCache()
+            
+        case "thermal":
+            print("🔥 Optimizing for thermal pressure")
+            thumbnailService.clearCache()
+            // Could pause thumbnail generation temporarily
+            
+        default:
+            break
+        }
+    }
+}
+
+struct PullToImportMessageView: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "arrow.down.circle")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.accentColor)
+            Text("Pull to import 20 more Screenshots. Long-press to share, copy or delete.")
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(Color(.systemBackground).opacity(0.95))
+                .shadow(color: .black.opacity(0.07), radius: 4, x: 0, y: 2)
+        )
+        .frame(maxWidth: .infinity)
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+}
+
+

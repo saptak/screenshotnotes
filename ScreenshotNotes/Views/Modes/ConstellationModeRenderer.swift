@@ -282,7 +282,7 @@ struct ConstellationModeRenderer: View {
         // Build ContentConstellation for each cluster
         var constellations: [ContentConstellation] = []
         for (i, ids) in validClusters.enumerated() {
-            let screenshotsInCluster = screenshots.filter { ids.contains($0.id) }
+            let _ = screenshots.filter { ids.contains($0.id) }
             let title = "Constellation #\(i+1)"
             let emoji = ["✈️","🏠","💼","📊","🎓","🛒","❤️","🍽️","🎉","📅"].randomElement() ?? "✨"
             let type: ConstellationType = .other // Could infer from content in future
@@ -291,7 +291,6 @@ struct ConstellationModeRenderer: View {
                 emoji: emoji,
                 type: type,
                 screenshotIds: ids,
-                completionPercentage: Double.random(in: 0.3...0.9),
                 lastUpdated: Date(),
                 isActive: true,
                 description: nil,
@@ -315,7 +314,10 @@ struct ConstellationModeRenderer: View {
             }
         })
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        UIApplication.shared.windows.first?.rootViewController?.present(alert, animated: true)
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(alert, animated: true)
+        }
     }
     private func handleVoiceCommand(_ command: String) {
         voiceActionProcessor.process(
@@ -350,7 +352,6 @@ struct ConstellationModeRenderer: View {
                         emoji: "✨",
                         type: .other,
                         screenshotIds: [],
-                        completionPercentage: 0.0,
                         lastUpdated: Date(),
                         isActive: true,
                         description: "Created by voice command",

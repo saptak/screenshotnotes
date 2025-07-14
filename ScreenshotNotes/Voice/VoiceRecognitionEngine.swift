@@ -138,11 +138,13 @@ class VoiceRecognitionEngine: ObservableObject {
         cancelSessionTimeoutTimer()
         sessionTimeoutTimer = Timer.scheduledTimer(withTimeInterval: sessionTimeout, repeats: false) { [weak self] _ in
             guard let self = self else { return }
-            if self.state == .listening {
-                self.state = .error
-                self.error = "Listening timed out. Please try again."
-                self.stopRecognition()
-                self.logger.error("⏰ Voice session timed out after \(self.sessionTimeout) seconds")
+            Task { @MainActor in
+                if self.state == .listening {
+                    self.state = .error
+                    self.error = "Listening timed out. Please try again."
+                    self.stopRecognition()
+                    self.logger.error("⏰ Voice session timed out after \(self.sessionTimeout) seconds")
+                }
             }
         }
     }

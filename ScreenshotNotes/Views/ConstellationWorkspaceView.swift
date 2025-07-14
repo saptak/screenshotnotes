@@ -472,7 +472,6 @@ private struct SuggestionCard: View {
             emoji: "🇫🇷",
             type: .travel,
             screenshotIds: [UUID(), UUID(), UUID()],
-            completionPercentage: 0.65,
             description: "Planning an amazing trip to Paris with family",
             tags: ["vacation", "europe", "family"]
         )

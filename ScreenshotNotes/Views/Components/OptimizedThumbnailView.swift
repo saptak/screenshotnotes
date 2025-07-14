@@ -227,10 +227,10 @@ struct OptimizedThumbnailView: View {
         // Only show loading if we need to actually load
         isLoading = true
         
-        loadingTask = Task.detached(priority: .userInitiated) {
+        loadingTask = Task.detached(priority: .userInitiated) { [screenshotId = screenshot.id, imageData = screenshot.imageData] in
             let thumbnail = await thumbnailService.getThumbnail(
-                for: screenshot.id,
-                from: screenshot.imageData,
+                for: screenshotId,
+                from: imageData,
                 size: size
             )
             
