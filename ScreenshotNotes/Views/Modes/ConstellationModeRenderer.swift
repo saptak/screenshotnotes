@@ -15,6 +15,7 @@ struct ConstellationModeRenderer: View {
     @StateObject private var relationshipDetector = ContentRelationshipDetector.shared
     @State private var relationshipCancellable: AnyCancellable?
     @State private var selectedConstellation: ContentConstellation? = nil
+    @State private var selectedWorkspaceIndex: Int = 0
     
     var body: some View {
         ZStack {
@@ -22,12 +23,15 @@ struct ConstellationModeRenderer: View {
             ScrollView {
                 LazyVStack(spacing: 24) {
                     constellationHeader
+                    if !detectedConstellations.isEmpty {
+                        workspaceNavigationBar
+                    }
                     if isAnalyzing {
                         analysisProgressView
                     } else if detectedConstellations.isEmpty {
                         emptyStateView
                     } else {
-                        constellationGrid
+                        selectedWorkspaceDetail
                     }
                 }
                 .padding(.horizontal, 20)
@@ -155,18 +159,60 @@ struct ConstellationModeRenderer: View {
         .padding(.top, 20)
     }
     // MARK: - Constellation Grid (Sample Only)
-    private var constellationGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 20) {
-            ForEach(detectedConstellations) { constellation in
-                ConstellationCard(constellation: constellation, action: {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        selectedConstellation = constellation
+    // MARK: - Workspace Navigation Bar
+    private var workspaceNavigationBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                ForEach(detectedConstellations.indices, id: \.self) { idx in
+                    let constellation = detectedConstellations[idx]
+                    Button(action: {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            selectedWorkspaceIndex = idx
+                        }
+                    }) {
+                        HStack(spacing: 8) {
+                            Text(constellation.emoji).font(.title3)
+                            Text(constellation.title).font(.subheadline.bold()).lineLimit(1)
+                            ZStack {
+                                Circle().stroke(constellation.type.color.opacity(0.2), lineWidth: 2).frame(width: 22, height: 22)
+                                Circle().trim(from: 0, to: CGFloat(constellation.completionPercentage)).stroke(constellation.type.color, style: StrokeStyle(lineWidth: 3, lineCap: .round)).rotationEffect(.degrees(-90)).frame(width: 22, height: 22)
+                            }
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(
+                            Capsule().fill(idx == selectedWorkspaceIndex ? Color.purple.opacity(0.12) : Color.clear)
+                        )
+                        .overlay(
+                            Capsule().stroke(idx == selectedWorkspaceIndex ? Color.purple.opacity(0.4) : Color.gray.opacity(0.1), lineWidth: 1)
+                        )
+                        .shadow(color: idx == selectedWorkspaceIndex ? Color.purple.opacity(0.08) : .clear, radius: 4, x: 0, y: 2)
                     }
-                })
+                    .buttonStyle(PlainButtonStyle())
+                }
             }
+            .padding(.vertical, 8)
         }
-        .sheet(item: $selectedConstellation) { constellation in
-            ConstellationWorkspaceView(constellation: constellation)
+        .padding(.bottom, 4)
+    }
+    // MARK: - Selected Workspace Detail
+    private var selectedWorkspaceDetail: some View {
+        if detectedConstellations.indices.contains(selectedWorkspaceIndex) {
+            let constellation = detectedConstellations[selectedWorkspaceIndex]
+            return AnyView(
+                VStack {
+                    ConstellationCard(constellation: constellation, action: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            selectedConstellation = constellation
+                        }
+                    })
+                }
+                .sheet(item: $selectedConstellation) { constellation in
+                    ConstellationWorkspaceView(constellation: constellation)
+                }
+                .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
+            )
+        } else {
+            return AnyView(EmptyView())
         }
     }
     // MARK: - Analysis Logic (Real Data)
