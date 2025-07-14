@@ -227,7 +227,7 @@ struct OptimizedThumbnailView: View {
         // Only show loading if we need to actually load
         isLoading = true
         
-        loadingTask = Task {
+        loadingTask = Task.detached(priority: .userInitiated) {
             let thumbnail = await thumbnailService.getThumbnail(
                 for: screenshot.id,
                 from: screenshot.imageData,
@@ -235,7 +235,6 @@ struct OptimizedThumbnailView: View {
             )
             
             await MainActor.run {
-                guard !Task.isCancelled else { return }
                 withAnimation(.easeInOut(duration: 0.2)) {
                     self.thumbnailImage = thumbnail
                     self.isLoading = false

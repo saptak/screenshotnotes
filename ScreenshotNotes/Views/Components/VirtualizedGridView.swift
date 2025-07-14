@@ -6,6 +6,7 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
     let itemHeight: CGFloat
     let content: (Item) -> Content
     @Binding var scrollOffset: CGFloat
+    @State private var localScrollOffset: CGFloat = 0
     
     // Optional pull-to-refresh message
     var showPullMessage: Bool = false
@@ -43,14 +44,27 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
-                LazyVStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    // Invisible header to detect pull
+                    GeometryReader { proxy in
+                        Color.clear
+                            .frame(height: 1)
+                            .onChange(of: proxy.frame(in: .global).minY) { _, newValue in
+                                localScrollOffset = max(0, newValue - geometry.frame(in: .global).minY)
+                            }
+                    }
+                    .frame(height: 1)
+                    
                     // Pull-to-import message (shows when user pulls down)
-                    if showPullMessage && scrollOffset > 10 && !isRefreshing && !isBulkImportInProgress {
+                    if showPullMessage && localScrollOffset > 10 && !isRefreshing && !isBulkImportInProgress {
                         PullToImportMessageView()
                             .opacity(0.8)
                             .padding(.top, 8)
                             .padding(.bottom, 4)
+                            .transition(.move(edge: .top).combined(with: .opacity))
                     }
+                    
+                    LazyVStack(spacing: 0) {
                     
                     // Top spacer for items above visible area
                     if visibleRange.lowerBound > 0 {
@@ -76,23 +90,11 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
                             .frame(height: CGFloat((items.count - visibleRange.upperBound) / columns.count) * (itemHeight + 16))
                     }
                 }
-                .background(
-                    GeometryReader { proxy in
-                        Color.clear
-                            .preference(key: ScrollOffsetPreferenceKey.self, value: proxy.frame(in: .global).minY)
-                    }
-                )
-            }
-            .coordinateSpace(name: "pullArea")
-            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
-                // Convert the global position to a proper scroll offset
-                let containerTop = geometry.frame(in: .global).minY
-                scrollOffset = max(0, offset - containerTop)
-                updateVisibleRange(containerHeight: geometry.size.height)
             }
             .refreshable {
                 if let onRefresh = onRefresh {
                     await onRefresh()
+                    }
                 }
             }
             .onAppear {

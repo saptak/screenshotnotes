@@ -118,17 +118,17 @@ struct ContentView: View {
         Group {
             if screenshots.isEmpty && !isImporting {
                 EmptyStateView(
-                    onImportTapped: {
-                        showingImportSheet = true
-                    },
-                    photoLibraryService: photoLibraryService,
-                    isRefreshing: $isRefreshing,
-                    bulkImportProgress: $bulkImportProgress,
-                    isBulkImportInProgress: $isBulkImportInProgress,
-                    backgroundOCRProcessor: backgroundOCRProcessor,
-                    backgroundSemanticProcessor: backgroundSemanticProcessor,
-                    modelContext: modelContext,
-                    scrollOffset: $scrollOffset
+                        onImportTapped: {
+                            showingImportSheet = true
+                        },
+                        photoLibraryService: photoLibraryService,
+                        isRefreshing: $isRefreshing,
+                        bulkImportProgress: $bulkImportProgress,
+                        isBulkImportInProgress: $isBulkImportInProgress,
+                        backgroundOCRProcessor: backgroundOCRProcessor,
+                        backgroundSemanticProcessor: backgroundSemanticProcessor,
+                        modelContext: modelContext,
+                        scrollOffset: $scrollOffset
                 )
             } else if isSearchActive {
                 // Search mode content (same for both Legacy and Enhanced interfaces)
@@ -183,71 +183,44 @@ struct ContentView: View {
             AdaptiveContentHubModeSelector()
                 .padding(.top, 2)
             
-            // Mode transition overlay
-            if modeManager.isTransitioning, let previousMode = modeManager.previousMode {
-                ModeTransitionOverlay(
-                    fromMode: previousMode,
-                    toMode: modeManager.currentMode,
-                    progress: modeManager.transitionProgress
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                // Current mode content
-                ZStack {
-                    galleryModeContent
-                        .opacity(modeManager.currentMode == .gallery ? 1 : 0)
-                    
-                    ConstellationView()
-                        .opacity(modeManager.currentMode == .constellation ? 1 : 0)
-                    
-                    explorationModeContent
-                        .opacity(modeManager.currentMode == .exploration ? 1 : 0)
-                    
-                    searchModeContent
-                        .opacity(modeManager.currentMode == .search ? 1 : 0)
-                }
-                .animation(.easeInOut(duration: 0.3), value: modeManager.currentMode)
+            // Current mode content is now managed by a TabView for fluid, state-preserving transitions.
+            TabView(selection: $modeManager.currentMode) {
+                galleryModeContent
+                    .tag(InterfaceMode.gallery)
+
+                ConstellationView()
+                    .tag(InterfaceMode.constellation)
+
+                explorationModeContent
+                    .tag(InterfaceMode.exploration)
+
+                searchModeContent
+                    .tag(InterfaceMode.search)
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .animation(.easeInOut, value: modeManager.currentMode)
         }
     }
     
     /// Gallery mode content (Enhanced Interface version)
     private var galleryModeContent: some View {
-        Group {
-            if screenshots.isEmpty && !isImporting {
-                EmptyStateView(
-                    onImportTapped: {
-                        showingImportSheet = true
-                    },
-                    photoLibraryService: photoLibraryService,
-                    isRefreshing: $isRefreshing,
-                    bulkImportProgress: $bulkImportProgress,
-                    isBulkImportInProgress: $isBulkImportInProgress,
-                    backgroundOCRProcessor: backgroundOCRProcessor,
-                    backgroundSemanticProcessor: backgroundSemanticProcessor,
-                    modelContext: modelContext,
-                    scrollOffset: $galleryScrollOffset
-                )
-                .id("enhanced-gallery-empty-state") // Stable identity to preserve state across mode switches
-            } else {
-                ScreenshotGridView(
-                    screenshots: screenshots,
-                    photoLibraryService: photoLibraryService,
-                    isRefreshing: $isRefreshing,
-                    bulkImportProgress: $bulkImportProgress,
-                    isBulkImportInProgress: $isBulkImportInProgress,
-                    backgroundOCRProcessor: backgroundOCRProcessor,
-                    backgroundSemanticProcessor: backgroundSemanticProcessor,
-                    modelContext: modelContext,
-                    searchOrchestrator: searchOrchestrator,
-                    selectedScreenshot: $selectedScreenshot,
-                    scrollOffset: $galleryScrollOffset,
-                    viewportManager: viewportManager,
-                    qualityManager: qualityManager
-                )
-                .id("enhanced-gallery-grid") // Stable identity to preserve state across mode switches
-            }
-        }
+        GalleryModeRenderer(
+                screenshots: screenshots,
+                modelContext: modelContext,
+                photoLibraryService: photoLibraryService,
+                backgroundOCRProcessor: backgroundOCRProcessor,
+                backgroundSemanticProcessor: backgroundSemanticProcessor,
+                searchOrchestrator: searchOrchestrator,
+                viewportManager: viewportManager,
+                qualityManager: qualityManager,
+                isRefreshing: $isRefreshing,
+                bulkImportProgress: $bulkImportProgress,
+                isBulkImportInProgress: $isBulkImportInProgress,
+                selectedScreenshot: $selectedScreenshot,
+                galleryScrollOffset: $galleryScrollOffset,
+                showingImportSheet: $showingImportSheet,
+                isImporting: $isImporting
+        )
     }
     
     /// Exploration mode content (placeholder for future implementation)
@@ -836,116 +809,126 @@ struct EmptyStateView: View {
     @Binding var scrollOffset: CGFloat
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                // Pull-to-import message (shows when user pulls down)
-                if scrollOffset > 10 && isRefreshing == false && !isBulkImportInProgress {
-                    PullToImportMessageView()
-                        .opacity(0.8)
-                        .padding(.top, 8) // Visible at the top
-                        .padding(.bottom, 8)
-                }
-                
-                // Progressive import progress indicator
-                if isRefreshing && bulkImportProgress.total > 0 {
-                    VStack(spacing: 16) {
-                        Text("Importing \(bulkImportProgress.current) of \(bulkImportProgress.total) screenshots")
-                            .font(.title3)
-                            .fontWeight(.medium)
-                            .foregroundColor(.blue)
-                        
-                        ProgressView(value: Double(bulkImportProgress.current), total: Double(bulkImportProgress.total))
-                            .progressViewStyle(LinearProgressViewStyle(tint: .blue))
-                            .frame(width: 280)
-                            .scaleEffect(1.2)
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Pull-to-import message (shows when user pulls down)
+                    if scrollOffset > 10 && isRefreshing == false && !isBulkImportInProgress {
+                        PullToImportMessageView()
+                            .opacity(0.8)
+                            .padding(.top, 8) // Visible at the top
+                            .padding(.bottom, 8)
                     }
-                    .padding(.horizontal, 40)
-                } else if isRefreshing {
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .scaleEffect(1.5)
-                            .controlSize(.large)
-                        
-                        Text("Importing screenshots...")
-                            .font(.title3)
-                            .fontWeight(.medium)
-                            .foregroundColor(.blue)
-                    }
-                } else {
-                    // Main empty state content - focused on pull-to-refresh
-                    VStack(spacing: 24) {
-                        Image(systemName: "arrow.down")
-                            .font(.system(size: 72, weight: .thin))
-                            .foregroundColor(.blue)
-                            .symbolEffect(.bounce, options: .repeating)
-                        
-                        Text("Pull down to import screenshots")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .multilineTextAlignment(.center)
-                            .foregroundColor(.primary)
-                            .padding(.horizontal, 20)
-                            .id("pull-to-import-text") // Add unique ID to force re-rendering
-                        
-                        Text("Import up to 20 latest screenshots from Apple Photos")
-                            .font(.title3)
-                            .fontWeight(.medium)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 30)
-                        
-                        // Photo access guidance
-                        VStack(spacing: 12) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "info.circle")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.blue)
-                                
-                                Text("Photo Access Required")
-                                    .font(.headline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.primary)
-                            }
+                    
+                    // Progressive import progress indicator
+                    if isRefreshing && bulkImportProgress.total > 0 {
+                        VStack(spacing: 16) {
+                            Text("Importing \(bulkImportProgress.current) of \(bulkImportProgress.total) screenshots")
+                                .font(.title3)
+                                .fontWeight(.medium)
+                                .foregroundColor(.blue)
                             
-                            VStack(spacing: 8) {
-                                Text("When prompted, grant access to \"All Photos\" to import your screenshots.")
-                                    .font(.body)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
+                            ProgressView(value: Double(bulkImportProgress.current), total: Double(bulkImportProgress.total))
+                                .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                                .frame(width: 280)
+                                .scaleEffect(1.2)
+                        }
+                        .padding(.horizontal, 40)
+                    } else if isRefreshing {
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .controlSize(.large)
+                            
+                            Text("Importing screenshots...")
+                                .font(.title3)
+                                .fontWeight(.medium)
+                                .foregroundColor(.blue)
+                        }
+                    } else {
+                        // Main empty state content - focused on pull-to-refresh
+                        VStack(spacing: 24) {
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 72, weight: .thin))
+                                .foregroundColor(.blue)
+                                .symbolEffect(.bounce, options: .repeating)
+                            
+                            Text("Pull down to import screenshots")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+                                .multilineTextAlignment(.center)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 20)
+                                .id("pull-to-import-text") // Add unique ID to force re-rendering
+                            
+                            Text("Import up to 20 latest screenshots from Apple Photos")
+                                .font(.title3)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 30)
+                            
+                            // Photo access guidance
+                            VStack(spacing: 12) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "info.circle")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.blue)
+                                    
+                                    Text("Photo Access Required")
+                                        .font(.headline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.primary)
+                                }
                                 
-                                Text("You can also enable photo access in Settings > Screenshot Vault > Photos.")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary.opacity(0.7))
-                                    .multilineTextAlignment(.center)
+                                VStack(spacing: 8) {
+                                    Text("When prompted, grant access to \"All Photos\" to import your screenshots.")
+                                        .font(.body)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                    
+                                    Text("You can also enable photo access in Settings > Screenshot Vault > Photos.")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary.opacity(0.7))
+                                        .multilineTextAlignment(.center)
+                                }
+                                .padding(.horizontal, 20)
                             }
+                            .padding(.top, 20)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .stroke(.blue.opacity(0.2), lineWidth: 1)
+                                    )
+                            )
                             .padding(.horizontal, 20)
                         }
-                        .padding(.top, 20)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(.ultraThinMaterial)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .stroke(.blue.opacity(0.2), lineWidth: 1)
-                                )
-                        )
-                        .padding(.horizontal, 20)
                     }
+                    
+                    Spacer()
                 }
-                
-                Spacer()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minHeight: 500) // Ensure enough space for pull gesture
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear
+                            .preference(key: ScrollOffsetPreferenceKey.self, value: proxy.frame(in: .global).minY)
+                    }
+                )
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .frame(minHeight: 500) // Ensure enough space for pull gesture
-        }
-        .coordinateSpace(name: "pullArea")
-        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
-            scrollOffset = offset
-        }
-        .refreshable {
-            await refreshScreenshots()
+            .coordinateSpace(name: "pullArea")
+            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
+                // Convert the global position to a proper scroll offset
+                let containerTop = geometry.frame(in: .global).minY
+                scrollOffset = max(0, offset - containerTop)
+            }
+            .refreshable {
+                await refreshScreenshots()
+            }
         }
     }
     
