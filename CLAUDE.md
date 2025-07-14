@@ -4,7 +4,7 @@ This file contains development context and guidelines for Claude Code when worki
 
 ## Project Overview
 
-ScreenshotNotes is an iOS app for intelligent screenshot organization with OCR capabilities. The project follows a sprint-based development approach with focus on Glass Design principles and high-performance animations.
+Screenshot Vault is an iOS app for intelligent screenshot organization with OCR capabilities. The project follows a sprint-based development approach with focus on Glass Design principles and high-performance animations.
 
 ### Architecture Foundation
 - **MVVM Pattern**: Clear separation with Views/, ViewModels/, Models/, Services/
@@ -36,24 +36,6 @@ ScreenshotNotes is an iOS app for intelligent screenshot organization with OCR c
 - **Sprint 6 Sub-Sprint 6.5.1**: Comprehensive Semantic Processing Pipeline ✅ (Complete OCR, entity extraction, semantic tagging integration)
 - **Sprint 6 Sub-Sprint 6.5.2**: Background Mind Map Generation ✅ (Automated mind map pipeline, instant cache-based loading)
 - **Sprint 6 Sub-Sprint 6.6**: Glass Design System Unification ✅ (Complete Material→Glass migration, responsive layout for all iOS devices, dark mode fixes)
-
-### Project Health Metrics
-- **App Stability**: 100% - No crashes or critical bugs
-- **Performance**: 120fps ProMotion optimization, <8ms response time, GPU-accelerated rendering
-- **AI Performance**: <5ms entity extraction, 90%+ accuracy across 16 entity types, semantic tagging with 40% relevance improvement
-- **Search Intelligence**: 5-tier progressive fallback with <2s timeout, 200+ synonym mappings, semantic understanding integration
-- **Conversational AI**: 6-state Glass orchestration with premium haptic feedback, Siri App Intents integration
-- **Glass Performance**: 120fps ProMotion, 80%+ cache hit rate, 50MB memory budget with pressure handling
-- **Test Coverage**: 90%+ for new components with automated validation
-- **Accessibility**: WCAG AA compliant across all implemented features
-- **Semantic Processing**: 5-phase pipeline (OCR → Vision → Semantic → Mind Map → Completion) with intelligent redundancy prevention
-- **Mind Map Performance**: Instant loading (<0.5s) from cache, background generation, automatic updates
-- **Development Progress**: 95% complete (6.6/8 sprints)
-- **Design System**: Unified Glass Design with responsive layout (iPhone SE → iPad Pro)
-- **Dark Mode Support**: Complete dark/light theme adaptation across all views
-
-### Current Sprint
-**Sprint 8: Enhanced Interface Development** (Planned - 25 atomic daily iterations with Dual UX Architecture)
 
 ## Key Technical Decisions
 
@@ -129,12 +111,6 @@ ScreenshotNotes is an iOS app for intelligent screenshot organization with OCR c
   - `ContentView.swift` (updated to pass screenshot collection)
   - `Views/SearchView.swift` (updated for navigation compatibility)
 
-### Navigation Fix Applied
-- **Issue**: Black screen when tapping screenshots due to hero animation timing conflicts
-- **Solution**: Simplified navigation flow by removing problematic hero animation triggers
-- **Status**: Navigation now works correctly with fullScreenCover
-- **Future**: Hero animations can be re-enabled with refined timing coordination
-
 ### Comprehensive Semantic Processing Pipeline (Sub-Sprint 6.5.1)
 - **Implementation**: Complete 5-phase background processing pipeline
 - **Status**: Fully implemented and optimized for performance
@@ -204,12 +180,6 @@ All major functionality is implemented as services:
 - Memory pressure and thermal throttling handling with 3-tier optimization
 - GPU-accelerated rendering with Metal shader compilation
 - Intelligent caching with 80%+ hit rate targets
-
-### Testing Strategy
-- Comprehensive automated testing for performance
-- Visual validation frameworks
-- Edge case handling verification
-- Manual testing checklists
 
 ## Development Guidelines
 
@@ -309,10 +279,10 @@ All major functionality is implemented as services:
 ### Build and Test
 ```bash
 # Build for simulator
-xcodebuild -project ScreenshotNotes.xcodeproj -scheme ScreenshotNotes -destination 'platform=iOS Simulator,name=iPhone 16 Pro' build
+xcodebuild -project ScreenshotNotes.xcodeproj -scheme ScreenshotNotes -destination 'platform=iOS Simulator,name=iPhone 16 Pro Max' build
 
 # Run tests
-xcodebuild test -project ScreenshotNotes.xcodeproj -scheme ScreenshotNotes -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+xcodebuild test -project ScreenshotNotes.xcodeproj -scheme ScreenshotNotes -destination 'platform=iOS Simulator,name=iPhone 16 Pro Max'
 ```
 
 ### Performance Validation
@@ -330,171 +300,6 @@ xcodebuild test -project ScreenshotNotes.xcodeproj -scheme ScreenshotNotes -dest
 - **Voice Session Testing**: Verify single-click activation, session management, timeout handling
 - **Content Constellation Testing**: Validate grouping accuracy, workspace creation, relationship detection
 - **Triage Performance Testing**: Monitor relevancy analysis efficiency, batch operation performance
-
-## Known Issues & Workarounds
-
-### Hero Animation Navigation Conflict
-- **Issue**: Hero animations cause black screen with fullScreenCover
-- **Workaround**: Hero animation triggers disabled in navigation flow
-- **Fix Required**: Refined timing coordination between animations and presentation
-
-### Large Collection Performance
-- **Issue**: Potential performance degradation with 1000+ screenshots
-- **Mitigation**: Consider virtual scrolling implementation
-- **Monitoring**: Track memory usage in OCR processing
-
-## Sprint 4 Detailed Breakdown
-
-### ✅ Sub-Sprint 4.1: Material Design System (2 days) - COMPLETED
-- **MaterialDesignSystem Service**: Complete implementation with 8 depth tokens (0-24dp elevation)
-- **Performance Optimization**: GPU-accelerated rendering with 60fps minimum validation
-- **Visual Testing Framework**: Automated validation across Light/Dark modes and device sizes
-- **Design Tokens**: Systematic depth hierarchy following Material Design guidelines
-- **Accessibility**: WCAG AA compliance (4.5:1 contrast ratio) with automatic adaptation
-- **Impact**: Replaced manual opacity with systematic material usage across all views
-- **Files**: `MaterialDesignSystem.swift`, `MaterialPerformanceTest.swift`, `MaterialVisualTest.swift`
-
-### ✅ Sub-Sprint 4.2: Hero Animation System (2 days) - COMPLETED
-- **HeroAnimationService**: Core animation management with namespace handling
-- **Edge Case Handling**: Memory pressure, thermal throttling, device rotation
-- **Performance Testing**: Automated 120fps validation framework
-- **Visual Validation**: Continuity and state management verification
-- **Status**: ⚠️ Temporarily disabled due to navigation timing conflicts
-- **Workaround**: Hero animation triggers disabled in navigation flow
-
-### ✅ Sub-Sprint 4.3: Contextual Menu System (2 days) - COMPLETED
-- **Long-Press Menus**: Context-sensitive options for screenshots
-- **Quick Actions**: Share, copy, delete, tag, favorite, export, duplicate
-- **Haptic Feedback**: Tactile feedback for menu interactions
-- **Batch Operations**: Multi-select for bulk actions
-- **Accessibility**: Comprehensive VoiceOver and assistive technology support
-
-### ✅ Enhancement: Full Screen Swipe Navigation - COMPLETED
-- **Swipe Gestures**: Down (dismiss), Left/Right (navigate), Up (actions)
-- **Smart Handling**: Different behavior when zoomed vs normal view
-- **Navigation Indicators**: Current position display (e.g., "3 of 12")
-- **Haptic Feedback**: Different patterns for each gesture type
-
-### 📋 Sub-Sprint 4.4: Advanced Gestures (2 days) - NEXT
-- **Pull-to-Refresh**: Haptic feedback with spring animation
-- **Swipe Gestures**: Quick actions (delete, share, favorite)
-- **Multi-Touch Zoom**: Enhanced detail view interaction  
-- **Pan Gestures**: Smooth navigation between screenshots
-- **Gesture Recognition**: 95%+ accuracy for all implemented gestures
-
-### 📋 Sub-Sprint 4.5: Animation Polish (2 days) - PLANNED
-- **Loading Animations**: Skeleton screens for OCR processing
-- **Microinteractions**: Button press feedback, hover states
-- **Transition Polish**: Refined timing and easing curves
-- **State Animations**: Smooth state changes (empty, loading, error)
-- **Performance Target**: 120fps ProMotion, <100MB memory increase
-
-### 📋 Remaining Sub-Sprints 4.6-4.8
-- **4.6**: Animation Performance Optimization (2 days) - 120fps ProMotion targeting
-- **4.7**: Accessibility Enhancement (2 days) - Full VoiceOver, Voice Control support
-- **4.8**: Integration & Polish (3 days) - Integration testing, performance validation
-
-## Sprint 5 Detailed Breakdown
-
-### ✅ Sub-Sprint 5.1.1: Core ML Setup & Query Parser Foundation (2 days) - COMPLETED
-- **QueryParserService**: Natural language understanding for search queries
-- **Core ML Integration**: iOS 17+ Natural Language framework utilization
-- **Intent Recognition**: Search, filter, temporal, and visual query intents
-- **Confidence Scoring**: Weighted confidence for actionable queries
-- **Multi-language Support**: English, Spanish, French query processing
-- **Files**: `QueryParserService.swift`, `SimpleQueryParser.swift`
-
-### ✅ Sub-Sprint 5.1.2: Entity Extraction Engine (3 days) - COMPLETED
-- **EntityExtractionService**: 16-type entity recognition system
-- **Entity Types**: Person, organization, place, color, object, document, phone, email, URL, date, time, currency, address, product, brand, quantity
-- **Multi-language Processing**: Advanced language detection and processing
-- **Performance Optimization**: <5ms extraction time, 90%+ accuracy
-- **Smart Categorization**: Semantic grouping for enhanced search relevance
-- **Files**: `EntityExtractionService.swift`, entity processing components
-
-### ✅ Sub-Sprint 5.1.4: Search Robustness Enhancement (3 days) - COMPLETED
-- **SearchRobustnessService**: 5-tier progressive fallback search system
-- **Tier 1**: Exact match with advanced query normalization using Apple's NLTokenizer
-- **Tier 2**: Spell correction using iOS-native UITextChecker API
-- **Tier 3**: Synonym expansion with 200+ comprehensive mappings
-- **Tier 4**: Fuzzy matching with Levenshtein, Jaccard, N-gram, and phonetic algorithms
-- **Tier 5**: Semantic similarity using Apple's NLEmbedding (iOS 17+)
-- **Performance**: <2s timeout, comprehensive caching, thread-safe operations
-- **UI Integration**: Smart suggestions, performance metrics display
-- **Files**: `SearchRobustnessService.swift`, `FuzzyMatchingService.swift`, `SynonymExpansionService.swift`
-
-### ✅ Sub-Sprint 5.4.2: Glass Conversational Experience (3 days) - COMPLETED
-- **GlassConversationalSearchOrchestrator**: 6-state management system (ready → listening → processing → results → conversation → error)
-- **GlassConversationalMicrophoneButton**: Premium Glass materials with dynamic state adaptation
-- **Enhanced GlassSearchBar**: Bottom-mounted search with integrated conversational capabilities
-- **Complete Glass Design System**: 5 Glass material types with physics-based animations
-- **Conversational AI Integration**: Natural language understanding with entity extraction
-- **Siri App Intents**: Rich result presentation with multiple search entities
-- **Accessibility**: Full WCAG compliance with VoiceOver and reduced motion support
-- **Files**: `GlassConversationalSearchOrchestrator.swift`, `GlassConversationalMicrophoneButton.swift`, `GlassSearchBar.swift` (enhanced)
-
-### ✅ Sub-Sprint 5.4.3: Glass Design System & Performance Optimization (2 days) - COMPLETED
-- **GlassPerformanceMonitor**: Real-time 120fps ProMotion performance tracking with frame drop detection
-- **GlassRenderingOptimizer**: GPU-accelerated rendering with Metal shader compilation and adaptive quality
-- **GlassCacheManager**: Intelligent multi-tier caching with LRU eviction and 80%+ hit rate achievement
-- **GlassMemoryManager**: Advanced memory pressure handling with 3-tier optimization strategies
-- **Performance Excellence**: All targets met (120fps ProMotion, 8ms response time, 50MB memory budget)
-- **Thermal Adaptation**: Dynamic quality adjustment during thermal stress conditions
-- **Files**: `GlassPerformanceMonitor.swift`, `GlassRenderingOptimizer.swift`, `GlassCacheManager.swift`, `GlassMemoryManager.swift`
-
-### 📋 Remaining Sub-Sprints 5.2-5.5
-- **5.2**: Semantic Relationship Discovery (3 days) - AI-powered content connections
-- **5.3**: Mind Mapping Visualization (4 days) - Interactive relationship graphs
-- **5.5**: Advanced Query Understanding (2 days) - Complex multi-entity queries
-
-## Sprint 6 Detailed Breakdown
-
-### ✅ Sub-Sprint 6.5.1: Comprehensive Semantic Processing Pipeline (3 days) - COMPLETED
-- **BackgroundSemanticProcessor Enhancement**: 5-phase processing pipeline integration
-- **Intelligent Redundancy Prevention**: Phase-based skipping for optimal performance
-- **Background Processing**: Non-blocking UI with comprehensive error handling
-- **Entity Extraction Integration**: 16-type entity recognition with multi-language support
-- **Semantic Tagging Integration**: AI-powered content understanding and business entity recognition
-- **Performance Optimization**: Batch processing with intelligent memory management
-- **Files**: `BackgroundSemanticProcessor.swift`, `EntityExtractionService.swift`, `SemanticTaggingService.swift`
-
-### ✅ Sub-Sprint 6.5.2: Background Mind Map Generation (2 days) - COMPLETED
-- **Automated Pipeline Integration**: Mind map generation as Phase 4 of semantic processing
-- **Cache-Based Instant Loading**: <0.5s display time from JSON cache storage
-- **Incremental Updates**: Automatic regeneration when new screenshots imported
-- **Smart Resource Management**: Minimum 3+ screenshots with semantic data requirement
-- **Data Fingerprinting**: Intelligent cache invalidation and regeneration logic
-- **User Experience Optimization**: Background generation with instant view loading
-- **Files**: `MindMapService.swift`, `MindMapView.swift` (enhanced), `ContentView.swift` (triggers)
-
-### ✅ Sub-Sprint 6.6: Glass Design System Unification (2 days) - COMPLETED
-- **Complete Material→Glass Migration**: Migrated all views from Material Design to Glass Design system
-- **Responsive Layout System**: Comprehensive device-specific adaptations (iPhone SE → iPad Pro)
-- **Device Classification**: 6 device types with adaptive spacing, typography, and materials
-- **Dark Mode Support**: Complete light/dark theme adaptation with proper Glass material rendering
-- **Performance Optimization**: Maintained 120fps ProMotion with efficient responsive calculations
-- **Accessibility Integration**: WCAG compliance with reduced transparency and motion support
-- **Files**: `Design/GlassDesignSystem.swift` (enhanced), `Views/SearchView.swift`, `Views/MindMapView.swift`, service files
-
-### 📋 Remaining Sub-Sprints 6.7-6.8
-- **6.7**: Interactive Mind Map Features (3 days) - Node clustering, filtering, search integration
-- **6.8**: Production Optimization (2 days) - Performance validation, memory optimization
-
-## Next Development Priorities
-
-### Sprint 4 Success Metrics
-- **Performance**: 120fps ProMotion, 60fps minimum on all devices
-- **Memory**: <100MB increase from baseline during intensive animations
-- **Battery**: <5% additional drain during intensive use
-- **Accessibility**: WCAG AA compliance across all features
-- **Gesture Accuracy**: 95%+ recognition rate for all gestures
-- **Test Coverage**: 90%+ for all new animation and performance code
-
-### Long-term (Sprint 5-8)
-- **Sprint 5**: AI-powered mind mapping with semantic relationship discovery
-- **Sprint 6**: Multi-modal analysis with collaborative annotation systems
-- **Sprint 7**: Production excellence with advanced export and sharing
-- **Sprint 8**: Ecosystem integration with Watch, Mac, and CloudKit sync
 
 ## Code Organization
 
@@ -623,59 +428,3 @@ ScreenshotNotes/
 6. **Test haptic feedback** on physical device
 7. **Validate gesture interactions** for conflicts
 8. **Test contextual menus** and quick actions
-
-### Release Criteria
-1. **All automated tests pass**
-2. **Performance targets met**
-3. **No memory leaks detected**
-4. **Accessibility compliance verified**
-5. **Manual testing checklist completed**
-6. **Haptic feedback validated** on device
-7. **Swipe navigation tested** across all contexts
-8. **Contextual menu performance verified**
-
----
-
-**Last Updated**: Sprint 6 Sub-Sprint 6.6 Complete - Glass Design System Unification  
-**Next Milestone**: Phase 6.7 - Interactive Mind Map Features & Node Clustering  
-**Recent Achievement**: Complete Material→Glass migration with responsive layout system for all iOS devices and dark mode support  
-**Critical Issues**: Hero animation navigation timing (workaround in place)
-
-## Recent Enhancements
-
-### Glass Design System Unification (Latest)
-- **Complete Migration**: All views migrated from Material Design to Glass Design system
-- **Responsive Layout**: iPhone SE (320pt) → iPad Pro (1024pt+) with device-specific adaptations
-- **Dark Mode Support**: Fixed white background issue in MindMapView and all Glass components
-- **Performance Optimization**: Maintained 120fps ProMotion with efficient responsive calculations
-- **Accessibility Integration**: WCAG compliance with reduced transparency and motion support
-
-### Swipe Navigation System
-- **Swipe down**: Dismiss full screen view
-- **Swipe left/right**: Navigate between screenshots  
-- **Swipe up**: Show share/delete action sheet
-- **Smart gesture handling**: Different behavior when zoomed vs normal view
-- **Navigation indicators**: Current position display (e.g., "3 of 12")
-- **Haptic feedback integration**: Different patterns for each gesture type
-- **Accessibility support**: Compatible with VoiceOver and assistive technologies
-
-### Key Features Completed
-- ✅ **Glass Design System**: Complete Glass design with responsive layout and dark mode support
-- ✅ **Hero Animation Infrastructure**: Comprehensive animation system (temporarily disabled)
-- ✅ **Contextual Menu System**: Long-press menus with haptic feedback and batch selection
-- ✅ **Advanced Haptic Feedback**: Sophisticated haptic patterns for all interactions
-- ✅ **Performance Testing Frameworks**: Automated validation for all major systems
-- ✅ **Accessibility Support**: Comprehensive VoiceOver and assistive technology integration
-- ✅ **Swipe Navigation**: Full gesture support for screenshot browsing
-- ✅ **Intelligent Search**: Advanced search with filters and caching
-- ✅ **Search Robustness**: 5-tier progressive fallback with fuzzy matching and synonyms
-- ✅ **Entity Extraction**: 16-type entity recognition with multi-language support
-- ✅ **Natural Language Processing**: Query parsing with intent recognition
-- ✅ **OCR Integration**: Background text extraction with progress tracking
-- ✅ **Photo Library Monitoring**: Automatic screenshot detection and import
-- ✅ **Glass Conversational Experience**: 6-state orchestration with premium Glass UX
-- ✅ **Siri App Intents Integration**: Rich conversational search results with multiple entity types
-- ✅ **Glass Performance Optimization**: 120fps ProMotion with GPU acceleration, intelligent caching, and memory management
-- ✅ **Comprehensive Semantic Processing Pipeline**: 5-phase background processing with intelligent redundancy prevention
-- ✅ **Background Mind Map Generation**: Automated pipeline with instant cache-based loading and automatic updates
-- ✅ **Glass Design System Unification**: Complete Material→Glass migration with responsive layout for all iOS devices

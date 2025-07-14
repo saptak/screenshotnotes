@@ -30,6 +30,7 @@ struct ContentView: View {
     
     // Phase 2: Viewport management for predictive loading
     @State private var scrollOffset: CGFloat = 0
+    @State private var galleryScrollOffset: CGFloat = 0 // Separate scroll offset for gallery mode
     @StateObject private var viewportManager = PredictiveViewportManager.shared
     @StateObject private var qualityManager = AdaptiveQualityManager.shared
     
@@ -40,6 +41,10 @@ struct ContentView: View {
     // 🧠 Sprint 6.1.1: Mind Map Navigation State
     @State private var showingMindMap = false
     @State private var selectedScreenshot: Screenshot?
+    
+    // 🌟 Sprint 8.2.1: Adaptive Content Hub Foundation
+    @StateObject private var interfaceSettings = InterfaceSettings()
+    @StateObject private var modeManager = InterfaceModeManager.shared
 
     init() {
         _searchOrchestrator = StateObject(wrappedValue: GlassConversationalSearchOrchestrator(settingsService: SettingsService.shared))
@@ -108,7 +113,7 @@ struct ContentView: View {
     
     // MARK: - 🎯 Sprint 5.4.1: Glass Search Bar View Components
     
-    /// Main content area with proper padding for bottom Glass search bar
+    /// Main content area with adaptive interface mode support
     private var mainContentArea: some View {
         Group {
             if screenshots.isEmpty && !isImporting {
@@ -126,6 +131,7 @@ struct ContentView: View {
                     scrollOffset: $scrollOffset
                 )
             } else if isSearchActive {
+                // Search mode content (same for both Legacy and Enhanced interfaces)
                 ScreenshotGridView(
                     screenshots: filteredScreenshots,
                     photoLibraryService: photoLibraryService,
@@ -142,6 +148,97 @@ struct ContentView: View {
                     qualityManager: qualityManager
                 )
             } else {
+                // 🌟 Sprint 8.2.1: Adaptive Content Hub based on interface mode
+                if interfaceSettings.isEnhancedInterfaceEnabled {
+                    adaptiveContentHub
+                } else {
+                    // Legacy Interface: Original screenshot grid
+                    ScreenshotGridView(
+                        screenshots: screenshots,
+                        photoLibraryService: photoLibraryService,
+                        isRefreshing: $isRefreshing,
+                        bulkImportProgress: $bulkImportProgress,
+                        isBulkImportInProgress: $isBulkImportInProgress,
+                        backgroundOCRProcessor: backgroundOCRProcessor,
+                        backgroundSemanticProcessor: backgroundSemanticProcessor,
+                        modelContext: modelContext,
+                        searchOrchestrator: searchOrchestrator,
+                        selectedScreenshot: $selectedScreenshot,
+                        scrollOffset: $scrollOffset,
+                        viewportManager: viewportManager,
+                        qualityManager: qualityManager
+                    )
+                }
+            }
+        }
+        .padding(.bottom, 100) // Space for Glass search bar
+    }
+    
+    // MARK: - 🌟 Sprint 8.2.1: Adaptive Content Hub
+    
+    /// Enhanced Interface with 4-level progressive disclosure
+    private var adaptiveContentHub: some View {
+        VStack(spacing: 0) {
+            // Mode selector
+            AdaptiveContentHubModeSelector()
+                .padding(.top, 2)
+            
+            // Mode transition overlay
+            if modeManager.isTransitioning, let previousMode = modeManager.previousMode {
+                ModeTransitionOverlay(
+                    fromMode: previousMode,
+                    toMode: modeManager.currentMode,
+                    progress: modeManager.transitionProgress
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                // Current mode content
+                Group {
+                    switch modeManager.currentMode {
+                    case .gallery:
+                        galleryModeContent
+                            .onAppear {
+                                // Ensure clean state when entering gallery mode
+                                // Reset any lingering refresh states that might hide the pull text
+                                if screenshots.isEmpty && !isBulkImportInProgress {
+                                    galleryScrollOffset = 0
+                                }
+                            }
+                    case .constellation:
+                        ConstellationView()
+                    case .exploration:
+                        explorationModeContent
+                    case .search:
+                        searchModeContent
+                    }
+                }
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                ))
+            }
+        }
+    }
+    
+    /// Gallery mode content (Enhanced Interface version)
+    private var galleryModeContent: some View {
+        Group {
+            if screenshots.isEmpty && !isImporting {
+                EmptyStateView(
+                    onImportTapped: {
+                        showingImportSheet = true
+                    },
+                    photoLibraryService: photoLibraryService,
+                    isRefreshing: $isRefreshing,
+                    bulkImportProgress: $bulkImportProgress,
+                    isBulkImportInProgress: $isBulkImportInProgress,
+                    backgroundOCRProcessor: backgroundOCRProcessor,
+                    backgroundSemanticProcessor: backgroundSemanticProcessor,
+                    modelContext: modelContext,
+                    scrollOffset: $galleryScrollOffset
+                )
+                .id("enhanced-gallery-empty-state") // Stable identity to preserve state across mode switches
+            } else {
                 ScreenshotGridView(
                     screenshots: screenshots,
                     photoLibraryService: photoLibraryService,
@@ -153,13 +250,87 @@ struct ContentView: View {
                     modelContext: modelContext,
                     searchOrchestrator: searchOrchestrator,
                     selectedScreenshot: $selectedScreenshot,
-                    scrollOffset: $scrollOffset,
+                    scrollOffset: $galleryScrollOffset,
                     viewportManager: viewportManager,
                     qualityManager: qualityManager
                 )
+                .id("enhanced-gallery-grid") // Stable identity to preserve state across mode switches
             }
         }
-        .padding(.bottom, 100) // Space for Glass search bar
+    }
+    
+    /// Exploration mode content (placeholder for future implementation)
+    private var explorationModeContent: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "map")
+                .font(.system(size: 64))
+                .foregroundColor(.orange.opacity(0.6))
+            
+            VStack(spacing: 8) {
+                Text("Exploration Mode")
+                    .font(.title2.bold())
+                    .foregroundColor(.primary)
+                
+                Text("Discover relationships and connections between your content with interactive visualization.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+            
+            Text("Coming in Sprint 8.3")
+                .font(.caption)
+                .foregroundColor(.orange)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(.orange.opacity(0.1))
+                        .overlay(
+                            Capsule()
+                                .stroke(.orange.opacity(0.3), lineWidth: 1)
+                        )
+                )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.regularMaterial)
+    }
+    
+    /// Search mode content (enhanced conversational search)
+    private var searchModeContent: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 64))
+                .foregroundColor(.green.opacity(0.6))
+            
+            VStack(spacing: 8) {
+                Text("Search Mode")
+                    .font(.title2.bold())
+                    .foregroundColor(.primary)
+                
+                Text("Find specific content with powerful conversational search and AI assistance.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+            
+            Text("Enhanced in Sprint 8.4")
+                .font(.caption)
+                .foregroundColor(.green)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(.green.opacity(0.1))
+                        .overlay(
+                            Capsule()
+                                .stroke(.green.opacity(0.3), lineWidth: 1)
+                        )
+                )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.regularMaterial)
     }
     
     /// Overlay content including progress, analysis, and suggestions
@@ -723,6 +894,7 @@ struct EmptyStateView: View {
                             .multilineTextAlignment(.center)
                             .foregroundColor(.primary)
                             .padding(.horizontal, 20)
+                            .id("pull-to-import-text") // Add unique ID to force re-rendering
                         
                         Text("Import up to 20 latest screenshots from Apple Photos")
                             .font(.title3)

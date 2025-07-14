@@ -26,492 +26,497 @@ struct SettingsView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Image(systemName: "camera.viewfinder")
-                                .foregroundColor(.blue)
-                                .font(.title2)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Automatic Import")
-                                    .font(.headline)
-                                Text("Automatically import new screenshots")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Spacer()
-                            
-                            Toggle("", isOn: $photoLibraryService.automaticImportEnabled)
-                                .onChange(of: photoLibraryService.automaticImportEnabled) { _, enabled in
-                                    settingsService.automaticImportEnabled = enabled
-                                }
-                        }
-                        
-                        if photoLibraryService.authorizationStatus != .authorized {
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle")
-                                    .foregroundColor(.orange)
-                                    .font(.caption)
-                                
-                                Text("Photo library access required")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                
-                                Spacer()
-                                
-                                Button("Grant Access") {
-                                    Task { @MainActor in
-                                        _ = await photoLibraryService.requestPhotoLibraryPermission()
-                                    }
-                                }
-                                .font(.caption)
-                                .buttonStyle(.borderedProminent)
-                                .controlSize(.mini)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 4)
-                } header: {
-                    Text("Screenshot Detection")
-                } footer: {
-                    Text("When enabled, Screenshot Vault will automatically detect and import new screenshots from your photo library.")
-                }
-                
-                Section {
-                    HStack {
-                        Image(systemName: "trash")
-                            .foregroundColor(.red)
-                            .font(.title2)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Delete Originals")
-                                .font(.headline)
-                            Text("Remove screenshots from Photos app after import")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        Toggle("", isOn: $settingsService.deleteOriginalScreenshots)
-                    }
-                    .padding(.vertical, 4)
-                } header: {
-                    Text("Storage Management")
-                } footer: {
-                    Text("⚠️ Warning: This will permanently delete screenshots from your Photos app. They will only exist in Screenshot Vault.")
-                }
-                
-                Section {
-                    HStack {
-                        Image(systemName: "gearshape.2")
-                            .foregroundColor(.purple)
-                            .font(.title2)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Background Processing")
-                                .font(.headline)
-                            Text("Process screenshots when app is in background")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        Toggle("", isOn: $settingsService.backgroundProcessingEnabled)
-                    }
-                    .padding(.vertical, 4)
-                } header: {
-                    Text("Performance")
-                } footer: {
-                    Text("Allows the app to process screenshots and extract text when not actively in use.")
-                }
-                
-                Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Image(systemName: "speedometer")
-                                .foregroundColor(.green)
-                                .font(.title2)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Gallery Performance")
-                                    .font(.headline)
-                                Text("Current performance metrics")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Spacer()
-                        }
-                        
-                        if performanceMonitor.isMonitoring {
-                            VStack(spacing: 8) {
-                                HStack {
-                                    Text("FPS:")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text("\(Int(performanceMonitor.currentFPS))")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(performanceMonitor.currentFPS < 45 ? .red : .primary)
-                                }
-                                
-                                HStack {
-                                    Text("Memory:")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text("\(Int(performanceMonitor.memoryUsage))MB")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(performanceMonitor.memoryUsage > 200 ? .red : .primary)
-                                }
-                                
-                                HStack {
-                                    Text("Thermal:")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text(thermalStateText(performanceMonitor.thermalState))
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(thermalStateColor(performanceMonitor.thermalState))
-                                }
-                            }
-                            .padding(.top, 4)
-                        } else {
-                            Text("Performance monitoring inactive")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.top, 4)
-                        }
-                        
-                        Button(action: {
-                            thumbnailService.clearCache()
-                            thumbnailService.cleanupDiskCache()
-                        }) {
-                            HStack {
-                                Image(systemName: "trash.circle")
-                                    .foregroundColor(.orange)
-                                Text("Clear Thumbnail Cache")
-                                    .foregroundColor(.orange)
-                                Spacer()
-                                let stats = thumbnailService.getCacheStats()
-                                Text("\(stats.memoryCount) cached")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        .padding(.top, 8)
-                    }
-                    .padding(.vertical, 4)
-                } header: {
-                    Text("Performance Monitoring")
-                } footer: {
-                    Text("Monitor gallery performance and clear cache to free up memory. Multiple thumbnail sizes are cached per image for optimal performance. Performance monitoring is active when viewing the gallery.")
-                }
-                
-                Section {
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Image(systemName: "photo.on.rectangle.angled")
-                                .foregroundColor(.red)
-                                .font(.title2)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Bulk Delete from Photos")
-                                    .font(.headline)
-                                Text("Remove all imported screenshots from Photos app")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Spacer()
-                        }
-                        
-                        let importedCount = screenshots.filter { $0.assetIdentifier != nil }.count
-                        
-                        if importedCount > 0 {
-                            HStack {
-                                Text("\(importedCount) imported screenshots found")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                            }
-                            
-                            Button(action: {
-                                showingDeleteConfirmation = true
-                            }) {
-                                HStack {
-                                    Image(systemName: "trash.fill")
-                                        .foregroundColor(.white)
-                                    Text("Delete All from Photos")
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.white)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(Color.red)
-                                .cornerRadius(10)
-                            }
-                            .buttonStyle(.plain)
-                        } else {
-                            Text("No imported screenshots to delete")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.vertical, 8)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                } header: {
-                    Text("Bulk Operations")
-                } footer: {
-                    Text("⚠️ WARNING: This will permanently delete ALL imported screenshots from your Photos app. Screenshots will remain in Screenshot Vault. This action cannot be undone.")
-                }
-                
-                // Accessibility Audit Section (Sprint 8.1.4)
-                if interfaceSettings.showEnhancedInterfaceOptions {
+            ZStack(alignment: .top) {
+                // Glass navigation overlay (Sprint 8.1.5)
+                GlassNavigationOverlay()
+                // Main settings content
+                List {
                     Section {
-                        NavigationLink(destination: AccessibilityAuditView()) {
+                        VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Image(systemName: "accessibility")
+                                Image(systemName: "camera.viewfinder")
                                     .foregroundColor(.blue)
                                     .font(.title2)
                                 
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("Accessibility Audit")
+                                    Text("Automatic Import")
                                         .font(.headline)
-                                    Text("Comprehensive accessibility compliance testing")
+                                    Text("Automatically import new screenshots")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
                                 
                                 Spacer()
                                 
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.secondary)
+                                Toggle("", isOn: $photoLibraryService.automaticImportEnabled)
+                                    .onChange(of: photoLibraryService.automaticImportEnabled) { _, enabled in
+                                        settingsService.automaticImportEnabled = enabled
+                                    }
+                            }
+                            
+                            if photoLibraryService.authorizationStatus != .authorized {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle")
+                                        .foregroundColor(.orange)
+                                        .font(.caption)
+                                    
+                                    Text("Photo library access required")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Spacer()
+                                    
+                                    Button("Grant Access") {
+                                        Task { @MainActor in
+                                            _ = await photoLibraryService.requestPhotoLibraryPermission()
+                                        }
+                                    }
                                     .font(.caption)
-                            }
-                        }
-                        .accessibilityLabel("Accessibility Audit")
-                        .accessibilityHint("Double tap to review accessibility compliance and run tests")
-                    } header: {
-                        Text("Accessibility")
-                    } footer: {
-                        Text("Review accessibility compliance, run tests, and generate reports for the Enhanced Interface.")
-                    }
-                }
-                
-                // Enhanced Interface Section (Sprint 8.1.1)
-                if interfaceSettings.showEnhancedInterfaceOptions {
-                    Section {
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Image(systemName: "sparkles.rectangle.stack")
-                                    .foregroundColor(.blue)
-                                    .font(.title2)
-                                
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Enhanced Interface")
-                                        .font(.headline)
-                                    Text("Advanced Liquid Glass design with voice controls")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                    .buttonStyle(.borderedProminent)
+                                    .controlSize(.mini)
                                 }
-                                
-                                Spacer()
-                            }
-                            .accessibilityElement(children: .combine)
-                            .accessibilityLabel(GlassDescriptions.enhancedInterfaceSettingsDescription(
-                                isEnabled: interfaceSettings.isUsingEnhancedInterface,
-                                featuresAvailable: [
-                                    "Single-click voice commands",
-                                    "Content constellation grouping",
-                                    "Liquid Glass materials",
-                                    "Intelligent triage"
-                                ]
-                            ))
-                            
-                            InterfaceTypeSelectionView(settings: interfaceSettings)
-                            
-                            if interfaceSettings.isUsingEnhancedInterface {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Enhanced Features Available:")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.secondary)
-                                    
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.green)
-                                            .font(.caption)
-                                        Text("Single-click voice commands")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.green)
-                                            .font(.caption)
-                                        Text("Content constellation grouping")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.green)
-                                            .font(.caption)
-                                        Text("Liquid Glass materials")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.green)
-                                            .font(.caption)
-                                        Text("Intelligent triage system")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                .padding(.top, 8)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 12)
-                                .background(Color.blue.opacity(0.1))
-                                .cornerRadius(8)
                             }
                         }
                         .padding(.vertical, 4)
                     } header: {
-                        Text("Advanced")
+                        Text("Screenshot Detection")
                     } footer: {
-                        if interfaceSettings.isUsingEnhancedInterface {
-                            Text("You are using the Enhanced Interface with advanced features. You can switch back to the Legacy Interface at any time.")
-                        } else {
-                            Text("The Enhanced Interface includes advanced Liquid Glass design, voice controls, and intelligent content organization. The Legacy Interface remains fully functional.")
+                        Text("When enabled, Screenshot Vault will automatically detect and import new screenshots from your photo library.")
+                    }
+                    
+                    Section {
+                        HStack {
+                            Image(systemName: "trash")
+                                .foregroundColor(.red)
+                                .font(.title2)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Delete Originals")
+                                    .font(.headline)
+                                Text("Remove screenshots from Photos app after import")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Toggle("", isOn: $settingsService.deleteOriginalScreenshots)
+                        }
+                        .padding(.vertical, 4)
+                    } header: {
+                        Text("Storage Management")
+                    } footer: {
+                        Text("⚠️ Warning: This will permanently delete screenshots from your Photos app. They will only exist in Screenshot Vault.")
+                    }
+                    
+                    Section {
+                        HStack {
+                            Image(systemName: "gearshape.2")
+                                .foregroundColor(.purple)
+                                .font(.title2)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Background Processing")
+                                    .font(.headline)
+                                Text("Process screenshots when app is in background")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Toggle("", isOn: $settingsService.backgroundProcessingEnabled)
+                        }
+                        .padding(.vertical, 4)
+                    } header: {
+                        Text("Performance")
+                    } footer: {
+                        Text("Allows the app to process screenshots and extract text when not actively in use.")
+                    }
+                    
+                    Section {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Image(systemName: "speedometer")
+                                    .foregroundColor(.green)
+                                    .font(.title2)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Gallery Performance")
+                                        .font(.headline)
+                                    Text("Current performance metrics")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                            }
+                            
+                            if performanceMonitor.isMonitoring {
+                                VStack(spacing: 8) {
+                                    HStack {
+                                        Text("FPS:")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Text("\(Int(performanceMonitor.currentFPS))")
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(performanceMonitor.currentFPS < 45 ? .red : .primary)
+                                    }
+                                    
+                                    HStack {
+                                        Text("Memory:")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Text("\(Int(performanceMonitor.memoryUsage))MB")
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(performanceMonitor.memoryUsage > 200 ? .red : .primary)
+                                    }
+                                    
+                                    HStack {
+                                        Text("Thermal:")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Text(thermalStateText(performanceMonitor.thermalState))
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(thermalStateColor(performanceMonitor.thermalState))
+                                    }
+                                }
+                                .padding(.top, 4)
+                            } else {
+                                Text("Performance monitoring inactive")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, 4)
+                            }
+                            
+                            Button(action: {
+                                thumbnailService.clearCache()
+                                thumbnailService.cleanupDiskCache()
+                            }) {
+                                HStack {
+                                    Image(systemName: "trash.circle")
+                                        .foregroundColor(.orange)
+                                    Text("Clear Thumbnail Cache")
+                                        .foregroundColor(.orange)
+                                    Spacer()
+                                    let stats = thumbnailService.getCacheStats()
+                                    Text("\(stats.memoryCount) cached")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.top, 8)
+                        }
+                        .padding(.vertical, 4)
+                    } header: {
+                        Text("Performance Monitoring")
+                    } footer: {
+                        Text("Monitor gallery performance and clear cache to free up memory. Multiple thumbnail sizes are cached per image for optimal performance. Performance monitoring is active when viewing the gallery.")
+                    }
+                    
+                    Section {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Image(systemName: "photo.on.rectangle.angled")
+                                    .foregroundColor(.red)
+                                    .font(.title2)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Bulk Delete from Photos")
+                                        .font(.headline)
+                                    Text("Remove all imported screenshots from Photos app")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                            }
+                            
+                            let importedCount = screenshots.filter { $0.assetIdentifier != nil }.count
+                            
+                            if importedCount > 0 {
+                                HStack {
+                                    Text("\(importedCount) imported screenshots found")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                }
+                                
+                                Button(action: {
+                                    showingDeleteConfirmation = true
+                                }) {
+                                    HStack {
+                                        Image(systemName: "trash.fill")
+                                            .foregroundColor(.white)
+                                        Text("Delete All from Photos")
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.white)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color.red)
+                                    .cornerRadius(10)
+                                }
+                                .buttonStyle(.plain)
+                            } else {
+                                Text("No imported screenshots to delete")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .padding(.vertical, 8)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    } header: {
+                        Text("Bulk Operations")
+                    } footer: {
+                        Text("⚠️ WARNING: This will permanently delete ALL imported screenshots from your Photos app. Screenshots will remain in Screenshot Vault. This action cannot be undone.")
+                    }
+                    
+                    // Accessibility Audit Section (Sprint 8.1.4)
+                    if interfaceSettings.showEnhancedInterfaceOptions {
+                        Section {
+                            NavigationLink(destination: AccessibilityAuditView()) {
+                                HStack {
+                                    Image(systemName: "accessibility")
+                                        .foregroundColor(.blue)
+                                        .font(.title2)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Accessibility Audit")
+                                            .font(.headline)
+                                        Text("Comprehensive accessibility compliance testing")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .foregroundColor(.secondary)
+                                        .font(.caption)
+                                }
+                            }
+                            .accessibilityLabel("Accessibility Audit")
+                            .accessibilityHint("Double tap to review accessibility compliance and run tests")
+                        } header: {
+                            Text("Accessibility")
+                        } footer: {
+                            Text("Review accessibility compliance, run tests, and generate reports for the Enhanced Interface.")
                         }
                     }
-                }
-                
-                // A/B Testing Section (Sprint 8.1.2)
-                if interfaceSettings.isUsingEnhancedInterface {
-                    Section {
-                        abTestingControls
-                    } header: {
-                        Text("Material Testing")
-                    } footer: {
-                        Text("Help us improve the Enhanced Interface by testing different Liquid Glass materials and providing feedback.")
-                    }
-                }
-                
-                Section {
-                    Button("Reset to Defaults") {
-                        settingsService.resetToDefaults()
-                        interfaceSettings.resetToDefaults()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .background {
-                // Sprint 8.1.2: Liquid Glass Preview Integration with smooth transitions
-                ZStack {
-                    // Legacy background always present for smooth transitions
-                    legacyBackground
                     
-                    // Liquid Glass background with animated opacity
+                    // Enhanced Interface Section (Sprint 8.1.1)
+                    if interfaceSettings.showEnhancedInterfaceOptions {
+                        Section {
+                            VStack(alignment: .leading, spacing: 16) {
+                                HStack {
+                                    Image(systemName: "sparkles.rectangle.stack")
+                                        .foregroundColor(.blue)
+                                        .font(.title2)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Enhanced Interface")
+                                            .font(.headline)
+                                        Text("Advanced Liquid Glass design with voice controls")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                }
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel(GlassDescriptions.enhancedInterfaceSettingsDescription(
+                                    isEnabled: interfaceSettings.isUsingEnhancedInterface,
+                                    featuresAvailable: [
+                                        "Single-click voice commands",
+                                        "Content constellation grouping",
+                                        "Liquid Glass materials",
+                                        "Intelligent triage"
+                                    ]
+                                ))
+                                
+                                InterfaceTypeSelectionView(settings: interfaceSettings)
+                                
+                                if interfaceSettings.isUsingEnhancedInterface {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Enhanced Features Available:")
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.secondary)
+                                        
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundColor(.green)
+                                                .font(.caption)
+                                            Text("Single-click voice commands")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundColor(.green)
+                                                .font(.caption)
+                                            Text("Content constellation grouping")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundColor(.green)
+                                                .font(.caption)
+                                            Text("Liquid Glass materials")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundColor(.green)
+                                                .font(.caption)
+                                            Text("Intelligent triage system")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    .padding(.top, 8)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 12)
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(8)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        } header: {
+                            Text("Advanced")
+                        } footer: {
+                            if interfaceSettings.isUsingEnhancedInterface {
+                                Text("You are using the Enhanced Interface with advanced features. You can switch back to the Legacy Interface at any time.")
+                            } else {
+                                Text("The Enhanced Interface includes advanced Liquid Glass design, voice controls, and intelligent content organization. The Legacy Interface remains fully functional.")
+                            }
+                        }
+                    }
+                    
+                    // A/B Testing Section (Sprint 8.1.2)
                     if interfaceSettings.isUsingEnhancedInterface {
-                        liquidGlassBackground
-                            .transition(.asymmetric(
-                                insertion: .opacity.combined(with: .scale(scale: 1.05)),
-                                removal: .opacity.combined(with: .scale(scale: 0.95))
-                            ))
+                        Section {
+                            abTestingControls
+                        } header: {
+                            Text("Material Testing")
+                        } footer: {
+                            Text("Help us improve the Enhanced Interface by testing different Liquid Glass materials and providing feedback.")
+                        }
+                    }
+                    
+                    Section {
+                        Button("Reset to Defaults") {
+                            settingsService.resetToDefaults()
+                            interfaceSettings.resetToDefaults()
+                        }
+                        .foregroundColor(.blue)
                     }
                 }
-                .animation(.easeInOut(duration: 0.6), value: interfaceSettings.isUsingEnhancedInterface)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+                .navigationTitle("Settings")
+                .navigationBarTitleDisplayMode(.inline)
+                .background {
+                    // Sprint 8.1.2: Liquid Glass Preview Integration with smooth transitions
+                    ZStack {
+                        // Legacy background always present for smooth transitions
+                        legacyBackground
+                        
+                        // Liquid Glass background with animated opacity
+                        if interfaceSettings.isUsingEnhancedInterface {
+                            liquidGlassBackground
+                                .transition(.asymmetric(
+                                    insertion: .opacity.combined(with: .scale(scale: 1.05)),
+                                    removal: .opacity.combined(with: .scale(scale: 0.95))
+                                ))
+                        }
                     }
-                    .fontWeight(.semibold)
+                    .animation(.easeInOut(duration: 0.6), value: interfaceSettings.isUsingEnhancedInterface)
+                }
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            dismiss()
+                        }
+                        .fontWeight(.semibold)
+                    }
+                }
+                .confirmationDialog(
+                    "Delete All Screenshots from Photos?",
+                    isPresented: $showingDeleteConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Delete All", role: .destructive) {
+                        Task {
+                            await performBulkDeletion()
+                        }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    let count = screenshots.filter { $0.assetIdentifier != nil }.count
+                    Text("This will permanently delete \(count) screenshots from your Photos app. This action cannot be undone. Screenshots will remain in Screenshot Vault.")
+                }
+                .sheet(isPresented: $showingDeletionProgress) {
+                    DeletionProgressView(
+                        progress: deletionProgress,
+                        status: deletionStatus,
+                        isCompleted: deletionCompleted,
+                        onDismiss: {
+                            showingDeletionProgress = false
+                            deletionCompleted = false
+                            deletionProgress = 0.0
+                            deletionStatus = ""
+                        }
+                    )
                 }
             }
-            .confirmationDialog(
-                "Delete All Screenshots from Photos?",
-                isPresented: $showingDeleteConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Delete All", role: .destructive) {
-                    Task {
-                        await performBulkDeletion()
+            .onAppear {
+                // Start monitoring when Enhanced Interface is active
+                if interfaceSettings.isUsingEnhancedInterface {
+                    liquidGlassMonitor.startMonitoring()
+                    
+                    // Run Sprint 8.1.3 performance validation
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        let renderer = LiquidGlassRenderer.shared
+                        _ = renderer.validateProMotionPerformance()
+                        renderer.testGracefulDegradation()
                     }
                 }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                let count = screenshots.filter { $0.assetIdentifier != nil }.count
-                Text("This will permanently delete \(count) screenshots from your Photos app. This action cannot be undone. Screenshots will remain in Screenshot Vault.")
             }
-            .sheet(isPresented: $showingDeletionProgress) {
-                DeletionProgressView(
-                    progress: deletionProgress,
-                    status: deletionStatus,
-                    isCompleted: deletionCompleted,
-                    onDismiss: {
-                        showingDeletionProgress = false
-                        deletionCompleted = false
-                        deletionProgress = 0.0
-                        deletionStatus = ""
-                    }
-                )
-            }
-        }
-        .onAppear {
-            // Start monitoring when Enhanced Interface is active
-            if interfaceSettings.isUsingEnhancedInterface {
-                liquidGlassMonitor.startMonitoring()
-                
-                // Run Sprint 8.1.3 performance validation
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    let renderer = LiquidGlassRenderer.shared
-                    _ = renderer.validateProMotionPerformance()
-                    renderer.testGracefulDegradation()
-                }
-            }
-        }
-        .onDisappear {
-            // Stop monitoring when leaving settings
-            liquidGlassMonitor.stopMonitoring()
-        }
-        .onChange(of: interfaceSettings.isUsingEnhancedInterface) { _, isUsing in
-            // Track interface state changes
-            if isUsing {
-                liquidGlassMonitor.startMonitoring()
-            } else {
+            .onDisappear {
+                // Stop monitoring when leaving settings
                 liquidGlassMonitor.stopMonitoring()
             }
-        }
-        .onChange(of: interfaceSettings.abTestMaterialType) { _, newMaterial in
-            // Track material switches for A/B testing
-            liquidGlassMonitor.recordMaterialSwitch()
-        }
-        .onChange(of: interfaceSettings.abTestRating) { _, newRating in
-            // Record user rating for current material
-            if newRating > 0 {
-                liquidGlassMonitor.recordMaterialRating(
-                    material: interfaceSettings.abTestMaterialType.rawValue,
-                    rating: newRating
-                )
+            .onChange(of: interfaceSettings.isUsingEnhancedInterface) { _, isUsing in
+                // Track interface state changes
+                if isUsing {
+                    liquidGlassMonitor.startMonitoring()
+                } else {
+                    liquidGlassMonitor.stopMonitoring()
+                }
+            }
+            .onChange(of: interfaceSettings.abTestMaterialType) { _, newMaterial in
+                // Track material switches for A/B testing
+                liquidGlassMonitor.recordMaterialSwitch()
+            }
+            .onChange(of: interfaceSettings.abTestRating) { _, newRating in
+                // Record user rating for current material
+                if newRating > 0 {
+                    liquidGlassMonitor.recordMaterialRating(
+                        material: interfaceSettings.abTestMaterialType.rawValue,
+                        rating: newRating
+                    )
+                }
             }
         }
     }
