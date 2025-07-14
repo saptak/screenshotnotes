@@ -14,6 +14,7 @@ struct ConstellationModeRenderer: View {
     @State private var animationOffset: CGFloat = 0
     @StateObject private var relationshipDetector = ContentRelationshipDetector.shared
     @State private var relationshipCancellable: AnyCancellable?
+    @State private var selectedConstellation: ContentConstellation? = nil
     
     var body: some View {
         ZStack {
@@ -157,8 +158,15 @@ struct ConstellationModeRenderer: View {
     private var constellationGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 20) {
             ForEach(detectedConstellations) { constellation in
-                ConstellationCard(constellation: constellation, action: {})
+                ConstellationCard(constellation: constellation, action: {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        selectedConstellation = constellation
+                    }
+                })
             }
+        }
+        .sheet(item: $selectedConstellation) { constellation in
+            ConstellationWorkspaceView(constellation: constellation)
         }
     }
     // MARK: - Analysis Logic (Real Data)
