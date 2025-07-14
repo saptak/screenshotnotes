@@ -45,6 +45,7 @@ struct ContentView: View {
     // 🌟 Sprint 8.2.1: Adaptive Content Hub Foundation
     @StateObject private var interfaceSettings = InterfaceSettings()
     @StateObject private var modeManager = InterfaceModeManager.shared
+    @StateObject private var relationshipDetector = ContentRelationshipDetector.shared
 
     init() {
         _searchOrchestrator = StateObject(wrappedValue: GlassConversationalSearchOrchestrator(settingsService: SettingsService.shared))
@@ -549,6 +550,12 @@ struct ContentView: View {
                 // 🔧 Sprint 5.2.4: Cleanup search task to prevent memory leaks
                 searchTask?.cancel()
                 searchTask = nil
+            }
+            .task(id: screenshots) {
+                // Only run in Enhanced Interface mode
+                if interfaceSettings.isEnhancedInterfaceEnabled {
+                    await relationshipDetector.detectRelationships(in: Array(screenshots))
+                }
             }
         }
     }
