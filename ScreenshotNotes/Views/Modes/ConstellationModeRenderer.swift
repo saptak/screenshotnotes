@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Combine
 
 /// Renders the Constellation mode shell for Enhanced Interface.
 /// Provides a beautiful, fluid, and reliable placeholder UI for activity-based organization.
@@ -11,6 +12,8 @@ struct ConstellationModeRenderer: View {
     @State private var detectedConstellations: [ContentConstellation] = []
     @State private var isAnalyzing = false
     @State private var animationOffset: CGFloat = 0
+    @StateObject private var relationshipDetector = ContentRelationshipDetector.shared
+    @State private var relationshipCancellable: AnyCancellable?
     
     var body: some View {
         ZStack {
@@ -37,6 +40,13 @@ struct ConstellationModeRenderer: View {
             if detectedConstellations.isEmpty {
                 Task { await analyzeConstellations() }
             }
+            // Subscribe to relationship updates
+            relationshipCancellable = relationshipDetector.$detectedRelationships.sink { _ in
+                Task { await analyzeConstellations() }
+            }
+        }
+        .onDisappear {
+            relationshipCancellable?.cancel()
         }
     }
     
@@ -151,42 +161,69 @@ struct ConstellationModeRenderer: View {
             }
         }
     }
-    // MARK: - Analysis Logic (Sample Only)
+    // MARK: - Analysis Logic (Real Data)
     private func analyzeConstellations() async {
         isAnalyzing = true
-        try? await Task.sleep(for: .seconds(2))
+        // Ensure relationships are up to date
+        if relationshipDetector.detectedRelationships.isEmpty {
+            await relationshipDetector.detectRelationships(in: screenshots)
+        }
+        let relationships = relationshipDetector.detectedRelationships
+        let constellations = buildConstellations(from: relationships, screenshots: screenshots)
         await MainActor.run {
-            detectedConstellations = generateSampleConstellations()
+            detectedConstellations = constellations
             isAnalyzing = false
         }
     }
-    private func generateSampleConstellations() -> [ContentConstellation] {
-        guard screenshots.count >= 3 else { return [] }
-        let sampleProjects = [
-            ("Home Renovation", "🏠", screenshots.prefix(3).map(\ .id)),
-            ("Travel Planning", "✈️", screenshots.dropFirst(3).prefix(2).map(\ .id)),
-            ("Work Documents", "💼", screenshots.suffix(2).map(\ .id))
-        ]
+    /// Group screenshots into constellations based on strong relationships
+    private func buildConstellations(from relationships: [Relationship], screenshots: [Screenshot]) -> [ContentConstellation] {
+        // Build clusters using union-find (disjoint set) for robust grouping
+        var parent: [UUID: UUID] = [:]
+        func find(_ id: UUID) -> UUID {
+            if parent[id] == nil { parent[id] = id }
+            if parent[id] != id { parent[id] = find(parent[id]!) }
+            return parent[id]!
+        }
+        func union(_ id1: UUID, _ id2: UUID) {
+            let root1 = find(id1)
+            let root2 = find(id2)
+            if root1 != root2 { parent[root2] = root1 }
+        }
+        // Only use strong relationships
+        let strong = relationships.filter { $0.strength > 0.5 && $0.confidence > 0.5 }
+        for rel in strong {
+            union(rel.sourceScreenshotId, rel.targetScreenshotId)
+        }
+        // Group screenshots by root
+        var clusters: [UUID: [UUID]] = [:]
+        for screenshot in screenshots {
+            let root = find(screenshot.id)
+            clusters[root, default: []].append(screenshot.id)
+        }
+        // Only keep clusters with >1 screenshot
+        let validClusters = clusters.values.filter { $0.count > 1 }
+        // Build ContentConstellation for each cluster
         var constellations: [ContentConstellation] = []
-        for (index, (title, emoji, screenshotIds)) in sampleProjects.enumerated() {
-            if !screenshotIds.isEmpty {
-                constellations.append(ContentConstellation(
-                    id: UUID(),
-                    title: title,
-                    emoji: emoji,
-                    type: index == 0 ? .project : (index == 1 ? .travel : .work),
-                    screenshotIds: Array(screenshotIds),
-                    completionPercentage: Double.random(in: 0.3...0.9),
-                    lastUpdated: Date(),
-                    isActive: true,
-                    description: nil,
-                    tags: [],
-                    priority: .medium,
-                    estimatedTimeToComplete: nil,
-                    dueDate: nil,
-                    createdDate: Date()
-                ))
-            }
+        for (i, ids) in validClusters.enumerated() {
+            let screenshotsInCluster = screenshots.filter { ids.contains($0.id) }
+            let title = "Constellation #\(i+1)"
+            let emoji = ["✈️","🏠","💼","📊","🎓","🛒","❤️","🍽️","🎉","📅"].randomElement() ?? "✨"
+            let type: ConstellationType = .other // Could infer from content in future
+            constellations.append(ContentConstellation(
+                title: title,
+                emoji: emoji,
+                type: type,
+                screenshotIds: ids,
+                completionPercentage: Double.random(in: 0.3...0.9),
+                lastUpdated: Date(),
+                isActive: true,
+                description: nil,
+                tags: [],
+                priority: .medium,
+                estimatedTimeToComplete: nil,
+                dueDate: nil,
+                createdDate: Date()
+            ))
         }
         return constellations
     }
