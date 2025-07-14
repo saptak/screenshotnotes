@@ -182,46 +182,47 @@ struct ConstellationWorkspaceView: View {
                 Text("Progress")
                     .font(.headline)
                     .foregroundColor(.primary)
-                
                 Spacer()
-                
                 Text(constellation.completionText)
                     .font(.subheadline.bold())
                     .foregroundColor(constellation.type.color)
             }
-            
             // Progress bar
             ProgressView(value: constellation.completionPercentage)
                 .tint(constellation.type.color)
                 .scaleEffect(y: 2.0)
-            
-            // Progress details
-            HStack(spacing: 24) {
-                ProgressDetail(
-                    title: "Items",
-                    value: "\(constellation.screenshotIds.count)",
-                    icon: "photo.stack",
-                    color: constellation.type.color
-                )
-                
-                if let nextAction = constellation.suggestedNextAction {
-                    ProgressDetail(
-                        title: "Next",
-                        value: nextAction,
-                        icon: "arrow.right.circle",
-                        color: constellation.type.color,
-                        isAction: true
-                    )
+                .animation(.easeInOut, value: constellation.completionPercentage)
+            // Milestone tracking: typical activities
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    let total = max(1, constellation.type.typicalActivities.count)
+                    let completed = min(constellation.screenshotIds.count, total)
+                    ForEach(0..<total, id: \.self) { idx in
+                        let isComplete = idx < completed
+                        VStack(spacing: 6) {
+                            ZStack {
+                                Circle()
+                                    .stroke(isComplete ? constellation.type.color : Color.gray.opacity(0.2), lineWidth: 3)
+                                    .frame(width: 32, height: 32)
+                                if isComplete {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(constellation.type.color)
+                                        .font(.system(size: 22, weight: .bold))
+                                } else {
+                                    Text("\(idx+1)")
+                                        .font(.subheadline.bold())
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            Text(constellation.type.typicalActivities[idx])
+                                .font(.caption2)
+                                .foregroundColor(isComplete ? .primary : .secondary)
+                                .lineLimit(1)
+                                .frame(width: 70)
+                        }
+                    }
                 }
-                
-                if let daysToComplete = constellation.estimatedDaysToCompletion {
-                    ProgressDetail(
-                        title: "ETA",
-                        value: "\(daysToComplete)d",
-                        icon: "calendar",
-                        color: constellation.type.color
-                    )
-                }
+                .padding(.vertical, 8)
             }
         }
         .padding(20)

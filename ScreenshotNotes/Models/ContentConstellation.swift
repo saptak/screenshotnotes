@@ -17,7 +17,7 @@ struct ContentConstellation: Identifiable, Codable, Hashable {
     let emoji: String
     let type: ConstellationType
     let screenshotIds: [UUID]
-    let completionPercentage: Double
+    // Remove stored completionPercentage; use computed property below
     let lastUpdated: Date
     let isActive: Bool
     
@@ -35,7 +35,7 @@ struct ContentConstellation: Identifiable, Codable, Hashable {
         emoji: String,
         type: ConstellationType,
         screenshotIds: [UUID],
-        completionPercentage: Double = 0.0,
+        // Remove stored completionPercentage; use computed property below
         lastUpdated: Date = Date(),
         isActive: Bool = true,
         description: String? = nil,
@@ -50,7 +50,7 @@ struct ContentConstellation: Identifiable, Codable, Hashable {
         self.emoji = emoji
         self.type = type
         self.screenshotIds = screenshotIds
-        self.completionPercentage = max(0, min(1, completionPercentage))
+        // Remove stored completionPercentage; use computed property below
         self.lastUpdated = lastUpdated
         self.isActive = isActive
         self.description = description
@@ -340,6 +340,13 @@ struct ConstellationAnalytics: Codable {
 // MARK: - Extensions
 
 extension ContentConstellation {
+    /// Dynamically calculates completion percentage based on content and typical activities
+    var completionPercentage: Double {
+        let total = max(1, type.typicalActivities.count)
+        let progress = Double(screenshotIds.count) / Double(total)
+        return min(1.0, progress)
+    }
+    
     /// Returns a formatted string for the completion percentage
     var completionText: String {
         return "\(Int(completionPercentage * 100))% complete"
