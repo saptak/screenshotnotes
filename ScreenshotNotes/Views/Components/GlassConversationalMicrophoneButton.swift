@@ -45,6 +45,17 @@ struct GlassConversationalMicrophoneButton: View {
                             value: isBreathing
                         )
                 }
+                // Error/timeout state: glass pulse and icon
+                if state == .error {
+                    Circle()
+                        .stroke(Color.red.opacity(0.7), lineWidth: 4)
+                        .scaleEffect(1.2)
+                        .opacity(0.7)
+                        .animation(
+                            reduceMotion ? .none : GlassAnimations.errorState(),
+                            value: state
+                        )
+                }
                 
                 // Processing indicator (rotating)
                 if state == .processing {

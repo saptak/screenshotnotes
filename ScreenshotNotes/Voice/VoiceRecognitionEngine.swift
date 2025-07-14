@@ -16,6 +16,8 @@ class VoiceRecognitionEngine: ObservableObject {
     @Published private(set) var state: State = .inactive
     @Published private(set) var transcript: String = ""
     @Published private(set) var error: String? = nil
+    private var sessionTimeoutTimer: Timer?
+    private let sessionTimeout: TimeInterval = 10.0
     private init() {}
 
     /// Voice recognition states
@@ -29,11 +31,37 @@ class VoiceRecognitionEngine: ObservableObject {
 
     /// Request permission for speech recognition and microphone
     func requestPermissions() async -> Bool {
-        let speechStatus = await SFSpeechRecognizer.requestAuthorization()
-        let audioStatus = await AVAudioApplication.requestRecordPermission()
+        let speechStatus = await Self.requestSpeechAuthorization()
+        let audioStatus = await Self.requestMicrophoneAuthorization()
         let granted = (speechStatus == .authorized) && audioStatus
         logger.info("Speech permission: \(speechStatus.rawValue), Audio permission: \(audioStatus)")
         return granted
+    }
+
+    /// Robust async wrapper for SFSpeechRecognizer.requestAuthorization
+    private static func requestSpeechAuthorization() async -> SFSpeechRecognizerAuthorizationStatus {
+        await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { status in
+                continuation.resume(returning: status)
+            }
+        }
+    }
+
+    /// Robust async wrapper for microphone permission (iOS 17+ and fallback)
+    private static func requestMicrophoneAuthorization() async -> Bool {
+        if #available(iOS 17.0, *) {
+            return await withCheckedContinuation { continuation in
+                AVAudioApplication.requestRecordPermission(completionHandler: { granted in
+                    continuation.resume(returning: granted)
+                })
+            }
+        } else {
+            return await withCheckedContinuation { continuation in
+                AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                    continuation.resume(returning: granted)
+                }
+            }
+        }
     }
 
     /// Start a single voice recognition session (tap-to-activate)
@@ -64,6 +92,7 @@ class VoiceRecognitionEngine: ObservableObject {
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
         state = .inactive
+        cancelSessionTimeoutTimer()
         logger.info("🛑 Voice recognition stopped")
     }
 
@@ -79,6 +108,7 @@ class VoiceRecognitionEngine: ObservableObject {
         let inputNode = audioEngine.inputNode
         request.shouldReportPartialResults = true
         state = .listening
+        startSessionTimeoutTimer()
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self = self else { return }
             if let result = result {
@@ -102,15 +132,23 @@ class VoiceRecognitionEngine: ObservableObject {
         try audioEngine.start()
         logger.info("🎧 Audio engine started for voice recognition")
     }
-}
 
-extension AVAudioApplication {
-    /// Async wrapper for AVAudioSession.sharedInstance().requestRecordPermission
-    static func requestRecordPermission() async -> Bool {
-        await withCheckedContinuation { continuation in
-            AVAudioSession.sharedInstance().requestRecordPermission { granted in
-                continuation.resume(returning: granted)
+    /// Start the session timeout timer
+    private func startSessionTimeoutTimer() {
+        cancelSessionTimeoutTimer()
+        sessionTimeoutTimer = Timer.scheduledTimer(withTimeInterval: sessionTimeout, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            if self.state == .listening {
+                self.state = .error
+                self.error = "Listening timed out. Please try again."
+                self.stopRecognition()
+                self.logger.error("⏰ Voice session timed out after \(self.sessionTimeout) seconds")
             }
         }
+    }
+    /// Cancel the session timeout timer
+    private func cancelSessionTimeoutTimer() {
+        sessionTimeoutTimer?.invalidate()
+        sessionTimeoutTimer = nil
     }
 } 
