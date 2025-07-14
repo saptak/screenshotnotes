@@ -16,6 +16,9 @@ struct ConstellationModeRenderer: View {
     @State private var relationshipCancellable: AnyCancellable?
     @State private var selectedConstellation: ContentConstellation? = nil
     @State private var selectedWorkspaceIndex: Int = 0
+    @StateObject private var voiceActionProcessor = VoiceActionProcessor.shared
+    @State private var showVoiceToast: Bool = false
+    @State private var voiceToastMessage: String = ""
     
     var body: some View {
         ZStack {
@@ -189,10 +192,30 @@ struct ConstellationModeRenderer: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
+                GlassConversationalMicrophoneButton(state: .constant(.ready)) {
+                    // Simulate voice activation (in real app, connect to recognition engine)
+                    // For demo, show a sheet or alert to enter a command
+                    presentVoiceCommandInput()
+                }
+                .frame(width: 48, height: 48)
+                .padding(.leading, 8)
             }
             .padding(.vertical, 8)
         }
         .padding(.bottom, 4)
+        .overlay(
+            Group {
+                if showVoiceToast {
+                    Text(voiceToastMessage)
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16).padding(.vertical, 10)
+                        .background(Capsule().fill(Color.purple.opacity(0.85)))
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .zIndex(1)
+                }
+            }, alignment: .top
+        )
     }
     // MARK: - Selected Workspace Detail
     private var selectedWorkspaceDetail: some View {
@@ -280,6 +303,76 @@ struct ConstellationModeRenderer: View {
             ))
         }
         return constellations
+    }
+    // MARK: - Voice Command Input (Demo)
+    private func presentVoiceCommandInput() {
+        // For demo: present a simple alert to enter a command
+        let alert = UIAlertController(title: "Voice Command", message: "Enter a workspace voice command (e.g., 'next workspace', 'previous workspace', 'create workspace')", preferredStyle: .alert)
+        alert.addTextField { $0.placeholder = "Voice command..." }
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+            if let command = alert.textFields?.first?.text, !command.isEmpty {
+                handleVoiceCommand(command)
+            }
+        })
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        UIApplication.shared.windows.first?.rootViewController?.present(alert, animated: true)
+    }
+    private func handleVoiceCommand(_ command: String) {
+        voiceActionProcessor.process(
+            transcript: command,
+            onShowSettings: {},
+            onModeSwitched: nil,
+            onNextWorkspace: {
+                withAnimation(.spring()) {
+                    if selectedWorkspaceIndex < detectedConstellations.count - 1 {
+                        selectedWorkspaceIndex += 1
+                        showVoiceFeedback("Switched to next workspace.")
+                    } else {
+                        showVoiceFeedback("Already at last workspace.")
+                    }
+                }
+            },
+            onPreviousWorkspace: {
+                withAnimation(.spring()) {
+                    if selectedWorkspaceIndex > 0 {
+                        selectedWorkspaceIndex -= 1
+                        showVoiceFeedback("Switched to previous workspace.")
+                    } else {
+                        showVoiceFeedback("Already at first workspace.")
+                    }
+                }
+            },
+            onCreateWorkspace: {
+                withAnimation(.spring()) {
+                    // For demo: add a placeholder workspace
+                    let new = ContentConstellation(
+                        title: "New Workspace",
+                        emoji: "✨",
+                        type: .other,
+                        screenshotIds: [],
+                        completionPercentage: 0.0,
+                        lastUpdated: Date(),
+                        isActive: true,
+                        description: "Created by voice command",
+                        tags: [],
+                        priority: .medium,
+                        estimatedTimeToComplete: nil,
+                        dueDate: nil,
+                        createdDate: Date()
+                    )
+                    detectedConstellations.append(new)
+                    selectedWorkspaceIndex = detectedConstellations.count - 1
+                    showVoiceFeedback("Workspace created.")
+                }
+            }
+        )
+    }
+    private func showVoiceFeedback(_ message: String) {
+        voiceToastMessage = message
+        withAnimation(.easeInOut) { showVoiceToast = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation(.easeInOut) { showVoiceToast = false }
+        }
     }
 }
 

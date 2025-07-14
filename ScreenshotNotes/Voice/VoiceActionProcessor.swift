@@ -16,7 +16,17 @@ class VoiceActionProcessor: ObservableObject {
     ///   - transcript: The recognized speech text
     ///   - onShowSettings: Closure to call for "show settings" action
     ///   - onModeSwitched: Closure to call after mode switch (optional, for UI feedback)
-    func process(transcript: String, onShowSettings: @escaping () -> Void, onModeSwitched: ((InterfaceMode) -> Void)? = nil) {
+    ///   - onNextWorkspace: Closure to call for "next workspace" action
+    ///   - onPreviousWorkspace: Closure to call for "previous workspace" action
+    ///   - onCreateWorkspace: Closure to call for "create workspace" action
+    func process(
+        transcript: String,
+        onShowSettings: @escaping () -> Void,
+        onModeSwitched: ((InterfaceMode) -> Void)? = nil,
+        onNextWorkspace: (() -> Void)? = nil,
+        onPreviousWorkspace: (() -> Void)? = nil,
+        onCreateWorkspace: (() -> Void)? = nil
+    ) {
         isProcessing = true
         feedback = nil
         lastAction = nil
@@ -38,6 +48,18 @@ class VoiceActionProcessor: ObservableObject {
             handleModeSwitch(.exploration, onModeSwitched)
         case .switchToSearch:
             handleModeSwitch(.search, onModeSwitched)
+        case .nextWorkspace:
+            feedback = "Switching to next workspace."
+            lastAction = .nextWorkspace
+            onNextWorkspace?()
+        case .previousWorkspace:
+            feedback = "Switching to previous workspace."
+            lastAction = .previousWorkspace
+            onPreviousWorkspace?()
+        case .createWorkspace:
+            feedback = "Creating new workspace."
+            lastAction = .createWorkspace
+            onCreateWorkspace?()
         }
         // Automatically reset after short delay (simulate session termination)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -48,7 +70,7 @@ class VoiceActionProcessor: ObservableObject {
     }
 
     /// Helper to robustly switch modes with feedback
-    private func handleModeSwitch(_ mode: InterfaceMode, _ onModeSwitched: ((InterfaceMode) -> Void)?) {
+    private func handleModeSwitch(_ mode: InterfaceMode, _ onModeSwitched: ((InterfaceMode) -> Void)? = nil) {
         let manager = InterfaceModeManager.shared
         guard manager.isModeSwitchingEnabled else {
             feedback = "Mode switching is not available."

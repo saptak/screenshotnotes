@@ -24,6 +24,16 @@ class VoiceCommandRegistry: ObservableObject {
         register(
             VoiceCommand(phrases: ["switch to search", "search mode", "show search", "find content", "search for screenshots"], intent: .switchToSearch)
         )
+        register(
+            VoiceCommand(phrases: ["next workspace", "go to next workspace", "switch workspace", "forward workspace"], intent: .nextWorkspace)
+        )
+        register(
+            VoiceCommand(phrases: ["previous workspace", "go to previous workspace", "back workspace", "last workspace"], intent: .previousWorkspace)
+        )
+        register(
+            VoiceCommand(phrases: ["create workspace", "new workspace", "add workspace"], intent: .createWorkspace)
+        )
+        // For demo: not adding "go to workspace #N" or "open workspace [name]" yet (would require parameterized intent)
     }
 
     /// Register a new voice command (with synonyms/variations)
@@ -70,6 +80,9 @@ struct VoiceCommand: Identifiable, Hashable {
         case switchToConstellation
         case switchToExploration
         case switchToSearch
+        case nextWorkspace
+        case previousWorkspace
+        case createWorkspace
         // Add more intents as needed
     }
 } 
