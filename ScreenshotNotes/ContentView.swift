@@ -193,29 +193,20 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 // Current mode content
-                Group {
-                    switch modeManager.currentMode {
-                    case .gallery:
-                        galleryModeContent
-                            .onAppear {
-                                // Ensure clean state when entering gallery mode
-                                // Reset any lingering refresh states that might hide the pull text
-                                if screenshots.isEmpty && !isBulkImportInProgress {
-                                    galleryScrollOffset = 0
-                                }
-                            }
-                    case .constellation:
-                        ConstellationView()
-                    case .exploration:
-                        explorationModeContent
-                    case .search:
-                        searchModeContent
-                    }
+                ZStack {
+                    galleryModeContent
+                        .opacity(modeManager.currentMode == .gallery ? 1 : 0)
+                    
+                    ConstellationView()
+                        .opacity(modeManager.currentMode == .constellation ? 1 : 0)
+                    
+                    explorationModeContent
+                        .opacity(modeManager.currentMode == .exploration ? 1 : 0)
+                    
+                    searchModeContent
+                        .opacity(modeManager.currentMode == .search ? 1 : 0)
                 }
-                .transition(.asymmetric(
-                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                    removal: .move(edge: .leading).combined(with: .opacity)
-                ))
+                .animation(.easeInOut(duration: 0.3), value: modeManager.currentMode)
             }
         }
     }
