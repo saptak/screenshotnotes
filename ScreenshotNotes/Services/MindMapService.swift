@@ -53,16 +53,16 @@ class MindMapService: ObservableObject {
     /// Check if this is the first time generating (no cached data)
     var isFirstTimeGeneration: Bool {
         guard let url = cacheURL else { return true }
-        return !FileManager.default.fileExists(atPath: url.path)
+        return !Foundation.FileManager.default.fileExists(atPath: url.path)
     }
     // Cache file location
     private var cacheURL: URL? {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("mindmap_cache.json")
+        Foundation.FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("mindmap_cache.json")
     }
 
     /// Load mind map data from cache (if available)
     func loadFromCache() async {
-        guard let url = cacheURL, FileManager.default.fileExists(atPath: url.path) else { return }
+        guard let url = cacheURL, Foundation.FileManager.default.fileExists(atPath: url.path) else { return }
         do {
             let data = try Data(contentsOf: url)
             let decoder = JSONDecoder()

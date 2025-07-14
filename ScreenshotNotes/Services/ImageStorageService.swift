@@ -9,7 +9,7 @@ protocol ImageStorageServiceProtocol {
 }
 
 class ImageStorageService: ImageStorageServiceProtocol, @unchecked Sendable {
-    private let fileManager = FileManager.default
+    private let fileManager = Foundation.FileManager.default
     private let documentsDirectory: URL
     
     init() {

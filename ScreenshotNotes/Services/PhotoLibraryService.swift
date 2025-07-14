@@ -2,6 +2,7 @@ import Foundation
 import Photos
 import SwiftData
 import UIKit
+import OSLog
 
 @MainActor
 protocol PhotoLibraryServiceProtocol {
@@ -29,6 +30,9 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     
     // Race condition protection using async-safe actor
     private let importCoordinator = ImportCoordinator()
+    
+    // 🎯 Sprint 8.5.2: Error handling integration
+    private let logger = Logger(subsystem: "com.screenshotnotes.app", category: "PhotoLibraryService")
 
     init(imageStorageService: ImageStorageServiceProtocol = ImageStorageService(),
          hapticService: HapticFeedbackService? = nil,
@@ -189,6 +193,8 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
     }
     
     func requestPhotoLibraryPermission() async -> PHAuthorizationStatus {
+        logger.info("Requesting photo library permission")
+        
         return await withCheckedContinuation { continuation in
             PHPhotoLibrary.requestAuthorization(for: .readWrite) { [weak self] status in
                 Task { @MainActor in
@@ -199,25 +205,41 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
                     
                     self.authorizationStatus = status
                     
-                    // Handle different authorization states
+                    // Handle different authorization states with error handling
                     switch status {
                     case .authorized:
-                        print("📸 Photo library access granted")
+                        self.logger.info("Photo library access granted")
                         if self.automaticImportEnabled {
                             self.startMonitoring()
                         }
                     case .denied, .restricted:
-                        print("❌ Photo library access denied")
+                        self.logger.warning("Photo library access denied")
                         self.stopMonitoring()
+                        
+                        // Report permission error
+                        let permissionError = AppError(
+                            type: .permission(.photoLibraryDenied),
+                            context: .photoImport,
+                            severity: .error,
+                            source: "PhotoLibraryService.requestPhotoLibraryPermission",
+                            originalError: nil,
+                            retryAttempt: 0,
+                            timestamp: Date(),
+                            recoveryStrategy: PermissionRecoveryStrategy(permissionError: .photoLibraryDenied, context: .photoImport),
+                            retryStrategy: nil,
+                            requiresUserFeedback: true
+                        )
+                        AppErrorHandler.shared.handle(permissionError, context: .photoImport, source: "PhotoLibraryService.requestPhotoLibraryPermission")
+                        
                     case .limited:
-                        print("⚠️ Photo library access limited")
+                        self.logger.info("Photo library access limited")
                         if self.automaticImportEnabled {
                             self.startMonitoring()
                         }
                     case .notDetermined:
-                        print("🤷 Photo library access not determined")
+                        self.logger.info("Photo library access not determined")
                     @unknown default:
-                        print("🤷 Unknown photo library authorization status")
+                        self.logger.warning("Unknown photo library authorization status")
                     }
                     
                     continuation.resume(returning: status)

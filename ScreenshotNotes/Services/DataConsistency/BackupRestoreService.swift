@@ -33,7 +33,7 @@ class BackupRestoreService: ObservableObject {
     
     private init() {
         // Create backup directory
-        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let documentsURL = Foundation.FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         self.backupDirectory = documentsURL.appendingPathComponent("DataBackups")
         
         logger.info("💾 BackupRestoreService initialized")
@@ -371,7 +371,7 @@ class BackupRestoreService: ObservableObject {
     
     private func createBackupDirectory() {
         do {
-            try FileManager.default.createDirectory(at: backupDirectory, withIntermediateDirectories: true)
+            try Foundation.FileManager.default.createDirectory(at: backupDirectory, withIntermediateDirectories: true)
         } catch {
             logger.error("❌ Failed to create backup directory: \(error)")
         }
@@ -379,7 +379,7 @@ class BackupRestoreService: ObservableObject {
     
     private func loadAvailableBackups() async {
         do {
-            let backupFiles = try FileManager.default.contentsOfDirectory(at: backupDirectory, includingPropertiesForKeys: nil)
+            let backupFiles = try Foundation.FileManager.default.contentsOfDirectory(at: backupDirectory, includingPropertiesForKeys: nil)
             
             for fileURL in backupFiles.filter({ $0.pathExtension == "backup" }) {
                 if let backup = await loadBackupMetadata(from: fileURL) {
@@ -416,7 +416,7 @@ class BackupRestoreService: ObservableObject {
     private func deleteBackup(_ backup: DataBackup) async {
         do {
             let backupFileURL = backupDirectory.appendingPathComponent("\(backup.id.uuidString).backup")
-            try FileManager.default.removeItem(at: backupFileURL)
+            try Foundation.FileManager.default.removeItem(at: backupFileURL)
             
             if let index = availableBackups.firstIndex(where: { $0.id == backup.id }) {
                 availableBackups.remove(at: index)

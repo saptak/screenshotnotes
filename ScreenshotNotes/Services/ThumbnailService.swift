@@ -66,7 +66,7 @@ class ThumbnailService: ObservableObject {
     
     // Legacy cache for backward compatibility (will be deprecated)
     private let thumbnailCache = NSCache<NSString, UIImage>()
-    private let fileManager = FileManager.default
+    private let fileManager = Foundation.FileManager.default
     private let thumbnailsDirectory: URL
     private var activeTasks: [String: Task<UIImage?, Never>] = [:]
     

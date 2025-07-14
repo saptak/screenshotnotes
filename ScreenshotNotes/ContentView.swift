@@ -13,6 +13,9 @@ struct ContentView: View {
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var selectedScreenshot: Screenshot?
     
+    // 🎯 Sprint 8.5.2: Error handling integration
+    @StateObject private var errorHandler = AppErrorHandler.shared
+    
     // Phase 2: Viewport management for predictive loading
     @State private var scrollOffset: CGFloat = 0
     @StateObject private var viewportManager = PredictiveViewportManager.shared
@@ -79,6 +82,9 @@ struct ContentView: View {
                 
                 // Add the contextual menu overlay
                 ContextualMenuOverlay()
+                
+                // 🎯 Sprint 8.5.2: Error presentation overlay
+                ErrorPresentationView(errorHandler: errorHandler)
             }
             .navigationTitle("Screenshot Vault")
             .navigationBarTitleDisplayMode(.inline)
@@ -169,33 +175,75 @@ struct ContentView: View {
                 MindMapView()
             }
             .onAppear {
-                photoLibraryService.setModelContext(modelContext)
-                
-                // Set up enhanced thumbnail services with ModelContext
-                ThumbnailService.shared.setModelContext(modelContext)
-                
-                // Initialize enhanced vision processing
-                backgroundVisionProcessor.setModelContext(modelContext)
-                
-                // Start background vision processing for screenshots that need analysis
+                // 🎯 Sprint 8.5.2: Set up services with error handling
                 Task {
-                    await backgroundVisionProcessor.startProcessing()
+                    let result = await errorHandler.handleWithRetry(
+                        operation: {
+                            photoLibraryService.setModelContext(modelContext)
+                            
+                            // Set up enhanced thumbnail services with ModelContext
+                            ThumbnailService.shared.setModelContext(modelContext)
+                            
+                            // Initialize enhanced vision processing
+                            backgroundVisionProcessor.setModelContext(modelContext)
+                        },
+                        context: .photoImport,
+                        source: "ContentView.onAppear"
+                    )
+                    
+                    switch result {
+                    case .success:
+                        // Start background processing only if setup succeeded
+                        await startBackgroundProcessing()
+                    case .failure(let error):
+                        errorHandler.handle(error, context: .photoImport, source: "ContentView.onAppear")
+                    }
                 }
-                
-                // Schedule periodic background processing
-                backgroundVisionProcessor.scheduleBackgroundVisionProcessing()
-                
-                // Initialize enhanced semantic processing (entity extraction + AI tagging)
-                Task {
-                    await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
-                }
-                
-                print("ContentView: ModelContext set up for all services including enhanced gallery infrastructure")
             }
             .task(id: screenshots) {
                 // Process relationship detection through mode coordinator
                 await modeCoordinator.processRelationshipDetection(with: Array(screenshots))
             }
+        }
+    }
+    
+    // MARK: - 🎯 Sprint 8.5.2: Background Processing with Error Handling
+    
+    private func startBackgroundProcessing() async {
+        // Start background vision processing with error handling
+        let visionResult = await errorHandler.handleWithRetry(
+            operation: {
+                await backgroundVisionProcessor.startProcessing()
+            },
+            context: .background,
+            maxRetries: 2,
+            source: "ContentView.startBackgroundProcessing"
+        )
+        
+        if case .success = visionResult {
+            // Schedule periodic processing only if initial processing succeeded
+            backgroundVisionProcessor.scheduleBackgroundVisionProcessing()
+        }
+        
+        // Start semantic processing with error handling
+        let semanticResult = await errorHandler.handleWithRetry(
+            operation: {
+                await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+            },
+            context: .background,
+            maxRetries: 2,
+            source: "ContentView.startBackgroundProcessing"
+        )
+        
+        switch (visionResult, semanticResult) {
+        case (.success, .success):
+            print("ContentView: All background processing started successfully")
+        case (.failure(let visionError), .success):
+            print("ContentView: Vision processing failed: \(visionError.localizedDescription)")
+        case (.success, .failure(let semanticError)):
+            print("ContentView: Semantic processing failed: \(semanticError.localizedDescription)")
+        case (.failure(let visionError), .failure(let semanticError)):
+            print("ContentView: Both processing systems failed - Vision: \(visionError.localizedDescription), Semantic: \(semanticError.localizedDescription)")
         }
     }
 }

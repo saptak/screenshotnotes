@@ -55,7 +55,7 @@ class AdvancedThumbnailCacheManager {
     private var lastLoadTime: TimeInterval = 0
     
     /// File system management
-    private let fileManager = FileManager.default
+    private let fileManager = Foundation.FileManager.default
     private let thumbnailsDirectory: URL
     
     /// Phase 2: Thread-safe coordination
@@ -66,7 +66,7 @@ class AdvancedThumbnailCacheManager {
     
     private init() {
         // Create thumbnails directory
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documentsPath = Foundation.FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         thumbnailsDirectory = documentsPath.appendingPathComponent("AdvancedThumbnails")
         
         // Create directory if it doesn't exist
