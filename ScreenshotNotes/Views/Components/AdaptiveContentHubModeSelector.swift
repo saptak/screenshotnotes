@@ -11,8 +11,7 @@ import SwiftUI
 /// Beautiful mode selector for Adaptive Content Hub with Liquid Glass materials
 /// Provides smooth transitions between Gallery, Constellation, Exploration, and Search modes
 struct AdaptiveContentHubModeSelector: View {
-    @StateObject private var modeManager = InterfaceModeManager.shared
-    @StateObject private var interfaceSettings = InterfaceSettings()
+    @ObservedObject var modeCoordinator: ModeCoordinator
     @StateObject private var liquidGlassMaterial = LiquidGlassMaterial()
     
     // Animation state
@@ -25,16 +24,16 @@ struct AdaptiveContentHubModeSelector: View {
     private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     
     var body: some View {
-        if interfaceSettings.isEnhancedInterfaceEnabled {
+        if modeCoordinator.isEnhancedInterfaceEnabled {
             VStack(spacing: 0) {
                 // Mode selector tabs
                 HStack(spacing: 0) {
-                    ForEach(modeManager.getAvailableModes()) { mode in
+                    ForEach(modeCoordinator.modeManager.getAvailableModes()) { mode in
                         ModeTabButton(
                             mode: mode,
-                            isSelected: mode == modeManager.currentMode,
-                            isTransitioning: modeManager.isTransitioning,
-                            transitionProgress: modeManager.transitionProgress
+                            isSelected: mode == modeCoordinator.currentMode,
+                            isTransitioning: modeCoordinator.modeManager.isTransitioning,
+                            transitionProgress: modeCoordinator.modeManager.transitionProgress
                         ) {
                             selectMode(mode)
                         }
@@ -53,8 +52,8 @@ struct AdaptiveContentHubModeSelector: View {
                         
                         // Selection indicator
                         HStack {
-                            ForEach(modeManager.getAvailableModes()) { mode in
-                                if mode == modeManager.currentMode {
+                            ForEach(modeCoordinator.modeManager.getAvailableModes()) { mode in
+                                if mode == modeCoordinator.currentMode {
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                                         .fill(mode.accentColor.opacity(0.2))
                                         .overlay(
@@ -78,8 +77,8 @@ struct AdaptiveContentHubModeSelector: View {
                 .padding(.horizontal, 16)
                 
             }
-            .animation(.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0.2), value: modeManager.currentMode)
-            .onChange(of: modeManager.currentMode) { oldMode, newMode in
+            .animation(.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0.2), value: modeCoordinator.currentMode)
+            .onChange(of: modeCoordinator.currentMode) { oldMode, newMode in
                 // Provide haptic feedback for mode changes
                 if oldMode != newMode {
                     impactFeedback.impactOccurred()
@@ -89,7 +88,7 @@ struct AdaptiveContentHubModeSelector: View {
     }
     
     private func selectMode(_ mode: InterfaceMode) {
-        guard mode != modeManager.currentMode else { return }
+        guard mode != modeCoordinator.currentMode else { return }
         
         // Prepare haptic feedback
         selectionFeedback.prepare()
@@ -97,10 +96,8 @@ struct AdaptiveContentHubModeSelector: View {
         // Trigger selection feedback
         selectionFeedback.selectionChanged()
         
-        // Switch mode with animation
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0.2)) {
-            modeManager.switchToMode(mode, trigger: .userTap)
-        }
+        // Switch mode with animation through coordinator
+        modeCoordinator.switchToMode(mode)
     }
 }
 
@@ -238,7 +235,7 @@ struct ModeTransitionOverlay: View {
 #if DEBUG
 #Preview("Mode Selector") {
     VStack(spacing: 40) {
-        AdaptiveContentHubModeSelector()
+        AdaptiveContentHubModeSelector(modeCoordinator: ModeCoordinator())
         
         Spacer()
     }
