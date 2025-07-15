@@ -28,6 +28,10 @@ struct ContentView: View {
     // 🎯 Sprint 8.5.3.1: Task Synchronization Framework
     @StateObject private var taskManager = TaskManager.shared
     @StateObject private var taskCoordinator = TaskCoordinator.shared
+    
+    // 🎯 Sprint 8.5.3.2: Memory Management & Leak Prevention
+    @StateObject private var memoryManager = MemoryManager.shared
+    @StateObject private var resourceCleanupManager = ResourceCleanupManager.shared
 
     init() {
         // Initialize coordinators with proper delegate pattern
@@ -117,6 +121,12 @@ struct ContentView: View {
                             .foregroundColor(.purple)
                     }
                     
+                    // 🎯 Sprint 8.5.3.2: Memory Manager Debug View
+                    NavigationLink(destination: MemoryManagerDebugView()) {
+                        Image(systemName: "memorychip")
+                            .foregroundColor(.orange)
+                    }
+                    
                     Button(action: {
                         modeCoordinator.showSettings()
                     }) {
@@ -185,6 +195,15 @@ struct ContentView: View {
                 MindMapView()
             }
             .onAppear {
+                // 🎯 Sprint 8.5.3.2: Initialize Memory Management System
+                memoryManager.startMonitoring()
+                
+                // Register all services for automatic cleanup
+                backgroundSemanticProcessor.registerForAutomaticCleanup()
+                backgroundVisionProcessor.registerForAutomaticCleanup()
+                photoLibraryService.registerForAutomaticCleanup()
+                ThumbnailService.shared.registerForAutomaticCleanup()
+                
                 // 🎯 Sprint 8.5.3.1: Coordinated app startup with Task Synchronization Framework
                 Task {
                     await taskCoordinator.executeAppStartupWorkflow(
@@ -195,6 +214,12 @@ struct ContentView: View {
                             backgroundVisionProcessor: backgroundVisionProcessor
                         )
                     )
+                }
+            }
+            .onDisappear {
+                // 🎯 Sprint 8.5.3.2: Cleanup when view disappears
+                Task {
+                    await resourceCleanupManager.performLightCleanup()
                 }
             }
             .task(id: screenshots) {

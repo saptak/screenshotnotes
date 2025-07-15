@@ -52,17 +52,18 @@ func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async -> T?) 
 }
 
 @MainActor
-public class ThumbnailService: ObservableObject {
+public class ThumbnailService: ObservableObject, MemoryTrackable, ResourceCleanupProtocol {
     static let shared = ThumbnailService()
     
     private let logger = Logger(subsystem: "com.screenshotnotes.app", category: "ThumbnailService")
     
     // Phase 2: Enhanced with all optimization services
-    private let advancedCacheManager = AdvancedThumbnailCacheManager.shared
-    private let backgroundProcessor = BackgroundThumbnailProcessor.shared
-    private let changeTracker = GalleryChangeTracker.shared
-    private let qualityManager = AdaptiveQualityManager.shared
-    private let viewportManager = PredictiveViewportManager.shared
+    // 🎯 Sprint 8.5.3.2: Memory Management & Leak Prevention
+    @WeakRef private var advancedCacheManager: AdvancedThumbnailCacheManager?
+    @WeakRef private var backgroundProcessor: BackgroundThumbnailProcessor?
+    @WeakRef private var changeTracker: GalleryChangeTracker?
+    @WeakRef private var qualityManager: AdaptiveQualityManager?
+    @WeakRef private var viewportManager: PredictiveViewportManager?
     
     // Legacy cache for backward compatibility (will be deprecated)
     private let thumbnailCache = NSCache<NSString, UIImage>()
@@ -72,6 +73,9 @@ public class ThumbnailService: ObservableObject {
     
     // Use async semaphore for proper concurrency control - reduced for better user experience
     private let semaphore = AsyncSemaphore(value: 2) // Significantly reduced from 8 to prevent resource starvation
+    
+    // 🎯 Sprint 8.5.3.2: Memory Management
+    private let memoryManager = MemoryManager.shared
     
     // Thumbnail specifications
     nonisolated static let thumbnailSize = CGSize(width: 200, height: 200)
@@ -96,8 +100,8 @@ public class ThumbnailService: ObservableObject {
     /// Set ModelContext for enhanced services - Phase 2 with collection size tracking
     func setModelContext(_ context: ModelContext) {
         // Note: AdvancedThumbnailCacheManager doesn't need ModelContext
-        backgroundProcessor.setModelContext(context)
-        changeTracker.setModelContext(context)
+        backgroundProcessor?.setModelContext(context)
+        changeTracker?.setModelContext(context)
         
         // Update collection size for adaptive optimization
         Task {
@@ -112,8 +116,8 @@ public class ThumbnailService: ObservableObject {
             let collectionSize = screenshots.count
             
             // Update all Phase 2 managers with collection size
-            advancedCacheManager.updateCollectionSize(collectionSize)
-            qualityManager.updateCollectionSize(collectionSize)
+            advancedCacheManager?.updateCollectionSize(collectionSize)
+            qualityManager?.updateCollectionSize(collectionSize)
             
             print("📊 Updated collection size: \(collectionSize) screenshots")
         } catch {
@@ -133,7 +137,7 @@ public class ThumbnailService: ObservableObject {
         if let cachedImage = thumbnailCache.object(forKey: cacheKey as NSString) {
             logger.debug("🎯 Legacy cache HIT for: \(cacheKey)")
             // Migrate to advanced cache
-            advancedCacheManager.storeThumbnail(cachedImage, for: screenshotId, size: size)
+            advancedCacheManager?.storeThumbnail(cachedImage, for: screenshotId, size: size)
             return cachedImage
         }
         
@@ -144,7 +148,7 @@ public class ThumbnailService: ObservableObject {
             
             logger.debug("💾 Legacy disk cache HIT for: \(cacheKey), migrating to advanced cache")
             // Migrate to advanced cache
-            advancedCacheManager.storeThumbnail(diskImage, for: screenshotId, size: size)
+            advancedCacheManager?.storeThumbnail(diskImage, for: screenshotId, size: size)
             return diskImage
         }
         
@@ -155,28 +159,28 @@ public class ThumbnailService: ObservableObject {
     /// Generate and cache thumbnail for a screenshot - Phase 2: Enhanced with adaptive quality
     func getThumbnail(for screenshotId: UUID, from imageData: Data, size: CGSize = thumbnailSize) async -> UIImage? {
         // Phase 2: Use adaptive quality for optimal size
-        let optimalSize = qualityManager.getOptimalThumbnailSize(baseSize: size)
+        let optimalSize = qualityManager?.getOptimalThumbnailSize(baseSize: size) ?? size
         
         // First check if already cached in advanced cache manager with optimal size
-        if let cachedImage = await advancedCacheManager.getThumbnail(for: screenshotId, size: optimalSize) {
+        if let cachedImage = await advancedCacheManager?.getThumbnail(for: screenshotId, size: optimalSize ?? size) {
             return cachedImage
         }
         
         // Request through background processor with optimal size
-        backgroundProcessor.requestThumbnail(
+        backgroundProcessor?.requestThumbnail(
             for: screenshotId,
             from: imageData,
-            size: optimalSize,
+            size: optimalSize ?? size,
             priority: .high // High priority for immediate user requests
         )
         
         // For immediate UI needs, try legacy path as fallback with optimal size
-        let cacheKey = "\(screenshotId.uuidString)_\(Int(optimalSize.width))x\(Int(optimalSize.height))"
+        let cacheKey = "\(screenshotId.uuidString)_\(Int((optimalSize ?? size).width))x\(Int((optimalSize ?? size).height))"
         
         // Check legacy cache
         if let cachedImage = thumbnailCache.object(forKey: cacheKey as NSString) {
             // Migrate to advanced cache
-            advancedCacheManager.storeThumbnail(cachedImage, for: screenshotId, size: size)
+            advancedCacheManager?.storeThumbnail(cachedImage, for: screenshotId, size: size)
             return cachedImage
         }
         
@@ -192,7 +196,7 @@ public class ThumbnailService: ObservableObject {
            let diskImage = UIImage(contentsOfFile: thumbnailURL.path) {
             
             // Migrate to advanced cache with optimal size
-            advancedCacheManager.storeThumbnail(diskImage, for: screenshotId, size: optimalSize)
+            advancedCacheManager?.storeThumbnail(diskImage, for: screenshotId, size: optimalSize ?? size)
             return diskImage
         }
         
@@ -206,7 +210,7 @@ public class ThumbnailService: ObservableObject {
                 }
             }
             
-            let result = await generateThumbnailOptimizedPhase2(imageData: imageData, size: optimalSize, screenshotId: screenshotId)
+            let result = await generateThumbnailOptimizedPhase2(imageData: imageData, size: optimalSize ?? size, screenshotId: screenshotId)
             
             await MainActor.run {
                 self.activeTasks.removeValue(forKey: cacheKey)
@@ -242,13 +246,13 @@ public class ThumbnailService: ObservableObject {
         }
         
         // Phase 2: Use adaptive quality compression
-        let compressionQuality = qualityManager.getCompressionQuality()
+        let compressionQuality = qualityManager?.getCompressionQuality() ?? 0.85
         
         // Resize image with adaptive quality
-        let thumbnail = await resizeImageWithQuality(originalImage, to: size, compressionQuality: compressionQuality)
+        let thumbnail = await resizeImageWithQuality(originalImage, to: size, compressionQuality: compressionQuality ?? 0.85)
         
         // Save to advanced cache manager
-        advancedCacheManager.storeThumbnail(thumbnail, for: screenshotId, size: size)
+        advancedCacheManager?.storeThumbnail(thumbnail, for: screenshotId, size: size)
         
         // Also save to legacy cache for backward compatibility
         let cacheKey = "\(screenshotId.uuidString)_\(Int(size.width))x\(Int(size.height))"
@@ -330,7 +334,7 @@ public class ThumbnailService: ObservableObject {
     /// Preload thumbnails for a batch of screenshots using advanced background processing
     func preloadThumbnails(for screenshots: [Screenshot], size: CGSize = thumbnailSize) {
         // Use background processor for efficient batch processing
-        backgroundProcessor.requestThumbnailBatch(
+        backgroundProcessor?.requestThumbnailBatch(
             for: screenshots,
             size: size,
             priority: .background
@@ -354,27 +358,27 @@ public class ThumbnailService: ObservableObject {
     /// Clear thumbnail cache to free memory (graduated response instead of nuclear clearing)
     func clearCache() {
         // Get current collection size for intelligent cache management
-        let currentCollectionSize = advancedCacheManager.getCollectionSize()
+        let currentCollectionSize = advancedCacheManager?.getCollectionSize() ?? 0
         
-        if currentCollectionSize < 100 {
+        if (currentCollectionSize ?? 0) < 100 {
             // For smaller collections, use minimal optimization to maintain user experience
-            advancedCacheManager.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.normal)
+            advancedCacheManager?.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.normal)
             logger.info("Thumbnail cache lightly optimized for small collection (\(currentCollectionSize) screenshots)")
-        } else if currentCollectionSize < 500 {
+        } else if (currentCollectionSize ?? 0) < 500 {
             // For medium collections, use moderate optimization
-            advancedCacheManager.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.warning)
+            advancedCacheManager?.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.warning)
             // Don't clear legacy cache completely for medium collections
             logger.info("Thumbnail cache moderately optimized for medium collection (\(currentCollectionSize) screenshots)")
         } else {
             // For large collections, use more aggressive optimization
-            advancedCacheManager.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.warning)
+            advancedCacheManager?.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.warning)
             // Clear legacy cache for large collections
             thumbnailCache.removeAllObjects()
             logger.info("Thumbnail cache aggressively optimized for large collection (\(currentCollectionSize) screenshots)")
         }
         
         // Cancel any active tasks only if memory pressure is critical
-        if currentCollectionSize > 500 {
+        if (currentCollectionSize ?? 0) > 500 {
             for (_, task) in activeTasks {
                 task.cancel()
             }
@@ -384,7 +388,7 @@ public class ThumbnailService: ObservableObject {
     
     /// Force clear all caches (nuclear option for critical memory pressure)
     func forceClearAllCaches() {
-        advancedCacheManager.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.critical)
+        advancedCacheManager?.optimizeForMemoryPressure(level: ThumbnailMemoryPressureLevel.critical)
         thumbnailCache.removeAllObjects()
         
         // Cancel any active tasks
@@ -417,8 +421,8 @@ public class ThumbnailService: ObservableObject {
     /// Get cache statistics for monitoring
     func getCacheStats() -> (memoryCount: Int, diskCount: Int) {
         // Get actual memory cache count from advanced cache manager
-        let advancedStats = advancedCacheManager.cacheStatistics
-        let memoryCount = advancedStats.hotCacheSize + advancedStats.warmCacheSize
+        let advancedStats = advancedCacheManager?.cacheStatistics
+        let memoryCount = (advancedStats?.hotCacheSize ?? 0) + (advancedStats?.warmCacheSize ?? 0)
         
         let diskCount: Int
         do {
@@ -436,9 +440,9 @@ public class ThumbnailService: ObservableObject {
     /// Get comprehensive performance metrics from all thumbnail services
     var enhancedPerformanceMetrics: EnhancedThumbnailMetrics {
         return EnhancedThumbnailMetrics(
-            cacheStatistics: advancedCacheManager.cacheStatistics,
-            processingMetrics: backgroundProcessor.performanceMetrics,
-            changeTrackingMetrics: changeTracker.changeTrackingMetrics,
+            cacheStatistics: advancedCacheManager?.cacheStatistics,
+            processingMetrics: backgroundProcessor?.performanceMetrics,
+            changeTrackingMetrics: changeTracker?.changeTrackingMetrics,
             legacyCacheSize: thumbnailCache.totalCostLimit,
             activeTaskCount: activeTasks.count
         )
@@ -446,32 +450,32 @@ public class ThumbnailService: ObservableObject {
     
     /// Track screenshot changes for cache invalidation
     func trackScreenshotAdded(_ screenshot: Screenshot) {
-        changeTracker.trackScreenshotAdded(screenshot)
+        changeTracker?.trackScreenshotAdded(screenshot)
     }
     
     func trackScreenshotDeleted(_ screenshotId: UUID) {
-        changeTracker.trackScreenshotDeleted(screenshotId)
+        changeTracker?.trackScreenshotDeleted(screenshotId)
     }
     
     func trackScreenshotModified(_ screenshot: Screenshot) {
-        changeTracker.trackScreenshotModified(screenshot)
+        changeTracker?.trackScreenshotModified(screenshot)
     }
     
     func trackBulkImport(_ screenshotIds: [UUID]) {
-        changeTracker.trackBulkImport(screenshotIds)
+        changeTracker?.trackBulkImport(screenshotIds)
     }
     
     func trackGalleryViewChange(visibleScreenshots: [UUID], collectionSize: Int) {
-        changeTracker.trackGalleryViewChange(visibleScreenshots: visibleScreenshots, collectionSize: collectionSize)
+        changeTracker?.trackGalleryViewChange(visibleScreenshots: visibleScreenshots, collectionSize: collectionSize)
     }
 }
 
 // MARK: - Enhanced Metrics
 
 struct EnhancedThumbnailMetrics {
-    let cacheStatistics: ThumbnailCacheStatistics
-    let processingMetrics: ProcessingMetrics
-    let changeTrackingMetrics: ChangeTrackingMetrics
+    let cacheStatistics: ThumbnailCacheStatistics?
+    let processingMetrics: ProcessingMetrics?
+    let changeTrackingMetrics: ChangeTrackingMetrics?
     let legacyCacheSize: Int
     let activeTaskCount: Int
 }
@@ -518,5 +522,115 @@ actor ThumbnailTaskCoordinator {
     /// Get count of currently active tasks
     var activeTaskCount: Int {
         return activeTasks.count
+    }
+}
+
+// MARK: - 🎯 Sprint 8.5.3.2: ResourceCleanupProtocol Implementation
+
+extension ThumbnailService {
+    
+    public func performLightCleanup() async {
+        logger.info("ThumbnailService: Performing light cleanup")
+        
+        // Use graduated cache optimization instead of nuclear clearing
+        let currentCollectionSize = advancedCacheManager?.getCollectionSize() ?? 0
+        
+        if currentCollectionSize > 100 {
+            // For larger collections, perform moderate optimization
+            if let cacheManager = advancedCacheManager {
+                await cacheManager.optimizeForMemoryPressure(level: .normal)
+            }
+        }
+        
+        // Clean up completed tasks
+        let completedTasks = activeTasks.filter { _, task in task.isCancelled }
+        for (key, _) in completedTasks {
+            activeTasks.removeValue(forKey: key)
+        }
+        
+        // Clean up old disk cache files (older than 1 week)
+        cleanupDiskCache()
+    }
+    
+    public func performDeepCleanup() async {
+        logger.warning("ThumbnailService: Performing deep cleanup")
+        
+        // Cancel all active thumbnail generation tasks
+        for (_, task) in activeTasks {
+            task.cancel()
+        }
+        activeTasks.removeAll()
+        
+        // Clear all caches aggressively
+        if let cacheManager = advancedCacheManager {
+            await cacheManager.optimizeForMemoryPressure(level: .critical)
+        }
+        thumbnailCache.removeAllObjects()
+        
+        // Clear service references to free memory
+        advancedCacheManager = nil
+        backgroundProcessor = nil
+        changeTracker = nil
+        qualityManager = nil
+        viewportManager = nil
+        
+        // Clean up disk cache more aggressively (older than 3 days)
+        let threeDaysAgo = Date().addingTimeInterval(-3 * 24 * 60 * 60)
+        
+        do {
+            let files = try fileManager.contentsOfDirectory(at: thumbnailsDirectory, includingPropertiesForKeys: [.creationDateKey])
+            
+            for file in files {
+                let attributes = try file.resourceValues(forKeys: [.creationDateKey])
+                if let creationDate = attributes.creationDate, creationDate < threeDaysAgo {
+                    try fileManager.removeItem(at: file)
+                }
+            }
+        } catch {
+            logger.error("Failed to cleanup disk cache during deep cleanup: \(error.localizedDescription)")
+        }
+    }
+    
+    public nonisolated func getEstimatedMemoryUsage() -> UInt64 {
+        var usage: UInt64 = 0
+        
+        // Base service size
+        usage += 16384 // ThumbnailService base size (large due to image processing)
+        
+        // Add estimated memory for thumbnail cache
+        usage += 8192 // Cache overhead estimate
+        
+        // Add estimated memory for active tasks
+        usage += 4096 // Active tasks overhead estimate
+        
+        // Add estimated memory for service references
+        usage += 16384 // Service references overhead estimate
+        
+        return usage
+    }
+    
+    public nonisolated var cleanupPriority: Int { 30 } // Lower priority for thumbnail service (can be regenerated)
+    
+    public nonisolated var cleanupIdentifier: String { "ThumbnailService" }
+    
+    /// Clear all caches - implementing CacheCleanupProtocol
+    func clearAllCache() async {
+        await performDeepCleanup()
+    }
+    
+    /// Clear expired cache entries - implementing CacheCleanupProtocol
+    func clearExpiredCache() async {
+        await performLightCleanup()
+    }
+    
+    /// Get current cache size - implementing CacheCleanupProtocol
+    func getCacheSize() -> UInt64 {
+        let stats = getCacheStats()
+        return UInt64(stats.memoryCount * 1024 + stats.diskCount * 2048) // Rough estimate
+    }
+    
+    /// Maximum cache size - implementing CacheCleanupProtocol
+    var maxCacheSize: UInt64 { 
+        return UInt64(thumbnailCache.totalCostLimit) 
     }
 }

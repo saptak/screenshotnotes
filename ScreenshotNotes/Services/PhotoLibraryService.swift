@@ -16,12 +16,15 @@ protocol PhotoLibraryServiceProtocol {
 
 
 @MainActor
-public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObject {
+public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObject, MemoryTrackable, ResourceCleanupProtocol {
     private var modelContext: ModelContext?
-    private let imageStorageService: ImageStorageServiceProtocol
-    private let hapticService: HapticFeedbackService
-    private let networkRetryService: NetworkRetryService
-    private let transactionService: TransactionService
+    
+    // 🎯 Sprint 8.5.3.2: Memory Management & Leak Prevention
+    private var imageStorageService: ImageStorageServiceProtocol? // Cannot be weak as it's a protocol
+    private weak var hapticService: HapticFeedbackService?
+    private weak var networkRetryService: NetworkRetryService?
+    private weak var transactionService: TransactionService?
+    
     private var isMonitoring = false
     // Keep a reference to the fetch result for change observation
     private var screenshotsFetchResult: PHFetchResult<PHAsset>?
@@ -33,6 +36,9 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
     
     // 🎯 Sprint 8.5.2: Error handling integration
     private let logger = Logger(subsystem: "com.screenshotnotes.app", category: "PhotoLibraryService")
+    
+    // 🎯 Sprint 8.5.3.2: Memory Management
+    private let memoryManager = MemoryManager.shared
 
     init(imageStorageService: ImageStorageServiceProtocol = ImageStorageService(),
          hapticService: HapticFeedbackService? = nil,
@@ -43,11 +49,34 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
         self.networkRetryService = networkRetryService
         self.transactionService = transactionService
         super.init()
+        
         // Load user preference - defaults to true for first launch
         automaticImportEnabled = UserDefaults.standard.object(forKey: "automaticImportEnabled") as? Bool ?? true
         // Check current authorization status
         authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-    } // <-- Added missing closing brace for init
+        
+        // 🎯 Sprint 8.5.3.2: Initialize memory management
+        startMemoryTracking()
+        registerForAutomaticCleanup()
+        
+        logger.info("PhotoLibraryService: Initialized with memory tracking")
+    }
+    
+    deinit {
+        // 🎯 Sprint 8.5.3.2: Proper cleanup in deinit
+        Task { @MainActor in
+            stopMemoryTracking()
+            unregisterFromAutomaticCleanup()
+        }
+        
+        // Stop monitoring and clean up resources
+        Task { @MainActor in
+            stopMonitoring()
+        }
+        screenshotsFetchResult = nil
+        
+        logger.info("PhotoLibraryService: Deallocated")
+    }
     // Batch import method for extremely lazy, incremental import
     /// Imports a batch of past screenshots from the user's photo library.
     /// - Parameters:
@@ -106,13 +135,19 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
                 continue
             }
             do {
-                let image = try await networkRetryService.requestImageWithRetry(
+                guard let retryService = networkRetryService,
+                      let storageService = imageStorageService else {
+                    skippedCount += 1
+                    continue
+                }
+                
+                let image = try await retryService.requestImageWithRetry(
                     asset: asset,
                     targetSize: PHImageManagerMaximumSize,
                     configuration: .standard
                 )
                 
-                let imageData = try await imageStorageService.saveImage(
+                let imageData = try await storageService.saveImage(
                     image,
                     filename: "screenshot_\(asset.localIdentifier)"
                 )
@@ -329,7 +364,12 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
         print("📸 Will import \(assets.count) new screenshots, skipping \(skippedCount) existing ones")
         
         // Use transaction service for reliable batch import
-        let result = await transactionService.executeScreenshotImportTransaction(
+        guard let service = transactionService else {
+            print("❌ TransactionService not available for batch import")
+            return (imported: 0, skipped: assets.count)
+        }
+        
+        let result = await service.executeScreenshotImportTransaction(
             modelContext: modelContext,
             assets: assets,
             configuration: .standard
@@ -339,13 +379,19 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
             }
             
             // Import with network retry
-            let image = try await self.networkRetryService.requestImageWithRetry(
+            guard let retryService = self.networkRetryService else {
+                throw NSError(domain: "PhotoLibraryService", code: -2, userInfo: [NSLocalizedDescriptionKey: "NetworkRetryService not available"])
+            }
+            let image = try await retryService.requestImageWithRetry(
                 asset: asset,
                 targetSize: PHImageManagerMaximumSize,
                 configuration: .standard
             )
             
-            let imageData = try await self.imageStorageService.saveImage(
+            guard let storageService = self.imageStorageService else {
+                throw NSError(domain: "PhotoLibraryService", code: -3, userInfo: [NSLocalizedDescriptionKey: "ImageStorageService not available"])
+            }
+            let imageData = try await storageService.saveImage(
                 image,
                 filename: "screenshot_\(asset.localIdentifier)"
             )
@@ -447,13 +493,23 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
                 
                 // Import the screenshot with retry logic
                 do {
-                    let image = try await networkRetryService.requestImageWithRetry(
+                    guard let retryService = networkRetryService else {
+                        print("❌ NetworkRetryService not available, skipping asset")
+                        skippedCount += 1
+                        continue
+                    }
+                    let image = try await retryService.requestImageWithRetry(
                         asset: asset,
                         targetSize: PHImageManagerMaximumSize,
                         configuration: .standard
                     )
                     
-                    let imageData = try await imageStorageService.saveImage(
+                    guard let storageService = imageStorageService else {
+                        print("❌ ImageStorageService not available, skipping asset")
+                        skippedCount += 1
+                        continue
+                    }
+                    let imageData = try await storageService.saveImage(
                         image,
                         filename: "screenshot_\(asset.localIdentifier)"
                     )
@@ -519,13 +575,21 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
             }
             
             do {
-                let image = try await networkRetryService.requestImageWithRetry(
+                guard let retryService = networkRetryService else {
+                    print("❌ NetworkRetryService not available")
+                    continue
+                }
+                let image = try await retryService.requestImageWithRetry(
                     asset: asset,
                     targetSize: PHImageManagerMaximumSize,
                     configuration: .conservative  // Use conservative for auto-import to avoid battery drain
                 )
                 
-                let imageData = try await imageStorageService.saveImage(
+                guard let storageService = imageStorageService else {
+                    print("❌ ImageStorageService not available")
+                    continue
+                }
+                let imageData = try await storageService.saveImage(
                     image,
                     filename: "screenshot_\(asset.localIdentifier)"
                 )
@@ -542,7 +606,7 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
                     try? modelContext.save()
                     
                     // Provide haptic feedback for successful import
-                    hapticService.triggerHaptic(.successFeedback)
+                    hapticService?.triggerHaptic(.successFeedback)
                     print("📸 Auto-imported screenshot: \(asset.localIdentifier)")
                 }
                 
@@ -555,7 +619,7 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
             } catch {
                 print("❌ Failed to auto-import screenshot with retry: \(error)")
                 await MainActor.run {
-                    hapticService.triggerHaptic(.errorFeedback)
+                    hapticService?.triggerHaptic(.errorFeedback)
                 }
             }
         }
@@ -648,4 +712,62 @@ actor ImportCoordinator {
     var importInProgress: Bool {
         return isImporting
     }
+}
+
+// MARK: - 🎯 Sprint 8.5.3.2: ResourceCleanupProtocol Implementation
+
+extension PhotoLibraryService {
+    
+    public func performLightCleanup() async {
+        logger.info("PhotoLibraryService: Performing light cleanup")
+        
+        // Clear fetch result cache if not monitoring
+        if !isMonitoring {
+            screenshotsFetchResult = nil
+        }
+        
+        // Reset authorization status if needed
+        let currentStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        if currentStatus != authorizationStatus {
+            authorizationStatus = currentStatus
+        }
+    }
+    
+    public func performDeepCleanup() async {
+        logger.warning("PhotoLibraryService: Performing deep cleanup")
+        
+        // Stop monitoring to free resources
+        stopMonitoring()
+        
+        // Clear all cached data
+        screenshotsFetchResult = nil
+        
+        // Clear service references to free memory
+        imageStorageService = nil
+        hapticService = nil
+        networkRetryService = nil
+        transactionService = nil
+        
+        // Clear model context reference if safe
+        let isImporting = await importCoordinator.importInProgress
+        if !isImporting {
+            modelContext = nil
+        }
+    }
+    
+    public nonisolated func getEstimatedMemoryUsage() -> UInt64 {
+        var usage: UInt64 = 0
+        
+        // Base service size
+        usage += 8192 // PhotoLibraryService base size (larger due to PHPhotoLibrary integration)
+        
+        // Add estimated memory for service references
+        usage += 16384 // Service references overhead estimate
+        
+        return usage
+    }
+    
+    public nonisolated var cleanupPriority: Int { 60 } // Medium-high priority for photo library service
+    
+    public nonisolated var cleanupIdentifier: String { "PhotoLibraryService" }
 }

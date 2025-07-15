@@ -4,9 +4,10 @@ import SwiftData
 import PhotosUI
 import UIKit
 import Photos
+import os.log
 
 @MainActor
-class ScreenshotListViewModel: ObservableObject {
+class ScreenshotListViewModel: ObservableObject, MemoryTrackable, ResourceCleanupProtocol {
     @Published var isImporting = false
     @Published var errorMessage: String?
     @Published var showingError = false
@@ -14,19 +15,41 @@ class ScreenshotListViewModel: ObservableObject {
     
     private let imageStorageService: ImageStorageServiceProtocol
     private let ocrService: OCRServiceProtocol
-    private let backgroundSemanticProcessor: BackgroundSemanticProcessor
+    
+    // 🎯 Sprint 8.5.3.2: Memory Management & Leak Prevention
+    @WeakRef private var backgroundSemanticProcessor: BackgroundSemanticProcessor?
     private var modelContext: ModelContext?
     
     // 🎯 Sprint 8.5.3.1: Task Synchronization Framework
     private let taskCoordinator = TaskCoordinator.shared
     private let taskManager = TaskManager.shared
     
+    // 🎯 Sprint 8.5.3.2: Memory Management
+    private let memoryManager = MemoryManager.shared
+    private let logger = Logger(subsystem: "com.screenshotnotes.app", category: "ScreenshotListViewModel")
+    
     init(imageStorageService: ImageStorageServiceProtocol = ImageStorageService(),
          ocrService: OCRServiceProtocol = OCRService(),
          backgroundSemanticProcessor: BackgroundSemanticProcessor? = nil) {
         self.imageStorageService = imageStorageService
         self.ocrService = ocrService
-        self.backgroundSemanticProcessor = backgroundSemanticProcessor ?? BackgroundSemanticProcessor()
+        self.backgroundSemanticProcessor = backgroundSemanticProcessor
+        
+        // 🎯 Sprint 8.5.3.2: Initialize memory management
+        startMemoryTracking()
+        registerForAutomaticCleanup()
+        
+        logger.info("ScreenshotListViewModel: Initialized with memory tracking")
+    }
+    
+    deinit {
+        // 🎯 Sprint 8.5.3.2: Proper cleanup in deinit
+        Task { @MainActor in
+            stopMemoryTracking()
+            unregisterFromAutomaticCleanup()
+        }
+        
+        logger.info("ScreenshotListViewModel: Deallocated")
     }
     
     func setModelContext(_ context: ModelContext) {
@@ -46,7 +69,7 @@ class ScreenshotListViewModel: ObservableObject {
             backgroundProcessors: BackgroundProcessors(
                 ocrProcessor: BackgroundOCRProcessor(),
                 visionProcessor: BackgroundVisionProcessor(),
-                semanticProcessor: backgroundSemanticProcessor
+                semanticProcessor: backgroundSemanticProcessor ?? BackgroundSemanticProcessor()
             )
         )
         
@@ -83,7 +106,7 @@ class ScreenshotListViewModel: ObservableObject {
         
         // Process full semantic analysis in background
         Task {
-            await backgroundSemanticProcessor.processScreenshot(screenshot, in: modelContext)
+            await backgroundSemanticProcessor?.processScreenshot(screenshot, in: modelContext)
         }
     }
     
@@ -249,7 +272,7 @@ class ScreenshotListViewModel: ObservableObject {
                             
                             // Process full semantic analysis in background
                             Task {
-                                await self.backgroundSemanticProcessor.processScreenshot(screenshot, in: modelContext)
+                                await self.backgroundSemanticProcessor?.processScreenshot(screenshot, in: modelContext)
                             }
                         } catch {
                             print("❌ Failed to import screenshot: \(error)")
@@ -273,13 +296,68 @@ class ScreenshotListViewModel: ObservableObject {
     /// Process existing screenshots that need semantic analysis
     func processExistingScreenshots() async {
         guard let modelContext = modelContext else { return }
-        await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
+        await backgroundSemanticProcessor?.processScreenshotsNeedingAnalysis(in: modelContext)
     }
     
     /// Get background semantic processor for observing progress
-    var semanticProcessor: BackgroundSemanticProcessor {
+    var semanticProcessor: BackgroundSemanticProcessor? {
         return backgroundSemanticProcessor
     }
+    
+    // MARK: - 🎯 Sprint 8.5.3.2: ResourceCleanupProtocol Implementation
+    
+    public func performLightCleanup() async {
+        logger.info("ScreenshotListViewModel: Performing light cleanup")
+        
+        // Clear any temporary import data
+        if !isImporting {
+            importProgress = 0.0
+        }
+        
+        // Clear error states if not currently showing
+        if !showingError {
+            errorMessage = nil
+        }
+    }
+    
+    public func performDeepCleanup() async {
+        logger.warning("ScreenshotListViewModel: Performing deep cleanup")
+        
+        // Cancel any ongoing import operations if not critical
+        if isImporting {
+            // Cancel non-critical import tasks through TaskManager
+            taskManager.cancelTasks(in: .dataImport)
+            
+            await MainActor.run {
+                isImporting = false
+                importProgress = 0.0
+            }
+        }
+        
+        // Clear all temporary state
+        await performLightCleanup()
+        
+        // Clear model context reference if safe
+        if !isImporting {
+            modelContext = nil
+        }
+    }
+    
+    public nonisolated func getEstimatedMemoryUsage() -> UInt64 {
+        var usage: UInt64 = 0
+        
+        // Base object size
+        usage += 1024 // Base ViewModel size estimate
+        
+        // Add estimated memory for state
+        usage += 512 // State overhead estimate
+        
+        return usage
+    }
+    
+    public nonisolated var cleanupPriority: Int { 60 } // Medium-high priority for ViewModels
+    
+    public nonisolated var cleanupIdentifier: String { "ScreenshotListViewModel" }
 }
 
 enum ImportError: LocalizedError {

@@ -1,19 +1,22 @@
 import Foundation
 import SwiftData
 import UIKit
+import os.log
 
 @MainActor
-public final class BackgroundSemanticProcessor: ObservableObject {
+public final class BackgroundSemanticProcessor: ObservableObject, MemoryTrackable, ResourceCleanupProtocol {
     @Published var isProcessing = false
     @Published var processedCount = 0
     @Published var totalCount = 0
     @Published var currentPhase: ProcessingPhase = .idle
     @Published var lastError: Error?
     
-    private let semanticTaggingService: SemanticTaggingService
-    private let advancedVisionService: AdvancedVisionService
-    private let ocrService: OCRServiceProtocol
-    private let mindMapService: MindMapService
+    // 🎯 Sprint 8.5.3.2: Memory Management & Leak Prevention
+    private weak var semanticTaggingService: SemanticTaggingService?
+    private weak var advancedVisionService: AdvancedVisionService?
+    private var ocrService: OCRServiceProtocol? // Cannot be weak as it's a protocol
+    private weak var mindMapService: MindMapService?
+    
     private let batchSize = 1 // Reduced to 1 for minimal resource usage during bulk imports
     private let processingDelay: TimeInterval = 2.0 // Increased to 2.0 seconds for better user experience
     private let mindMapRegenerationDelay: TimeInterval = 5.0 // Debounce mind map regeneration
@@ -21,6 +24,10 @@ public final class BackgroundSemanticProcessor: ObservableObject {
     
     // 🎯 Sprint 8.5.3.1: Task Synchronization Framework
     private let taskManager = TaskManager.shared
+    
+    // 🎯 Sprint 8.5.3.2: Memory Management
+    private let memoryManager = MemoryManager.shared
+    private let logger = Logger(subsystem: "com.screenshotnotes.app", category: "BackgroundSemanticProcessor")
     
     enum ProcessingPhase: String, CaseIterable {
         case idle = "idle"
@@ -45,6 +52,28 @@ public final class BackgroundSemanticProcessor: ObservableObject {
         self.advancedVisionService = advancedVisionService ?? AdvancedVisionService.shared
         self.ocrService = ocrService
         self.mindMapService = mindMapService ?? MindMapService.shared
+        
+        // 🎯 Sprint 8.5.3.2: Initialize memory management
+        startMemoryTracking()
+        registerForAutomaticCleanup()
+        
+        logger.info("BackgroundSemanticProcessor: Initialized with memory tracking")
+    }
+    
+    deinit {
+        // 🎯 Sprint 8.5.3.2: Proper cleanup in deinit
+        Task { @MainActor in
+            stopMemoryTracking()
+            unregisterFromAutomaticCleanup()
+        }
+        
+        // Cancel any ongoing processing
+        Task {
+            await taskManager.cancelTasks(in: .semantic)
+            await taskManager.cancelTasks(in: .mindMap)
+        }
+        
+        logger.info("BackgroundSemanticProcessor: Deallocated")
     }
     
     /// Process screenshots that need semantic analysis
@@ -145,7 +174,11 @@ public final class BackgroundSemanticProcessor: ObservableObject {
             // Phase 1: OCR (if needed)
             if screenshot.extractedText == nil || screenshot.extractedText?.isEmpty == true {
                 await updatePhase(.ocr)
-                let extractedText = try await ocrService.extractText(from: image)
+                guard let service = ocrService else {
+                    print("BackgroundSemanticProcessor: OCR service not available")
+                    return
+                }
+                let extractedText = try await service.extractText(from: image)
                 screenshot.extractedText = extractedText
             }
             
@@ -153,19 +186,24 @@ public final class BackgroundSemanticProcessor: ObservableObject {
             var visualAttributes: VisualAttributes?
             if screenshot.needsVisionAnalysis {
                 await updatePhase(.vision)
-                visualAttributes = await advancedVisionService.analyzeScreenshot(screenshot.imageData)
-                screenshot.visualAttributes = visualAttributes
+                if let visionService = advancedVisionService {
+                    visualAttributes = await visionService.analyzeScreenshot(screenshot.imageData)
+                    screenshot.visualAttributes = visualAttributes
+                }
             } else {
                 visualAttributes = screenshot.visualAttributes
             }
             
             // Phase 3: Semantic Tagging
             await updatePhase(.semanticTagging)
-            let semanticTags = await semanticTaggingService.generateSemanticTags(
-                for: screenshot,
-                extractedText: screenshot.extractedText,
-                visualAttributes: visualAttributes
-            )
+            var semanticTags: SemanticTagCollection?
+            if let taggingService = semanticTaggingService {
+                semanticTags = await taggingService.generateSemanticTags(
+                    for: screenshot,
+                    extractedText: screenshot.extractedText,
+                    visualAttributes: visualAttributes
+                )
+            }
             screenshot.semanticTags = semanticTags
             
             // Phase 4: Save
@@ -238,7 +276,9 @@ public final class BackgroundSemanticProcessor: ObservableObject {
             print("🧠 Generating mind map for \(screenshotsWithSemanticData.count) screenshots with semantic data")
             
             // Generate mind map using the service
-            await mindMapService.generateMindMap(from: screenshotsWithSemanticData)
+            if let mapService = mindMapService {
+                await mapService.generateMindMap(from: screenshotsWithSemanticData)
+            }
             
             print("🧠 Mind map generation completed in background")
             
@@ -280,6 +320,68 @@ public final class BackgroundSemanticProcessor: ObservableObject {
         let remainingItems = totalCount - processedCount
         return avgTimePerItem * Double(remainingItems) / Double(batchSize)
     }
+    
+    // MARK: - 🎯 Sprint 8.5.3.2: ResourceCleanupProtocol Implementation
+    
+    public func performLightCleanup() async {
+        logger.info("BackgroundSemanticProcessor: Performing light cleanup")
+        
+        // Clear error state if not currently processing
+        if !isProcessing {
+            lastError = nil
+        }
+        
+        // Reset counters if processing is complete
+        if !isProcessing && currentPhase == .idle {
+            processedCount = 0
+            totalCount = 0
+        }
+    }
+    
+    public func performDeepCleanup() async {
+        logger.warning("BackgroundSemanticProcessor: Performing deep cleanup")
+        
+        // Cancel all semantic processing tasks
+        await taskManager.cancelTasks(in: .semantic)
+        await taskManager.cancelTasks(in: .mindMap)
+        
+        // Reset all processing state
+        await MainActor.run {
+            isProcessing = false
+            processedCount = 0
+            totalCount = 0
+            currentPhase = .idle
+            lastError = nil
+        }
+        
+        // Clear service references to free memory
+        semanticTaggingService = nil
+        advancedVisionService = nil
+        ocrService = nil
+        mindMapService = nil
+        
+        // Reset timing
+        lastMindMapRegenerationTime = Date.distantPast
+    }
+    
+    public nonisolated func getEstimatedMemoryUsage() -> UInt64 {
+        var usage: UInt64 = 0
+        
+        // Base service size
+        usage += 4096 // BackgroundSemanticProcessor base size
+        
+        // Add memory for processing state (estimated)
+        usage += 2048 // Processing state overhead
+        
+        // Add memory for service references (estimated)
+        usage += 8192 // Service references overhead
+        
+        return usage
+    }
+    
+    public nonisolated var cleanupPriority: Int { 50 } // Medium priority for background processing
+    
+    public nonisolated var cleanupIdentifier: String { "BackgroundSemanticProcessor" }
 }
 
 // MARK: - Processing Errors
@@ -312,4 +414,3 @@ enum ProcessingError: LocalizedError {
         }
     }
 }
-

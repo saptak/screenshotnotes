@@ -33,38 +33,64 @@ struct GalleryModeRenderer: View {
     }
 
     var body: some View {
-        Group {
+        VStack {
             if screenshots.isEmpty && !viewModel.isImporting {
-                EmptyStateView(
-                    onImportTapped: { viewModel.showingImportSheet = true },
-                    photoLibraryService: viewModel.photoLibraryService,
-                    isRefreshing: $viewModel.isRefreshing,
-                    bulkImportProgress: $viewModel.bulkImportProgress,
-                    isBulkImportInProgress: $viewModel.isBulkImportInProgress,
-                    backgroundOCRProcessor: viewModel.backgroundOCRProcessor,
-                    backgroundSemanticProcessor: viewModel.backgroundSemanticProcessor,
-                    modelContext: viewModel.modelContext,
-                    scrollOffset: $viewModel.galleryScrollOffset
-                )
-                .id("enhanced-gallery-empty-state")
+                if let photoService = viewModel.getPhotoLibraryService,
+                   let ocrProcessor = viewModel.getBackgroundOCRProcessor,
+                   let semanticProcessor = viewModel.getBackgroundSemanticProcessor,
+                   let context = viewModel.getModelContext {
+                    EmptyStateView(
+                        onImportTapped: { viewModel.showingImportSheet = true },
+                        photoLibraryService: photoService,
+                        isRefreshing: $viewModel.isRefreshing,
+                        bulkImportProgress: $viewModel.bulkImportProgress,
+                        isBulkImportInProgress: $viewModel.isBulkImportInProgress,
+                        backgroundOCRProcessor: ocrProcessor,
+                        backgroundSemanticProcessor: semanticProcessor,
+                        modelContext: context,
+                        scrollOffset: $viewModel.galleryScrollOffset
+                    )
+                } else {
+                    // Fallback empty state when services are not available
+                    VStack {
+                        Image(systemName: "photo.on.rectangle")
+                            .font(.system(size: 60))
+                            .foregroundColor(.secondary)
+                        Text("No Screenshots")
+                            .font(.title2)
+                            .fontWeight(.medium)
+                        Text("Services not available")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                    }
+                    .id("enhanced-gallery-empty-state")
+                }
             } else {
-                ScreenshotGridView(
-                    screenshots: screenshots,
-                    photoLibraryService: viewModel.photoLibraryService,
-                    isRefreshing: $viewModel.isRefreshing,
-                    bulkImportProgress: $viewModel.bulkImportProgress,
-                    isBulkImportInProgress: $viewModel.isBulkImportInProgress,
-                    backgroundOCRProcessor: viewModel.backgroundOCRProcessor,
-                    backgroundSemanticProcessor: viewModel.backgroundSemanticProcessor,
-                    modelContext: viewModel.modelContext,
+                if let photoService = viewModel.getPhotoLibraryService,
+                   let context = viewModel.getModelContext,
+                   let ocrProcessor = viewModel.getBackgroundOCRProcessor,
+                   let semanticProcessor = viewModel.getBackgroundSemanticProcessor {
+                    ScreenshotGridView(
+                        screenshots: screenshots,
+                        photoLibraryService: photoService,
+                        isRefreshing: $viewModel.isRefreshing,
+                        bulkImportProgress: $viewModel.bulkImportProgress,
+                        isBulkImportInProgress: $viewModel.isBulkImportInProgress,
+                        backgroundOCRProcessor: ocrProcessor,
+                        backgroundSemanticProcessor: semanticProcessor,
+                        modelContext: context,
                     searchOrchestrator: searchOrchestrator,
                     selectedScreenshot: $viewModel.selectedScreenshot,
                     scrollOffset: $viewModel.galleryScrollOffset,
                     viewportManager: viewportManager,
                     qualityManager: qualityManager,
                     onRefresh: viewModel.refreshScreenshots
-                )
-                .id("enhanced-gallery-grid")
+                    )
+                    .id("enhanced-gallery-grid")
+                } else {
+                    Text("Services not available")
+                        .foregroundColor(.secondary)
+                }
             }
         }
     }

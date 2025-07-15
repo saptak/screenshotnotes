@@ -1,11 +1,12 @@
 import Foundation
 import SwiftData
 import BackgroundTasks
+import os.log
 
 /// Background processor for enhanced vision analysis using Apple's Vision framework
 /// Integrates with Phase 5.2.1 Enhanced Vision Processing
 @MainActor
-public final class BackgroundVisionProcessor: ObservableObject {
+public final class BackgroundVisionProcessor: ObservableObject, MemoryTrackable, ResourceCleanupProtocol {
     
     // MARK: - Configuration
     
@@ -18,7 +19,8 @@ public final class BackgroundVisionProcessor: ObservableObject {
     
     // MARK: - Services
     
-    private let enhancedVisionService: EnhancedVisionService
+    // 🎯 Sprint 8.5.3.2: Memory Management & Leak Prevention
+    private weak var enhancedVisionService: EnhancedVisionService?
     private var modelContext: ModelContext?
     
     // MARK: - State
@@ -37,11 +39,41 @@ public final class BackgroundVisionProcessor: ObservableObject {
     // 🎯 Sprint 8.5.3.1: Task Synchronization Framework
     private let taskManager = TaskManager.shared
     
+    // 🎯 Sprint 8.5.3.2: Memory Management
+    private let memoryManager = MemoryManager.shared
+    private let logger = Logger(subsystem: "com.screenshotnotes.app", category: "BackgroundVisionProcessor")
+    
     // MARK: - Initialization
     
     public init() {
         self.enhancedVisionService = EnhancedVisionService()
         setupBackgroundTaskHandling()
+        
+        // 🎯 Sprint 8.5.3.2: Initialize memory management
+        startMemoryTracking()
+        registerForAutomaticCleanup()
+        
+        logger.info("BackgroundVisionProcessor: Initialized with memory tracking")
+    }
+    
+    deinit {
+        // 🎯 Sprint 8.5.3.2: Proper cleanup in deinit
+        Task { @MainActor in
+            stopMemoryTracking()
+            unregisterFromAutomaticCleanup()
+        }
+        
+        // Cancel background tasks and timers
+        backgroundTask?.setTaskCompleted(success: false)
+        backgroundTask = nil
+        processingTimer?.invalidate()
+        
+        // Cancel any ongoing processing
+        Task {
+            await taskManager.cancelTasks(in: .vision)
+        }
+        
+        logger.info("BackgroundVisionProcessor: Deallocated")
     }
     
     /// Set the model context for database operations
@@ -73,7 +105,8 @@ public final class BackgroundVisionProcessor: ObservableObject {
     
     /// Process a specific screenshot with enhanced vision analysis
     public func processScreenshot(_ screenshot: Screenshot) async -> Bool {
-        guard let attributes = await enhancedVisionService.analyzeScreenshot(screenshot.imageData) else {
+        guard let service = enhancedVisionService,
+              let attributes = await service.analyzeScreenshot(screenshot.imageData) else {
             return false
         }
         
@@ -407,5 +440,75 @@ public struct ProcessingStats {
         guard totalScreenshots > 0 else { return 100.0 }
         return (Double(processedScreenshots) / Double(totalScreenshots)) * 100.0
     }
+}
+
+// MARK: - 🎯 Sprint 8.5.3.2: ResourceCleanupProtocol Implementation
+
+extension BackgroundVisionProcessor {
+    
+    public func performLightCleanup() async {
+        logger.info("BackgroundVisionProcessor: Performing light cleanup")
+        
+        // Reset progress if not currently processing
+        if !isProcessing {
+            processingProgress = 0.0
+            processedCount = 0
+            totalCount = 0
+        }
+        
+        // Clean up old analysis data
+        await cleanupOldAnalysis()
+    }
+    
+    public func performDeepCleanup() async {
+        logger.warning("BackgroundVisionProcessor: Performing deep cleanup")
+        
+        // Cancel all vision processing tasks
+        await taskManager.cancelTasks(in: .vision)
+        
+        // Stop all background processing
+        await stopBackgroundProcessing()
+        stopPeriodicProcessing()
+        
+        // Reset all processing state
+        await MainActor.run {
+            isProcessing = false
+            processingProgress = 0.0
+            processedCount = 0
+            totalCount = 0
+            lastProcessingDate = nil
+        }
+        
+        // Clear service references to free memory
+        enhancedVisionService = nil
+        
+        // Clear model context reference if safe
+        if !isProcessing {
+            modelContext = nil
+        }
+        
+        // Cancel background task
+        backgroundTask?.setTaskCompleted(success: false)
+        backgroundTask = nil
+    }
+    
+    public nonisolated func getEstimatedMemoryUsage() -> UInt64 {
+        var usage: UInt64 = 0
+        
+        // Base service size
+        usage += 6144 // BackgroundVisionProcessor base size (larger due to vision processing)
+        
+        // Add estimated memory for processing state
+        usage += 4096 // Processing state overhead
+        
+        // Add estimated memory for service references
+        usage += 8192 // Service references overhead
+        
+        return usage
+    }
+    
+    public nonisolated var cleanupPriority: Int { 40 } // Medium-low priority for background vision processing
+    
+    public nonisolated var cleanupIdentifier: String { "BackgroundVisionProcessor" }
 }
 
