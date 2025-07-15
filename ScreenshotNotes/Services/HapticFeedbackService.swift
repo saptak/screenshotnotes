@@ -28,6 +28,24 @@ final class HapticFeedbackService: ObservableObject {
         case errorFeedback = "error_feedback"
         case successFeedback = "success_feedback"
         
+        // Enhanced patterns for beautiful interactions
+        case duplicateDetected = "duplicate_detected"
+        case batchOperationStart = "batch_operation_start"
+        case batchOperationProgress = "batch_operation_progress"
+        case batchOperationComplete = "batch_operation_complete"
+        case suggestionPresented = "suggestion_presented"
+        case suggestionAccepted = "suggestion_accepted"
+        case collectionAdded = "collection_added"
+        case exportComplete = "export_complete"
+        case processingStart = "processing_start"
+        case processingComplete = "processing_complete"
+        case visualSimilarityFound = "visual_similarity_found"
+        case intelligentGrouping = "intelligent_grouping"
+        case workflowComplete = "workflow_complete"
+        case smartRecommendation = "smart_recommendation"
+        case dataRecovery = "data_recovery"
+        case systemOptimization = "system_optimization"
+        
         // Basic impact patterns for gesture services
         case light = "light"
         case medium = "medium"
@@ -67,6 +85,38 @@ final class HapticFeedbackService: ObservableObject {
                 return "Error or invalid action"
             case .successFeedback:
                 return "Successful action completion"
+            case .duplicateDetected:
+                return "Duplicate screenshot detected"
+            case .batchOperationStart:
+                return "Batch operation starting"
+            case .batchOperationProgress:
+                return "Batch operation in progress"
+            case .batchOperationComplete:
+                return "Batch operation completed"
+            case .suggestionPresented:
+                return "Intelligent suggestion presented"
+            case .suggestionAccepted:
+                return "Suggestion accepted"
+            case .collectionAdded:
+                return "Added to collection"
+            case .exportComplete:
+                return "Export completed successfully"
+            case .processingStart:
+                return "Processing started"
+            case .processingComplete:
+                return "Processing completed"
+            case .visualSimilarityFound:
+                return "Visual similarity detected"
+            case .intelligentGrouping:
+                return "Intelligent grouping applied"
+            case .workflowComplete:
+                return "Workflow sequence completed"
+            case .smartRecommendation:
+                return "Smart recommendation triggered"
+            case .dataRecovery:
+                return "Data recovery successful"
+            case .systemOptimization:
+                return "System optimization applied"
             case .light:
                 return "Light impact feedback"
             case .medium:
@@ -152,6 +202,62 @@ final class HapticFeedbackService: ObservableObject {
             duration: 0.3,
             delay: 0.0,
             repeatCount: 3
+        )
+        
+        static let duplicateDetected = HapticConfiguration(
+            pattern: .duplicateDetected,
+            intensity: 0.6,
+            duration: 0.08,
+            delay: 0.0,
+            repeatCount: 2
+        )
+        
+        static let batchOperationStart = HapticConfiguration(
+            pattern: .batchOperationStart,
+            intensity: 0.8,
+            duration: 0.15,
+            delay: 0.0,
+            repeatCount: 1
+        )
+        
+        static let batchOperationProgress = HapticConfiguration(
+            pattern: .batchOperationProgress,
+            intensity: 0.4,
+            duration: 0.05,
+            delay: 0.0,
+            repeatCount: 1
+        )
+        
+        static let batchOperationComplete = HapticConfiguration(
+            pattern: .batchOperationComplete,
+            intensity: 0.9,
+            duration: 0.2,
+            delay: 0.0,
+            repeatCount: 1
+        )
+        
+        static let suggestionPresented = HapticConfiguration(
+            pattern: .suggestionPresented,
+            intensity: 0.5,
+            duration: 0.08,
+            delay: 0.0,
+            repeatCount: 1
+        )
+        
+        static let intelligentGrouping = HapticConfiguration(
+            pattern: .intelligentGrouping,
+            intensity: 0.7,
+            duration: 0.12,
+            delay: 0.0,
+            repeatCount: 1
+        )
+        
+        static let workflowComplete = HapticConfiguration(
+            pattern: .workflowComplete,
+            intensity: 0.8,
+            duration: 0.15,
+            delay: 0.0,
+            repeatCount: 2
         )
     }
     
@@ -249,6 +355,41 @@ final class HapticFeedbackService: ObservableObject {
         }
     }
     
+    /// Triggers contextual haptic feedback based on operation type and result
+    /// - Parameters:
+    ///   - operationType: The type of operation being performed
+    ///   - isSuccess: Whether the operation was successful
+    ///   - itemCount: Number of items affected (for scaling intensity)
+    func triggerContextualFeedback(
+        for operationType: ContextualOperation,
+        isSuccess: Bool,
+        itemCount: Int = 1
+    ) {
+        guard isHapticEnabled else { return }
+        
+        let patterns = getContextualPatterns(for: operationType, isSuccess: isSuccess, itemCount: itemCount)
+        triggerHapticSequence(patterns)
+    }
+    
+    /// Enhanced workflow completion feedback with celebration pattern
+    /// - Parameter workflowType: The type of workflow completed
+    func triggerWorkflowCompletionCelebration(_ workflowType: WorkflowType) {
+        guard isHapticEnabled else { return }
+        
+        let celebrationPatterns: [HapticPattern] = switch workflowType {
+        case .batchProcessing:
+            [.batchOperationComplete, .successFeedback]
+        case .duplicateCleanup:
+            [.duplicateDetected, .batchOperationComplete, .systemOptimization]
+        case .intelligentOrganization:
+            [.intelligentGrouping, .collectionAdded, .workflowComplete]
+        case .exportWorkflow:
+            [.processingStart, .exportComplete, .successFeedback]
+        }
+        
+        triggerHapticSequence(celebrationPatterns)
+    }
+    
     /// Prepares haptic generators for immediate use
     func prepareHapticGenerators() {
         impactLight.prepare()
@@ -308,6 +449,38 @@ final class HapticFeedbackService: ObservableObject {
             return .errorFeedback
         case .successFeedback:
             return .successFeedback
+        case .duplicateDetected:
+            return .duplicateDetected
+        case .batchOperationStart:
+            return .batchOperationStart
+        case .batchOperationProgress:
+            return .batchOperationProgress
+        case .batchOperationComplete:
+            return .batchOperationComplete
+        case .suggestionPresented:
+            return .suggestionPresented
+        case .suggestionAccepted:
+            return .successFeedback
+        case .collectionAdded:
+            return .successFeedback
+        case .exportComplete:
+            return .batchOperationComplete
+        case .processingStart:
+            return .batchOperationStart
+        case .processingComplete:
+            return .batchOperationComplete
+        case .visualSimilarityFound:
+            return .duplicateDetected
+        case .intelligentGrouping:
+            return .intelligentGrouping
+        case .workflowComplete:
+            return .workflowComplete
+        case .smartRecommendation:
+            return .suggestionPresented
+        case .dataRecovery:
+            return .successFeedback
+        case .systemOptimization:
+            return .workflowComplete
         case .light:
             return HapticConfiguration(
                 pattern: .light,
@@ -367,11 +540,32 @@ final class HapticFeedbackService: ObservableObject {
         case .deleteConfirmation:
             await triggerNotificationFeedback(.warning)
             
-        case .successFeedback:
+        case .successFeedback, .suggestionAccepted, .collectionAdded, .dataRecovery:
             await triggerNotificationFeedback(.success)
             
         case .errorFeedback, .error:
             await triggerNotificationFeedback(.error)
+            
+        case .duplicateDetected, .visualSimilarityFound:
+            await triggerImpactFeedback(.light, intensity: adjustedIntensity * 0.8)
+            
+        case .batchOperationStart, .processingStart:
+            await triggerImpactFeedback(.medium, intensity: adjustedIntensity)
+            
+        case .batchOperationProgress:
+            await triggerImpactFeedback(.light, intensity: adjustedIntensity * 0.6)
+            
+        case .batchOperationComplete, .exportComplete, .processingComplete:
+            await triggerNotificationFeedback(.success)
+            
+        case .suggestionPresented, .smartRecommendation:
+            await triggerSelectionFeedback()
+            
+        case .intelligentGrouping:
+            await triggerImpactFeedback(.medium, intensity: adjustedIntensity * 0.9)
+            
+        case .workflowComplete, .systemOptimization:
+            await triggerImpactFeedback(.heavy, intensity: adjustedIntensity)
             
         case .light:
             await triggerImpactFeedback(.light, intensity: adjustedIntensity)
@@ -452,6 +646,56 @@ final class HapticFeedbackService: ObservableObject {
             hapticHistory.removeFirst(50)
         }
     }
+    
+    // MARK: - Contextual Feedback Helpers
+    
+    private func getContextualPatterns(
+        for operation: ContextualOperation,
+        isSuccess: Bool,
+        itemCount: Int
+    ) -> [HapticPattern] {
+        let basePatterns: [HapticPattern] = switch operation {
+        case .quickAction:
+            [.quickActionTrigger]
+        case .batchOperation:
+            [.batchOperationStart, .batchOperationComplete]
+        case .duplicateDetection:
+            [.duplicateDetected, .visualSimilarityFound]
+        case .smartSuggestion:
+            [.suggestionPresented, .smartRecommendation]
+        case .intelligentGrouping:
+            [.intelligentGrouping]
+        case .dataProcessing:
+            [.processingStart, .processingComplete]
+        }
+        
+        let resultPattern: HapticPattern = isSuccess ? .successFeedback : .errorFeedback
+        
+        // Scale patterns based on item count for batch operations
+        if itemCount > 10 && operation == .batchOperation {
+            return basePatterns + [.batchOperationProgress, resultPattern]
+        } else {
+            return basePatterns + [resultPattern]
+        }
+    }
+}
+
+// MARK: - Supporting Types
+
+public enum ContextualOperation {
+    case quickAction
+    case batchOperation
+    case duplicateDetection
+    case smartSuggestion
+    case intelligentGrouping
+    case dataProcessing
+}
+
+public enum WorkflowType {
+    case batchProcessing
+    case duplicateCleanup
+    case intelligentOrganization
+    case exportWorkflow
 }
 
 // MARK: - Haptic Feedback Extensions

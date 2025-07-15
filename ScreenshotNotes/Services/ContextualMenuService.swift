@@ -4,14 +4,14 @@ import Foundation
 /// Comprehensive contextual menu service for sophisticated menu interactions
 /// Provides contextual menus, quick actions, and batch operations with haptic feedback
 @MainActor
-final class ContextualMenuService: ObservableObject {
+public final class ContextualMenuService: ObservableObject {
     
     // MARK: - Singleton
     static let shared = ContextualMenuService()
     
     // MARK: - Menu Action Types
     
-    enum MenuAction: String, CaseIterable, Identifiable {
+    public enum MenuAction: String, CaseIterable, Identifiable {
         case share = "share"
         case copy = "copy"
         case delete = "delete"
@@ -23,7 +23,7 @@ final class ContextualMenuService: ObservableObject {
         case viewDetails = "view_details"
         case editMetadata = "edit_metadata"
         
-        var id: String { rawValue }
+        public var id: String { rawValue }
         
         var title: String {
             switch self {
