@@ -275,25 +275,47 @@ final class QuickActionService: ObservableObject {
     private func executeTagAction(_ screenshots: [Screenshot]) async {
         await updateActionMessage("Opening tag editor...")
         await updateProgress(0.5)
-        
-        // TODO: Implement tagging system
-        // For now, simulate the tagging process
-        try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
-        
-        await updateProgress(1.0)
-        await updateActionMessage("Tags applied")
+
+        // Show tag editor
+        if let tags = await showTagEditor(for: screenshots) {
+            // Apply tags to screenshots
+            await applyTags(tags, to: screenshots)
+            await updateProgress(1.0)
+            await updateActionMessage("Tags applied")
+        } else {
+            // User cancelled
+            await updateActionStatus(.cancelled)
+        }
     }
     
     private func executeFavoriteAction(_ screenshots: [Screenshot]) async {
         await updateActionMessage("Updating favorites...")
         await updateProgress(0.4)
-        
-        // TODO: Implement favorite system
-        // For now, simulate the favoriting process
-        try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
-        
+
+        await MainActor.run {
+            if let modelContext = screenshots.first?.modelContext {
+                for screenshot in screenshots {
+                    screenshot.isFavorite.toggle()
+                }
+
+                do {
+                    try modelContext.save()
+                    let isFavorite = screenshots.first?.isFavorite ?? false
+                    let message = isFavorite ? "Added to favorites" : "Removed from favorites"
+                    Task {
+                        await updateActionMessage(message)
+                    }
+                    print("✅ Successfully updated favorites for \(screenshots.count) screenshot(s)")
+                } catch {
+                    print("❌ Failed to update favorites: \(error)")
+                    Task {
+                        await updateActionMessage("Failed to update favorites")
+                    }
+                }
+            }
+        }
+
         await updateProgress(1.0)
-        await updateActionMessage("Added to favorites")
     }
     
     private func executeExportAction(_ screenshots: [Screenshot]) async {
@@ -364,6 +386,68 @@ final class QuickActionService: ObservableObject {
         
         await updateProgress(1.0)
         await updateActionMessage("Metadata editor opened")
+    }
+
+    private func showTagEditor(for screenshots: [Screenshot]) async -> [String]? {
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.main.async {
+                let alert = UIAlertController(
+                    title: "Add Tags",
+                    message: "Enter tags separated by commas.",
+                    preferredStyle: .alert
+                )
+
+                alert.addTextField {
+                    $0.placeholder = "e.g., work, design, inspiration"
+                    // Pre-populate with existing tags
+                    let existingTags = screenshots.compactMap { $0.userTags }.flatMap { $0 }.unique()
+                    $0.text = existingTags.joined(separator: ", ")
+                }
+
+                alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+                    continuation.resume(returning: nil)
+                })
+
+                alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in
+                    if let textField = alert.textFields?.first,
+                       let text = textField.text {
+                        let tags = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        continuation.resume(returning: tags)
+                    } else {
+                        continuation.resume(returning: [])
+                    }
+                })
+
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first,
+                   let rootVC = window.rootViewController {
+                    rootVC.present(alert, animated: true)
+                }
+            }
+        }
+    }
+
+    private func applyTags(_ tags: [String], to screenshots: [Screenshot]) async {
+        await MainActor.run {
+            if let modelContext = screenshots.first?.modelContext {
+                for screenshot in screenshots {
+                    var existingTags = screenshot.userTags ?? []
+                    for tag in tags {
+                        if !existingTags.contains(tag) {
+                            existingTags.append(tag)
+                        }
+                    }
+                    screenshot.userTags = existingTags
+                }
+
+                do {
+                    try modelContext.save()
+                    print("✅ Successfully applied tags to \(screenshots.count) screenshot(s)")
+                } catch {
+                    print("❌ Failed to apply tags: \(error)")
+                }
+            }
+        }
     }
     
     // MARK: - Confirmation Dialogs
@@ -511,3 +595,10 @@ struct QuickActionTestView: View {
     Text("Quick Action Test")
 }
 #endif
+
+extension Sequence where Element: Hashable {
+    func unique() -> [Element] {
+        var seen = Set<Element>()
+        return filter { seen.insert($0).inserted }
+    }
+}

@@ -12,6 +12,7 @@ public final class Screenshot {
     public var objectTags: [String]?
     public var userNotes: String?
     public var userTags: [String]?
+    public var isFavorite: Bool = false
     public var assetIdentifier: String?
     
     // Phase 5.2.1: Enhanced Vision Processing
@@ -36,6 +37,7 @@ public final class Screenshot {
         self.objectTags = nil
         self.userNotes = nil
         self.userTags = nil
+        self.isFavorite = false
         self.assetIdentifier = assetIdentifier
         self.visualAttributesData = nil
         self.lastVisionAnalysis = nil

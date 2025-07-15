@@ -715,1267 +715,377 @@ This dual approach gives users both **exploratory power** (Mind Map) and **organ
 **Development Philosophy:** Each iteration adds new capabilities while preserving existing functionality. Users can continue using the app normally as new features are gradually introduced and tested.
 
 
-### **🔧 Sprint 8.5: Code Quality & Architecture Refinement** (Priority 1 - Based on Code Review)
 
-**Goal:** Address critical code quality issues identified in Sprint 8.2.1-8.4.4 review to ensure robust, maintainable, and testable codebase.
+#### **Sub-Sprint 8.5.4: Technical Debt & Placeholder Resolution** (Week 4)
 
-#### **Sub-Sprint 8.5.2: Comprehensive Error Handling Implementation** (Week 2) ✅ **COMPLETE**
+**Goal:** Address outstanding technical debt, placeholders, and TODOs to improve code quality and feature completeness.
 
-##### **Iteration 8.5.2.1: Unified Error Handling Pattern (Day 23)** ✅ **COMPLETE**
-*   **Deliverable:** Implement consistent error handling across all services
-*   **Priority:** High - Inconsistent error handling identified in multiple services
+##### **Iteration 8.5.4.1: Implement Quick Actions (Day 28)**
+*   **Deliverable:** Implement the TODOs in `QuickActionService.swift` to provide core user functionality.
+*   **Priority:** High - These actions are essential for daily use.
 *   **Implementation:**
-    *   Create `ErrorHandling/AppErrorHandler.swift` with unified error types
-    *   Define error recovery strategies for each service type
-    *   Add comprehensive logging and user feedback for errors
-    *   Implement retry mechanisms with exponential backoff
-*   **Error Categories:**
-    *   **Network errors:** Retry with backoff, offline queue
-    *   **Data errors:** Recovery attempts, user notification
-    *   **Permission errors:** User guidance, settings deep-linking
-    *   **Resource errors:** Graceful degradation, memory management
-*   **Files to Create:** `ErrorHandling/AppErrorHandler.swift`, `ErrorHandling/ErrorRecoveryStrategies.swift`
-*   **Verification:** All services use unified error handling, comprehensive logging
-*   **Rollback Plan:** Revert to individual error handling per service
+    *   ✅ Implement tagging system.
+    *   ✅ Implement favorite system.
+    *   🔧 Implement export system.
+    *   🔧 Implement duplication system.
+    *   🔧 Implement collection system.
+    *   🔧 Implement details view navigation.
+    *   🔧 Implement metadata editing.
+*   **Files to Update:** `Services/QuickActionService.swift`
+*   **Verification:** All quick actions are functional and accessible from the context menu.
 
-##### **Iteration 8.5.2.2: JSON Encoding/Decoding Safety (Day 24)** ✅ **COMPLETE**
-*   **Deliverable:** Fix data corruption risks in Screenshot model and related entities
-*   **Priority:** High - Silent JSON failures can cause data loss
+##### **Iteration 8.5.4.2: Implement Error Recovery Strategies (Day 29)**
+*   **Deliverable:** Replace placeholder implementations in `ErrorRecoveryStrategies.swift` with functional code.
+*   **Priority:** High - Robust error recovery is critical for app stability.
 *   **Implementation:**
-    *   Add proper error handling for all JSON encode/decode operations
-    *   Implement data validation and corruption detection
-    *   Create backup/recovery mechanisms for corrupted data
-    *   Add comprehensive data integrity testing
-*   **Safety Measures:**
-    *   Validate JSON structure before encoding/decoding
-    *   Implement fallback values for corrupted properties
-    *   Add data version tracking for migration safety
-    *   Create automated data integrity checks
-*   **Files to Modify:** `Models/Screenshot.swift`, `Models/SemanticTagCollection.swift`
-*   **Verification:** No silent JSON failures, comprehensive error reporting
-*   **Rollback Plan:** Revert to original encoding with manual error checks
+    *   Implement `NetworkMonitor`, `OfflineQueue`, `BackupManager`, and other supporting classes.
+    *   Provide concrete recovery logic for network, data, permission, and resource errors.
+*   **Files to Update:** `ErrorHandling/ErrorRecoveryStrategies.swift`
+*   **Verification:** The app can gracefully handle and recover from a wide range of errors.
 
-**Sub-Sprint 8.5.2 Summary:**
-✅ **Delivered:** Comprehensive error handling infrastructure with unified error types, recovery strategies, retry mechanisms, and safe JSON encoding/decoding utilities.
-**Key Files:** `ErrorHandling/AppErrorHandler.swift`, `ErrorHandling/ErrorRecoveryStrategies.swift`, `ErrorHandling/RetryMechanisms.swift`, `ErrorHandling/SafeEncodingDecoding.swift`, `ErrorHandling/ErrorPresentationView.swift`
-**Next Steps:** Integration of SafeCoding utilities across existing services (BackupRestoreService, MindMapService, etc.)
-
-#### **Sub-Sprint 8.5.3: Race Condition Prevention & Task Management** (Week 3)
-
-##### **Iteration 8.5.3.1: Task Synchronization Framework (Day 25)** ✅ **COMPLETED**
-*   **Deliverable:** ✅ Eliminate race conditions in async task management
-*   **Priority:** High - Multiple race conditions identified in ContentView and services
-*   **Implementation:** ✅ **COMPLETED**
-    *   ✅ Create `TaskManager.swift` for centralized async task coordination
-    *   ✅ Implement proper task cancellation and cleanup
-    *   ✅ Add task priority management and resource limiting (Critical, High, Normal, Low)
-    *   ✅ Use TaskGroup for related operations, proper async coordination
-*   **Improvements:** ✅ **COMPLETED**
-    *   ✅ Replace individual task cancellation with coordinated approach
-    *   ✅ Implement proper task lifecycle management
-    *   ✅ Add deadlock prevention and detection (30-second timeout monitoring)
-    *   ✅ Create task performance monitoring and debug interface
-*   **Files Created:** ✅ `Concurrency/TaskManager.swift`, `Concurrency/TaskCoordinator.swift`, `Services/EnhancedVisionService.swift`, `Services/SemanticTaggingService.swift`, `Views/TaskManagerDebugView.swift`
-*   **Files Updated:** ✅ `ContentView.swift`, `ViewModels/GalleryModeViewModel.swift`, `ViewModels/ScreenshotListViewModel.swift`, `Services/BackgroundSemanticProcessor.swift`, `Services/BackgroundVisionProcessor.swift`
-*   **Verification:** ✅ No race conditions, clean task lifecycle management, real-time monitoring available
-*   **Benefits Delivered:**
-    *   🎯 **Beautiful Experience:** Fluid task execution without UI blocking
-    *   🎯 **Intuitive Interface:** Real-time progress tracking and visual feedback
-    *   🎯 **Reliable Performance:** Consistent behavior under all conditions
-    *   🎯 **Resource Management:** Intelligent task prioritization and memory pressure handling
-*   **Debug Access:** CPU icon (🖥️) in main navigation for real-time task monitoring
-*   **Implementation Summary:** Successfully implemented comprehensive Task Synchronization Framework that eliminates all race conditions in async task management. The system provides coordinated execution of complex workflows with intelligent resource management, deadlock prevention, and real-time monitoring capabilities. Users now experience fluid, reliable performance with beautiful visual feedback and intuitive progress tracking.
-
-**🎉 ITERATION 8.5.3.1 ACHIEVEMENT:**
-- **Race Condition Elimination:** 100% - All async task conflicts resolved
-- **User Experience Enhancement:** Beautiful, fluid, intuitive, and reliable app behavior
-- **Performance Optimization:** Intelligent task coordination with resource-aware execution
-- **Debug Capabilities:** Real-time monitoring and testing interface available
-- **Architecture Foundation:** Scalable framework for all future async operations
-
-**📋 READY FOR NEXT ITERATION:** The Task Synchronization Framework provides a solid foundation for Iteration 8.5.3.2: Memory Management & Leak Prevention.
-
-##### **Iteration 8.5.3.2: Memory Management & Leak Prevention (Day 26)** ✅ **COMPLETED**
-*   **Deliverable:** ✅ Prevent memory leaks and improve resource management
-*   **Priority:** High - Multiple @StateObject instances risk retain cycles
-*   **Implementation:** ✅ **COMPLETED**
-    *   ✅ Audit all @StateObject and @ObservedObject relationships
-    *   ✅ Implement proper cleanup in deinit methods with memory tracking
-    *   ✅ Add weak references (@WeakRef) throughout to break retain cycles
-    *   ✅ Create comprehensive memory pressure monitoring and graduated response
-*   **Memory Safety:** ✅ **COMPLETED**
-    *   ✅ Add deinit logging with MemoryTrackable protocol for object lifecycle detection
-    *   ✅ Implement automatic cleanup for abandoned tasks through ResourceCleanupProtocol
-    *   ✅ Add real-time memory usage monitoring with pressure alerts and visualization
-    *   ✅ Create comprehensive resource cleanup protocols for all services with priority-based ordering
-*   **Files Created:** ✅ `Concurrency/MemoryManager.swift`, `Concurrency/ResourceCleanupProtocol.swift`, `Concurrency/WeakReferenceManager.swift`, `Views/MemoryManagerDebugView.swift`
-*   **Files Updated:** ✅ All ViewModels and Services - Implemented MemoryTrackable and ResourceCleanupProtocol, added weak references, proper deinit cleanup
-*   **Compilation:** ✅ All Swift compilation errors resolved, including BGProcessingTask API issues, optional unwrapping for weak services, Swift 6 concurrency compliance
-*   **Verification:** ✅ Memory usage stable with real-time monitoring, comprehensive leak detection system, retain cycle prevention, build succeeds completely
-*   **Benefits Delivered:**
-    *   🎯 **Beautiful Experience:** Stable performance without memory-related slowdowns
-    *   🎯 **Fluid Performance:** Intelligent resource management with graduated cleanup
-    *   🎯 **Intuitive Monitoring:** Real-time memory visualization with clear leak detection
-    *   🎯 **Reliable Operation:** 100% memory leak prevention with automatic cleanup
-*   **Debug Access:** Memory Chip icon (🧠) in main navigation for real-time memory monitoring
-*   **Implementation Summary:** Successfully implemented comprehensive Memory Management & Leak Prevention system with real-time monitoring, automatic leak detection, intelligent resource cleanup, and retain cycle prevention. All ViewModels and Services now implement proper memory management with weak references, automatic cleanup protocols, and lifecycle tracking. The system provides beautiful, fluid, intuitive, and reliable user experience through optimal memory usage and proactive leak prevention.
-
-📋 **READY FOR NEXT ITERATION:** Iteration 8.5.3.3: Build Error Resolution (Day 27) - Address BGProcessingTask API changes, optional unwrapping issues, and WeakReferenceManager compilation errors to restore build success.
-
-##### **Iteration 8.5.3.3: Build Error Resolution (Day 27)** 🔧 **IN PROGRESS**
-*   **Deliverable:** Resolve compilation errors and restore build success
-*   **Priority:** Critical - Build must succeed for continued development
-*   **Implementation:** 🔧 **IN PROGRESS**
-    *   🔧 Fix BGProcessingTask API issues (replace .cancel() with proper cancellation)
-    *   🔧 Resolve optional unwrapping in EnhancedVisionService memory management
-    *   🔧 Fix WeakReferenceManager compilation errors (forceCleanup method, nil context issues)
-    *   ⏳ Verify all memory management features still work correctly after fixes
-*   **Build Issues:** 🔧 **ADDRESSING**
-    *   🔧 BGProcessingTask.cancel() method not available - use setTaskCompleted(success: false)
-    *   🔧 Optional EnhancedVisionService requires safe unwrapping in analyzeScreenshot calls
-    *   🔧 WeakReferenceManager method resolution and nil context handling
-*   **Files to Update:** 🔧 `Services/BackgroundVisionProcessor.swift`, `Concurrency/WeakReferenceManager.swift`
-*   **Verification:** ⏳ Build succeeds with all memory management features functional
-*   **Benefits:** 🎯 Restored development velocity with stable, memory-safe codebase
+##### **Iteration 8.5.4.3: Address Remaining Placeholders (Day 30)**
+*   **Deliverable:** Systematically address the remaining placeholders and TODOs throughout the codebase.
+*   **Priority:** Medium - Improve overall code quality and completeness.
+*   **Implementation:**
+    *   Replace placeholder logic in `ModeCoordinator`, `Screenshot.swift`, and other services.
+    *   Remove simplified implementations and replace them with robust logic.
+    *   Address nil-coalescing operators that use dummy data.
+*   **Files to Update:** Various files across the project.
+*   **Verification:** The number of placeholders and TODOs in the codebase is significantly reduced.
 
 ---
 
-### **🧪 Sprint 8.6: Comprehensive Testing Implementation** (Priority 1 - Based on Code Review)
+### **📱 Sprint 8.6: Core User Experience Features** (Priority 1 - Essential Functionality)
 
-**Goal:** Achieve 70% test coverage for critical functionality and implement automated testing infrastructure.
+**Goal:** Implement the most important user-facing features that provide immediate value and intuitive productivity benefits.
 
-#### **Sub-Sprint 8.6.1: Unit Testing Foundation** (Week 1)
+#### **Sub-Sprint 8.6.1: Smart Content Organization** (Week 1)
 
-##### **Iteration 8.6.1.1: Core Service Testing (Day 27)**
-*   **Deliverable:** Comprehensive unit tests for critical services
-*   **Priority:** Critical - Only 3% test coverage currently
-*   **Testing Targets:**
-    *   `InterfaceModeManager` - Mode switching, state management, persistence
-    *   `LiquidGlassRenderer` - Performance metrics, thermal adaptation, quality scaling
-    *   `ContentRelationshipDetector` - Relationship detection algorithms, caching
-    *   `VoiceActionProcessor` - Command recognition, action execution, error handling
-*   **Test Categories:**
-    *   **Unit tests:** Individual method behavior, edge cases, error conditions
-    *   **Integration tests:** Service interaction, data flow, state consistency
-    *   **Performance tests:** Response times, memory usage, throughput
-    *   **Error tests:** Invalid input handling, network failures, resource constraints
-*   **Files to Create:** `Tests/Services/`, `Tests/Mocks/`, `Tests/TestUtilities/`
-*   **Verification:** 70% coverage for tested services, all edge cases covered
-*   **Rollback Plan:** Remove test files if they impact build performance
-
-##### **Iteration 8.6.1.2: UI Component Testing (Day 28)**
-*   **Deliverable:** UI tests for Enhanced Interface components
-*   **Testing Targets:**
-    *   `AdaptiveContentHubModeSelector` - Mode switching, animations, accessibility
-    *   `ConstellationModeRenderer` - Workspace navigation, voice integration
-    *   `GalleryModeRenderer` - Screenshot display, interactions, performance
-    *   `LiquidGlassMaterial` components - Rendering, accessibility, device adaptation
-*   **Test Categories:**
-    *   **Interaction tests:** Tap, swipe, voice command handling
-    *   **Animation tests:** Smooth transitions, performance maintenance
-    *   **Accessibility tests:** VoiceOver, reduced motion, high contrast
-    *   **State tests:** Interface mode persistence, proper state restoration
-*   **Files to Create:** `UITests/EnhancedInterface/`, `UITests/Accessibility/`
-*   **Verification:** All UI interactions tested, accessibility compliance verified
-*   **Rollback Plan:** Remove UI tests, rely on manual testing
-
-#### **Sub-Sprint 8.6.2: Integration & Performance Testing** (Week 2)
-
-##### **Iteration 8.6.2.1: Mode Transition Testing (Day 29)**
-*   **Deliverable:** Comprehensive testing of interface mode transitions
-*   **Testing Focus:**
-    *   State preservation across mode switches
-    *   Animation performance during transitions
-    *   Voice command integration during transitions
-    *   Memory management during rapid mode switching
-*   **Test Scenarios:**
-    *   Rapid mode switching stress tests
-    *   Memory pressure during transitions
-    *   Voice commands interrupting transitions
-    *   Background processing during mode switches
-*   **Files to Create:** `IntegrationTests/ModeTransitions/`, `PerformanceTests/TransitionBenchmarks/`
-*   **Verification:** All transition scenarios covered, performance benchmarks established
-*   **Rollback Plan:** Remove integration tests, use manual verification
-
-##### **Iteration 8.6.2.2: Performance Regression Testing (Day 30)**
-*   **Deliverable:** Automated performance monitoring and regression prevention
+##### **Iteration 8.6.1.1: Intelligent Screenshot Grouping (Day 27)**
+*   **Deliverable:** Automatic grouping of related screenshots for effortless organization
+*   **Priority:** High - Users struggle to find related screenshots scattered across hundreds of images
 *   **Implementation:**
-    *   Create performance benchmark suite for all major operations
-    *   Implement automated performance regression detection
-    *   Add memory usage and animation frame rate monitoring
-    *   Create performance alerts for significant regressions
-*   **Benchmarks:**
-    *   **Mode switching:** <200ms transition time
-    *   **Animation performance:** Maintain 120fps during transitions
-    *   **Memory usage:** <50MB increase for Enhanced Interface
-    *   **Voice processing:** <500ms command recognition and execution
-*   **Files to Create:** `PerformanceTests/Benchmarks/`, `CI/PerformanceMonitoring/`
-*   **Verification:** Performance baselines established, regression detection working
-*   **Rollback Plan:** Remove automated monitoring, use manual performance testing
-
----
-
-### **🔧 Sprint 8.7: Feature Completion & Polish** (Priority 2 - Based on Code Review)
-
-**Goal:** Complete placeholder implementations and enhance existing features for production readiness.
-
-#### **Sub-Sprint 8.7.1: Exploration Mode Implementation** (Week 1)
-
-##### **Iteration 8.7.1.1: Exploration Mode Foundation (Day 31)**
-*   **Deliverable:** Replace placeholder with functional exploration interface
-*   **Implementation:**
-    *   Create relationship visualization using screenshot connections
-    *   Implement interactive exploration with zoom and pan capabilities
-    *   Add search within exploration mode for content discovery
-    *   Build filtering and highlighting for exploration focus
+    *   Smart detection of screenshot sequences (same app, consecutive timestamps)
+    *   OCR-based content similarity grouping (same website, document, conversation)
+    *   Visual similarity clustering for screenshots of the same UI or content
+    *   Project detection based on recurring patterns and timeframes
+*   **User Benefits:**
+    *   **Effortless organization:** Related screenshots automatically grouped together
+    *   **Quick content discovery:** Find all screenshots from a work session or conversation
+    *   **Reduced cognitive load:** No manual tagging or folder management needed
+    *   **Time savings:** Instantly locate related content without scrolling through hundreds of images
 *   **Features:**
-    *   **Visual relationship mapping:** Connected screenshots displayed as network graph
-    *   **Interactive exploration:** Zoom, pan, tap to focus on content clusters
-    *   **Content discovery:** Find related screenshots through visual exploration
-    *   **Smart highlighting:** Emphasize connections based on user interaction
-*   **Files to Create:** `Views/Modes/ExplorationModeRenderer.swift`, `Exploration/RelationshipVisualizer.swift`
-*   **Verification:** Exploration mode functional, replaces placeholder content
-*   **Rollback Plan:** Revert to placeholder, disable exploration mode access
+    *   Auto-detect screenshot sequences from same app within 5-minute windows
+    *   Group screenshots with matching text content (same website, document, chat)
+    *   Cluster visually similar screenshots (same UI, repeated content)
+    *   Smart project detection (recurring apps/content over multiple days)
+*   **Files to Create:** `Services/SmartGroupingService.swift`, `Models/ScreenshotGroup.swift`, `Views/GroupedGalleryView.swift`
+*   **Verification:** Screenshots are intelligently grouped, users can easily find related content
+*   **Rollback Plan:** Disable grouping, show flat chronological list
 
-##### **Iteration 8.7.1.2: Search Mode Enhancement (Day 32)**
-*   **Deliverable:** Enhance search mode beyond basic functionality
+##### **Iteration 8.6.1.2: Quick Actions & Shortcuts (Day 28)**
+*   **Deliverable:** Essential quick actions that users need daily
+*   **Priority:** High - Current workflow requires too many taps for common actions
 *   **Implementation:**
-    *   Implement advanced search filters and sorting options
-    *   Add search history and suggestion capabilities
-    *   Create search result organization and grouping
-    *   Integrate voice search with Enhanced Interface design
+    *   Long-press context menu for immediate actions (delete, share, copy text)
+    *   Quick duplicate detection and removal
+    *   Batch operations for common tasks (delete similar, share group)
+    *   Smart shortcuts based on user behavior patterns
+*   **User Benefits:**
+    *   **Instant access:** Common actions available with single long-press
+    *   **Bulk efficiency:** Handle multiple screenshots at once
+    *   **Duplicate cleanup:** Easily remove redundant screenshots
+    *   **Personalized shortcuts:** Frequently used actions appear first
 *   **Features:**
-    *   **Advanced filtering:** Date range, content type, semantic tags, relevancy
-    *   **Search suggestions:** Based on content, previous searches, and patterns
-    *   **Result organization:** Group by date, content type, or relationship clusters
-    *   **Voice integration:** "Search for screenshots from my Paris trip last month"
-*   **Files to Create:** `Views/Modes/SearchModeRenderer.swift`, `Search/AdvancedSearchService.swift`
-*   **Verification:** Search mode provides comprehensive content discovery
-*   **Rollback Plan:** Revert to basic search functionality
+    *   Long-press menu: Delete, Share, Copy Text, Mark Important, Add to Group
+    *   Smart duplicate detection with one-tap removal
+    *   Batch select mode for multi-screenshot operations
+    *   Customizable quick action bar for most-used functions
+*   **Files to Create:** `Services/QuickActionsService.swift`, `Views/Components/QuickActionMenu.swift`, `Services/DuplicateDetectionService.swift`
+*   **Verification:** Users can perform common tasks with minimal taps
+*   **Rollback Plan:** Remove quick actions, use standard iOS sharing/deletion
 
-#### **Sub-Sprint 8.7.2: Content Constellation Intelligence** (Week 2)
+#### **Sub-Sprint 8.6.2: Enhanced Search & Discovery** (Week 2)
 
-##### **Iteration 8.7.2.1: Real Constellation Detection (Day 33)**
-*   **Deliverable:** Replace simulated constellation detection with AI-powered analysis
+##### **Iteration 8.6.2.1: Natural Language Search (Day 29)**
+*   **Deliverable:** Search screenshots using natural, conversational language
+*   **Priority:** High - Users want to search "screenshots from my meeting last Tuesday" not complex filters
 *   **Implementation:**
-    *   Implement actual content analysis for relationship detection
-    *   Add semantic similarity analysis using OCR and visual features
-    *   Create temporal clustering for time-based content grouping
-    *   Build project/event detection using content patterns
-*   **AI Features:**
-    *   **Semantic clustering:** Group screenshots with similar content or purpose
-    *   **Temporal analysis:** Detect events, trips, projects based on timing
-    *   **Visual similarity:** Group screenshots with similar visual elements
-    *   **Context detection:** Identify work projects, personal events, learning sessions
-*   **Files to Create:** `AI/ConstellationDetectionEngine.swift`, `AI/SemanticClusteringService.swift`
-*   **Verification:** Constellation detection uses real AI analysis, accurate grouping
-*   **Rollback Plan:** Revert to simulated detection with sample data
+    *   Natural language query parsing ("screenshots from last week", "images with phone numbers")
+    *   Smart date interpretation (yesterday, last month, three days ago)
+    *   Content-aware search (find text, websites, app names, people)
+    *   Voice search integration for hands-free discovery
+*   **User Benefits:**
+    *   **Natural queries:** Search like talking to a person, not a database
+    *   **Time-based discovery:** "Show me screenshots from my vacation" 
+    *   **Content finding:** "Find screenshots with email addresses"
+    *   **Voice convenience:** Search while driving or hands-free
+*   **Features:**
+    *   Parse queries like "screenshots from my work meeting yesterday"
+    *   Smart date recognition: "last week", "three months ago", "during vacation"
+    *   Content type search: "screenshots with links", "images with contact info"
+    *   Voice search with Siri integration
+*   **Files to Create:** `Services/NaturalLanguageSearchService.swift`, `Search/QueryParser.swift`, `Voice/VoiceSearchEngine.swift`
+*   **Verification:** Users can find content using conversational search terms
+*   **Rollback Plan:** Disable natural language, use keyword-only search
 
-##### **Iteration 8.7.2.2: Intelligent Workspace Suggestions (Day 34)**
-*   **Deliverable:** Proactive workspace creation and management suggestions
+##### **Iteration 8.6.2.2: Smart Suggestions & Recommendations (Day 30)**
+*   **Deliverable:** Proactive suggestions that help users discover and organize content
+*   **Priority:** Medium - Users benefit from proactive assistance without having to think about organization
 *   **Implementation:**
-    *   Add intelligent workspace creation suggestions based on content patterns
-    *   Implement workspace completion detection and archival suggestions
-    *   Create workspace optimization recommendations
-    *   Build workspace naming and organization intelligence
-*   **Intelligence Features:**
-    *   **Creation suggestions:** "Create a workspace for your kitchen renovation screenshots?"
-    *   **Completion detection:** "Your Paris trip workspace looks complete. Archive it?"
-    *   **Organization suggestions:** "Move these work documents to your Q4 project workspace?"
-    *   **Naming intelligence:** Suggest workspace names based on content analysis
-*   **Files to Create:** `AI/WorkspaceSuggestionEngine.swift`, `Suggestions/WorkspaceRecommendations.swift`
-*   **Verification:** Workspace suggestions are contextual and helpful
-*   **Rollback Plan:** Disable suggestions, use manual workspace management only
+    *   "Recently captured" suggestions based on usage patterns
+    *   Content recommendations ("You might also like these related screenshots")
+    *   Organization suggestions ("Create a group for these work screenshots?")
+    *   Cleanup recommendations ("Delete these duplicate screenshots?")
+*   **User Benefits:**
+    *   **Proactive assistance:** App suggests helpful actions without being asked
+    *   **Discovery:** Find forgotten but relevant screenshots
+    *   **Organization help:** Gentle nudges to keep content organized
+    *   **Maintenance:** Easy cleanup of unnecessary content
+*   **Features:**
+    *   Smart "Recently useful" section based on access patterns
+    *   Related content suggestions when viewing screenshots
+    *   Gentle organization prompts for obvious groupings
+    *   Periodic cleanup suggestions for duplicates and low-quality images
+*   **Files to Create:** `Services/SmartSuggestionsService.swift`, `Recommendations/ContentRecommendationEngine.swift`, `Views/SuggestionCard.swift`
+*   **Verification:** Suggestions are helpful and not intrusive
+*   **Rollback Plan:** Disable suggestions, use manual-only organization
 
 ---
 
-### **🔧 Sprint 8.8: Production Readiness & Quality Assurance** (Priority 3 - Long-term Excellence)
+### **✨ Sprint 8.7: Essential Productivity Features** (Priority 2 - High-Value User Features)
 
-**Goal:** Achieve production-level stability, performance, and user experience excellence.
+**Goal:** Implement features that dramatically improve daily productivity and make the app indispensable for screenshot management.
 
-#### **Sub-Sprint 8.8.1: Advanced Error Recovery & Resilience** (Week 1)
+#### **Sub-Sprint 8.7.1: Smart Text Features** (Week 1)
 
-##### **Iteration 8.8.1.1: Graceful Degradation Framework (Day 35)**
-*   **Deliverable:** Comprehensive graceful degradation for all Enhanced Interface features
+##### **Iteration 8.7.1.1: One-Tap Text Actions (Day 31)**
+*   **Deliverable:** Instant text extraction and actions from screenshots
+*   **Priority:** High - Users frequently need to copy phone numbers, emails, addresses from screenshots
 *   **Implementation:**
-    *   Create feature availability detection and graceful fallbacks
-    *   Implement progressive enhancement for device capabilities
-    *   Add network resilience with offline capability maintenance
-    *   Build resource constraint adaptation (memory, battery, thermal)
-*   **Degradation Strategies:**
-    *   **Performance constraints:** Reduce animation complexity, simplify materials
-    *   **Memory pressure:** Disable non-essential features, optimize caching
-    *   **Network issues:** Queue operations, provide offline functionality
-    *   **Device limitations:** Adapt interface complexity to device capabilities
-*   **Files to Create:** `Resilience/GracefulDegradationManager.swift`, `Resilience/FeatureAvailabilityDetector.swift`
-*   **Verification:** App remains functional under all constraint conditions
-*   **Rollback Plan:** Remove degradation logic, use static feature set
+    *   Smart text detection with action suggestions (call, email, copy, open URL)
+    *   One-tap copy for phone numbers, emails, addresses, URLs
+    *   Contact integration for detected phone numbers and emails
+    *   Calendar integration for detected dates and times
+*   **User Benefits:**
+    *   **Zero friction:** Copy phone number from screenshot with single tap
+    *   **Smart actions:** Automatically suggest "Call", "Email", "Add Contact" for relevant text
+    *   **Time savings:** No need to manually type out information from screenshots
+    *   **Error reduction:** Avoid typos when copying important information
+*   **Features:**
+    *   Auto-detect and highlight actionable text (phone, email, URL, address)
+    *   One-tap actions: Copy, Call, Email, Open in Maps, Add to Contacts
+    *   Smart formatting for different text types (phone number formatting, etc.)
+    *   Integration with iOS system apps (Phone, Mail, Maps, Contacts)
+*   **Files to Create:** `Services/SmartTextActionService.swift`, `TextRecognition/ActionableTextDetector.swift`, `Views/Components/TextActionOverlay.swift`
+*   **Verification:** Users can instantly act on text found in screenshots
+*   **Rollback Plan:** Disable smart actions, use basic OCR text extraction only
 
-##### **Iteration 8.8.1.2: Comprehensive Accessibility Enhancement (Day 36)**
-*   **Deliverable:** Best-in-class accessibility for Enhanced Interface
+##### **Iteration 8.7.1.2: Screenshot Annotations & Notes (Day 32)**
+*   **Deliverable:** Quick annotation and note-taking for screenshots
+*   **Priority:** Medium - Users want to add context and reminders to screenshots
 *   **Implementation:**
-    *   Enhance VoiceOver support for all Liquid Glass components
-    *   Implement comprehensive keyboard navigation for all features
-    *   Add high contrast and reduced motion optimizations
-    *   Create voice control compatibility for accessibility users
-*   **Accessibility Features:**
-    *   **VoiceOver excellence:** Clear descriptions, logical navigation order
-    *   **Keyboard support:** Full functionality without touch interaction
-    *   **Motion sensitivity:** Respect reduced motion preferences
-    *   **Voice control:** Alternative to gesture-based interactions
-*   **Files to Create:** `Accessibility/EnhancedInterfaceAccessibility.swift`, `Accessibility/VoiceOverSupport.swift`
-*   **Verification:** Accessibility audit shows compliance with iOS guidelines
-*   **Rollback Plan:** Revert to basic accessibility implementation
+    *   Quick note addition with speech-to-text support
+    *   Simple drawing/highlighting tools for marking up screenshots
+    *   Voice memo attachment for audio context
+    *   Auto-suggest tags based on content analysis
+*   **User Benefits:**
+    *   **Context preservation:** Add notes while memory is fresh
+    *   **Visual marking:** Highlight important parts of screenshots
+    *   **Audio context:** Record voice memos for complex explanations
+    *   **Smart tagging:** App suggests relevant tags automatically
+*   **Features:**
+    *   Tap to add text notes with speech-to-text option
+    *   Simple markup tools: highlight, arrow, circle, text overlay
+    *   Voice memo recording and playback for each screenshot
+    *   Auto-suggested tags based on OCR content and context
+*   **Files to Create:** `Services/AnnotationService.swift`, `Views/Components/AnnotationTools.swift`, `Voice/VoiceMemoService.swift`
+*   **Verification:** Users can easily add context and markup to screenshots
+*   **Rollback Plan:** Remove annotation features, use screenshots as-is
 
-#### **Sub-Sprint 8.8.2: Performance Excellence & Monitoring** (Week 2)
+#### **Sub-Sprint 8.7.2: Workflow Integration** (Week 2)
 
-##### **Iteration 8.8.2.1: Advanced Performance Monitoring (Day 37)**
-*   **Deliverable:** Real-time performance monitoring and optimization
+##### **Iteration 8.7.2.1: Smart Sharing & Export (Day 33)**
+*   **Deliverable:** Intelligent sharing options based on content and context
+*   **Priority:** High - Users need efficient ways to share screenshots with relevant people/apps
 *   **Implementation:**
-    *   Create comprehensive performance metrics collection
-    *   Implement real-time frame rate and rendering performance monitoring
-    *   Add memory usage tracking and leak detection
-    *   Build performance analytics and optimization recommendations
-*   **Monitoring Features:**
-    *   **Real-time metrics:** Frame rate, memory usage, task execution times
-    *   **Performance alerts:** Notify when performance drops below thresholds
-    *   **Optimization suggestions:** Recommend improvements based on usage patterns
-    *   **Trend analysis:** Track performance over time, identify regressions
-*   **Files to Create:** `Monitoring/PerformanceMonitor.swift`, `Analytics/PerformanceAnalytics.swift`
-*   **Verification:** Performance monitoring provides actionable insights
-*   **Rollback Plan:** Remove monitoring, use basic performance metrics
+    *   Smart sharing suggestions based on content analysis and usage patterns
+    *   Custom export formats (PDF compilation, organized albums)
+    *   Direct integration with productivity apps (Slack, email, notes apps)
+    *   Batch sharing with intelligent grouping
+*   **User Benefits:**
+    *   **Smart suggestions:** App suggests who/where to share based on content
+    *   **Efficient export:** Create organized collections for presentations/reports
+    *   **Direct integration:** Share to work tools without leaving the app
+    *   **Batch operations:** Share related screenshots together efficiently
+*   **Features:**
+    *   Suggest sharing destinations based on screenshot content and past behavior
+    *   Export grouped screenshots as PDF with optional annotations
+    *   Direct sharing to Slack channels, email threads, note-taking apps
+    *   Smart batch selection for sharing related content together
+*   **Files to Create:** `Services/SmartSharingService.swift`, `Export/PDFGenerator.swift`, `Integration/AppConnectors.swift`
+*   **Verification:** Sharing suggestions are accurate and time-saving
+*   **Rollback Plan:** Use standard iOS sharing sheet only
 
-##### **Iteration 8.8.2.2: Long-term Stability Testing (Day 38)**
-*   **Deliverable:** Extended operation testing and stability verification
+##### **Iteration 8.7.2.2: Workflow Templates & Automation (Day 34)**
+*   **Deliverable:** Customizable workflows for common screenshot tasks
+*   **Priority:** Medium - Power users benefit from automating repetitive tasks
 *   **Implementation:**
-    *   Create long-running stability tests for all Enhanced Interface features
-    *   Implement stress testing for rapid user interactions
-    *   Add memory leak detection over extended periods
-    *   Build automated regression testing for stability maintenance
-*   **Stability Tests:**
-    *   **Extended operation:** 24-hour continuous operation without issues
-    *   **Rapid interaction:** Handle fast mode switching and voice commands
-    *   **Memory stability:** No memory growth over extended use
-    *   **Feature stability:** All features remain functional after extended use
-*   **Files to Create:** `StabilityTests/LongRunningTests.swift`, `StabilityTests/StressTests.swift`
-*   **Verification:** App passes all stability tests, ready for production
-*   **Rollback Plan:** Remove stability tests, use manual verification
+    *   Create workflow templates for common use cases (expense tracking, bug reporting, recipe collection)
+    *   Smart automation based on screenshot content (auto-categorize receipts, invoices)
+    *   Custom action sequences (screenshot + OCR + share to specific app)
+    *   Workflow learning from user behavior patterns
+*   **User Benefits:**
+    *   **Automation:** Repetitive tasks happen automatically
+    *   **Consistency:** Always handle similar screenshots the same way
+    *   **Time savings:** Skip manual categorization and routing
+    *   **Learning system:** Workflows improve based on user behavior
+*   **Features:**
+    *   Pre-built templates: Expense Reports, Bug Documentation, Recipe Collection
+    *   Auto-detection of receipts, invoices, documents for smart categorization
+    *   Custom workflow creation: "When I screenshot a receipt, OCR it and email to accounting"
+    *   Learning engine that suggests workflow improvements based on patterns
+*   **Files to Create:** `Workflows/WorkflowEngine.swift`, `Templates/WorkflowTemplates.swift`, `Automation/SmartCategorizer.swift`
+*   **Verification:** Workflows save time and reduce manual work
+*   **Rollback Plan:** Disable workflows, use manual processing only
 
 ---
 
-#### **Iteration 8.9: Intelligent Triage Integration (5 atomic sub-iterations)** (Week 9)
+### **🎨 Sprint 8.8: User Experience Polish** (Priority 3 - Final Touches)
 
-**Iteration Goal:** Add content cleanup capabilities without disrupting normal usage
+**Goal:** Add the final polish and convenience features that make the app delightful to use daily.
 
-##### **Iteration 8.9.1: Triage Detection System (Day 39)**
-*   **Deliverable:** Identify potentially outdated content without UI changes
-*   **Current State:** Workspaces functional with progress tracking
-*   **Changes Made:**
-    *   Create `AI/ContentRelevancyAnalyzer.swift` for relevancy scoring
-    *   Implement duplicate detection and age analysis
-    *   Run relevancy analysis in background without user notification
-*   **Integration Strategy:**
-    *   Analysis runs silently without affecting user experience
-    *   Results stored for future triage sessions
-    *   No UI changes or user prompts yet
-*   **Verification:**
-    *   Relevancy analysis completes without performance impact
-    *   Outdated content correctly identified
-    *   No changes to existing user workflows
-*   **Rollback Plan:** Disable relevancy analysis, remove analyzer service
-*   **Files:** `AI/ContentRelevancyAnalyzer.swift`, `Models/RelevancyScore.swift`
+#### **Sub-Sprint 8.8.1: Visual Polish & Convenience** (Week 1)
 
-##### **Iteration 8.5.2: Triage Mode Interface (Day 22)**
-*   **Deliverable:** Add triage mode to mode selection without automatic triggers
-*   **Current State:** Content relevancy analysis running in background
-*   **Changes Made:**
-    *   Add "Triage" option to mode selector
-    *   Create basic triage interface showing relevancy analysis results
-    *   Implement manual triage mode activation only
-*   **Integration Strategy:**
-    *   Triage mode available via mode selector but not promoted
-    *   Users must manually choose to enter triage mode
-    *   No automatic suggestions or notifications about cleanup
-*   **Verification:**
-    *   Triage mode displays relevancy analysis results
-    *   Mode switching to/from triage works smoothly
-    *   Triage mode doesn't interfere with other modes
-*   **Rollback Plan:** Remove triage from mode selector, hide triage interface
-*   **Files:** `Views/Modes/TriageModeRenderer.swift`, `Views/TriageInterface.swift`
+##### **Iteration 8.8.1.1: Beautiful Screenshot Viewer (Day 35)**
+*   **Deliverable:** Enhanced screenshot viewing experience with practical improvements
+*   **Priority:** Medium - Current viewer is functional but could be more polished
+*   **Implementation:**
+    *   Full-screen viewing with smooth zoom and pan
+    *   Quick navigation between screenshots with gesture support
+    *   Image enhancement tools (brightness, contrast, crop)
+    *   Quick comparison mode for before/after screenshots
+*   **User Benefits:**
+    *   **Better viewing:** Full-screen experience with smooth interactions
+    *   **Quick navigation:** Swipe between related screenshots easily
+    *   **Image tweaks:** Adjust brightness/contrast for better readability
+    *   **Comparison:** Side-by-side view for comparing screenshots
+*   **Features:**
+    *   Pinch-to-zoom with smooth animations and boundary constraints
+    *   Swipe left/right to navigate between screenshots in current group
+    *   Simple image adjustment controls (brightness, contrast, saturation)
+    *   Split-screen comparison mode for two screenshots
+*   **Files to Create:** `Views/ScreenshotViewer/EnhancedViewer.swift`, `ImageProcessing/BasicImageEnhancer.swift`, `Views/Components/ComparisonView.swift`
+*   **Verification:** Viewing experience feels smooth and professional
+*   **Rollback Plan:** Use basic screenshot viewer without enhancements
 
-##### **Iteration 8.5.3: Basic Triage Actions (Day 23)**
-*   **Deliverable:** Enable keep/delete/archive actions in triage mode
-*   **Current State:** Triage mode displays potentially outdated content
-*   **Changes Made:**
-    *   Implement keep/delete/archive actions for individual screenshots
-    *   Add confirmation dialogs for deletion
-    *   Create undo functionality for triage decisions
-*   **Integration Strategy:**
-    *   Triage actions only available within triage mode
-    *   Screenshots remain in gallery/constellation until explicitly deleted
-    *   Deletion requires explicit user confirmation
-*   **Verification:**
-    *   Triage actions work correctly and safely
-    *   Undo functionality prevents accidental deletions
-    *   Deleted screenshots removed from all modes consistently
-*   **Rollback Plan:** Disable triage actions, make triage mode read-only
-*   **Files:** `Services/TriageActionProcessor.swift`, `Views/TriageConfirmation.swift`
+##### **Iteration 8.8.1.2: Smart Keyboard Shortcuts & Accessibility (Day 36)**
+*   **Deliverable:** Keyboard shortcuts and accessibility improvements for power users
+*   **Priority:** Medium - Important for accessibility and power user workflows
+*   **Implementation:**
+    *   Essential keyboard shortcuts for common actions (delete, search, navigate)
+    *   VoiceOver improvements with clear descriptions and navigation
+    *   Support for external keyboards on iPad
+    *   Voice control integration for hands-free operation
+*   **User Benefits:**
+    *   **Keyboard efficiency:** Power users can work without lifting hands from keyboard
+    *   **Accessibility support:** Full app functionality for users with disabilities
+    *   **iPad productivity:** Professional keyboard support for iPad users
+    *   **Voice control:** Alternative interaction method for accessibility
+*   **Features:**
+    *   Keyboard shortcuts: Cmd+D (delete), Cmd+F (search), Arrow keys (navigate)
+    *   Enhanced VoiceOver with meaningful descriptions and logical navigation order
+    *   iPad external keyboard support with discoverable shortcuts
+    *   Voice Control compatibility with iOS system commands
+*   **Files to Create:** `Input/KeyboardShortcutHandler.swift`, `Accessibility/VoiceOverEnhancer.swift`, `Input/ExternalKeyboardSupport.swift`
+*   **Verification:** App is fully accessible and keyboard-friendly
+*   **Rollback Plan:** Remove keyboard shortcuts, use basic accessibility implementation
 
-##### **Iteration 8.5.4: Voice Triage Commands (Day 24)**
-*   **Deliverable:** Add voice control for triage operations with single-click activation
-*   **Current State:** Manual triage actions working
-*   **Changes Made:**
-    *   Add voice commands for triage actions ("keep this", "delete this", "archive this")
-    *   Implement voice confirmation for bulk operations with single-tap activation
-    *   Add voice progress feedback during triage sessions
-    *   Each voice command requires separate microphone button tap
-*   **Integration Strategy:**
-    *   Voice triage commands only work within triage mode
-    *   Touch triage controls remain primary
-    *   Voice provides hands-free alternative: tap → speak → confirm → action
-    *   No continuous listening during triage operations
-*   **Verification:**
-    *   Voice triage commands work accurately and safely
-    *   Each command requires deliberate microphone button activation
-    *   Voice confirmation prevents accidental bulk deletions
-    *   Touch controls continue to work identically
-*   **Rollback Plan:** Remove voice triage commands, keep touch controls
-*   **Files:** `Voice/TriageVoiceHandler.swift`, `Voice/TriageConfirmationVoice.swift`
+#### **Sub-Sprint 8.8.2: Performance & Reliability** (Week 2)
 
-##### **Iteration 8.5.5: Smart Triage Suggestions (Day 25)**
-*   **Deliverable:** Add proactive but non-intrusive triage suggestions
-*   **Current State:** Full triage functionality with voice and touch
-*   **Changes Made:**
-    *   Add optional triage notifications (disabled by default)
-    *   Implement smart timing for triage suggestions (monthly, after imports)
-    *   Create dismissible triage reminders with user control
-*   **Integration Strategy:**
-    *   Suggestions appear only if user enables them in Settings
-    *   Suggestions easily dismissed and don't interfere with workflows
-    *   User maintains complete control over when and how to triage
-*   **Verification:**
-    *   Triage suggestions helpful but not intrusive
-    *   User can easily enable/disable suggestion system
-    *   Suggestions don't interrupt important user workflows
-*   **Rollback Plan:** Disable suggestion system, keep manual triage only
-*   **Files:** `Services/TriageSuggestionService.swift`, `Settings/TriageSettings.swift`
+##### **Iteration 8.8.2.1: Smart Performance Optimization (Day 37)**
+*   **Deliverable:** Intelligent performance optimization based on actual usage
+*   **Priority:** Medium - Optimize based on real performance bottlenecks, not theoretical ones
+*   **Implementation:**
+    *   Image loading optimization with smart caching for frequently accessed screenshots
+    *   Background processing throttling based on device thermal state and battery
+    *   Memory usage optimization during large screenshot collections
+    *   Smart preloading of likely-to-be-viewed content
+*   **User Benefits:**
+    *   **Responsive app:** Faster loading of frequently viewed screenshots
+    *   **Battery preservation:** Reduced background processing when device is hot/low battery
+    *   **Large collection support:** Smooth performance even with thousands of screenshots
+    *   **Predictive loading:** Content ready before user needs it
+*   **Features:**
+    *   LRU cache for screenshot thumbnails with smart eviction policies
+    *   Thermal and battery state monitoring with automatic processing throttling
+    *   Progressive loading for large collections (load visible items first)
+    *   Predictive preloading based on user navigation patterns
+*   **Files to Create:** `Performance/SmartCacheManager.swift`, `Performance/AdaptiveThrottling.swift`, `Performance/PredictiveLoader.swift`
+*   **Verification:** App remains fast and responsive under real-world usage
+*   **Rollback Plan:** Remove optimizations, use basic loading strategies
+
+##### **Iteration 8.8.2.2: Error Prevention & Recovery (Day 38)**
+*   **Deliverable:** Graceful error handling and data protection
+*   **Priority:** High - Protect user data and provide helpful error recovery
+*   **Implementation:**
+    *   Automatic backup of screenshot metadata and annotations
+    *   Graceful handling of corrupted image files
+    *   Network error recovery with retry strategies
+    *   Import failure recovery with partial success handling
+*   **User Benefits:**
+    *   **Data protection:** Never lose annotations or organization even if app crashes
+    *   **Corruption handling:** Gracefully handle damaged screenshot files
+    *   **Network resilience:** Continue working even with spotty internet
+    *   **Import reliability:** Recover from partial import failures gracefully
+*   **Features:**
+    *   Automatic export of user data (annotations, groups, notes) with iCloud sync
+    *   Corruption detection and quarantine for damaged screenshot files
+    *   Exponential backoff retry for network operations with user feedback
+    *   Import transaction rollback with detailed error reporting and recovery options
+*   **Files to Create:** `DataProtection/AutoBackupService.swift`, `ErrorHandling/GracefulErrorRecovery.swift`, `Network/RetryStrategy.swift`
+*   **Verification:** App handles errors gracefully and protects user data
+*   **Rollback Plan:** Remove error handling enhancements, use basic error reporting
 
 ---
 
-## 🔄 Legacy UX Transition & Evaluation Strategy
-
-### **Phase 1: Parallel Development (Sprint 8 - All Iterations)**
-- **Legacy Interface**: Remains completely unchanged and fully functional
-- **Enhanced Interface**: Built in parallel, accessed via Settings toggle (disabled by default)
-- **User Control**: 100% user choice in interface selection
-- **Risk Level**: Zero - no existing functionality affected
-
-### **Phase 2: Beta Evaluation (Post Sprint 8)**
-**Duration:** 60-90 days minimum
-**Criteria for advancement to Phase 3:**
-
-#### **Technical Excellence Requirements:**
-- **Performance Parity**: Enhanced Interface ≥ Legacy Interface response times
-- **Memory Efficiency**: ≤110% of Legacy Interface memory usage  
-- **Battery Impact**: ≤105% of Legacy Interface battery consumption
-- **Crash Rate**: <0.1% over 30-day evaluation period
-- **Accessibility**: WCAG AA compliance maintained or improved
-
-#### **User Experience Requirements:**
-- **User Satisfaction**: ≥90% positive feedback from opt-in beta users (minimum 500 users)
-- **Feature Completeness**: 100% feature parity with Legacy Interface
-- **Learning Curve**: ≤10% increase in task completion time for new users
-- **Error Rate**: ≤existing error rate for equivalent tasks in Legacy Interface
-- **Adoption Rate**: ≥70% of beta users continue using Enhanced Interface after 30 days
-
-#### **Business Requirements:**
-- **Support Load**: No increase in support tickets related to interface confusion
-- **User Retention**: No decrease in overall app usage metrics
-- **App Store Rating**: Maintained or improved during beta period
-
-### **Phase 3: Gradual Transition (If All Criteria Met)**
-**Duration:** 90-180 days minimum
-
-#### **Transition Steps:**
-1. **Soft Migration (Days 1-30)**
-   - Enhanced Interface becomes default for new users only
-   - Existing users keep Legacy Interface unless they opt-in
-   - Clear migration path and benefits communicated
-
-2. **Guided Migration (Days 31-90)**
-   - In-app educational overlays about Enhanced Interface benefits
-   - Optional migration wizard with preview mode
-   - Easy toggle back to Legacy Interface maintained
-
-3. **Legacy Sunset Preparation (Days 91-180)**
-   - Legacy Interface remains functional but marked as "Classic Mode"
-   - Enhanced Interface optimization based on user feedback
-   - Clear timeline communicated to users about eventual Legacy removal
-
-### **Phase 4: Legacy Retirement (Only After All Requirements Met)**
-**Prerequisites for Legacy Interface removal:**
-- **Enhanced Interface adoption**: ≥95% of active users voluntarily switched
-- **Extended stability**: 6+ months of Enhanced Interface operation without major issues
-- **User communication**: 90+ days advance notice to remaining Legacy Interface users
-- **Migration support**: Dedicated support for users needing assistance with transition
-
-#### **Final Migration Process:**
-1. **120 days notice**: Email and in-app notifications about Legacy retirement
-2. **90 days notice**: Migration wizard and support resources provided
-3. **30 days notice**: Final reminders with personal migration assistance offer
-4. **Legacy removal**: Only after ≥98% voluntary adoption of Enhanced Interface
-
-### **Settings Toggle Implementation Throughout Sprint 8**
-
-Each iteration will include Enhanced Interface toggle management:
-
-```swift
-// Settings/InterfaceSettings.swift
-struct InterfaceSettings {
-    @AppStorage("isEnhancedInterfaceEnabled") var isEnhancedInterfaceEnabled: Bool = false
-    @AppStorage("interfacePreference") var interfacePreference: InterfaceType = .legacy
-    @AppStorage("hasSeenEnhancedInterfaceIntro") var hasSeenIntro: Bool = false
-}
-
-enum InterfaceType: String, CaseIterable {
-    case legacy = "Legacy Interface"
-    case enhanced = "Enhanced Interface (Beta)"
-}
-```
-
-#### **Toggle Behavior:**
-- **Default State**: Legacy Interface (existing proven UX)
-- **Toggle Location**: Settings > Advanced > Interface Preferences
-- **Instant Switch**: No app restart required for interface changes
-- **State Persistence**: User preference maintained across app sessions
-- **Rollback Safety**: Can switch back to Legacy Interface instantly at any time
-
-### **Risk Mitigation Strategy**
-- **Zero Disruption Guarantee**: Legacy Interface never modified during Enhanced development
-- **Instant Rollback**: Enhanced Interface issues can be resolved by immediate toggle back
-- **Data Safety**: Both interfaces use identical data layer - no migration required
-- **Performance Monitoring**: Real-time metrics ensure Enhanced Interface doesn't degrade experience
-- **User Control**: Complete user autonomy in interface choice throughout entire process
-
-This comprehensive transition strategy ensures users maintain complete control while allowing thorough evaluation of the Enhanced Interface before any legacy removal consideration.
-
-    *   **Detailed User Experience Flows:**
-
-        **✈️ Smart Travel Content Tracking Flow:**
-        ```
-        Day 1: User captures flight booking (JFK → Paris, June 15-22)
-        ├─ System: Detects travel entity (airline, destination, dates)
-        ├─ Creates "Paris Trip (June 15-22)" workspace
-        ├─ Gentle notification: "I see you're planning a trip to Paris. 
-        │  Shall I help organize all related travel content?"
-        └─ User confirms → Smart travel workspace activated
-
-        Day 3: User captures hotel booking (Paris Marriott, June 15-22)
-        ├─ System: Matches dates + destination with existing trip
-        ├─ Automatically adds to "Paris Trip" workspace
-        ├─ Updates trip overview: Flight ✓, Hotel ✓
-        └─ Proactive suggestion: "Need car rental or activities?"
-
-        Day 7: User captures car rental (Hertz Paris, June 16-21)
-        ├─ System: Recognizes matching trip context
-        ├─ Auto-adds to trip workspace
-        ├─ Intelligent insight: "Trip 90% complete - missing return transport?"
-        └─ Creates trip checklist: Boarding passes, hotel confirmation, rental keys
-
-        Day 12: User captures restaurant reservation (Le Jules Verne, June 18)
-        ├─ System: Matches trip dates and location
-        ├─ Auto-organizes into trip itinerary
-        ├─ Smart timeline: Shows chronological trip plan
-        └─ Proactive reminder: "Trip in 3 days - all confirmations ready?"
-        ```
-
-        **📊 Project Content Constellation Flow:**
-        ```
-        Week 1: User captures meeting notes about "Project Alpha"
-        ├─ System: Detects project entity and creates workspace
-        └─ Begins tracking project-related content
-
-        Week 2: User captures whiteboard sketch mentioning "Alpha redesign"
-        ├─ System: Entity matching links to Project Alpha workspace
-        ├─ Auto-categorizes as project planning content
-        └─ Suggests organizing by project phase
-
-        Week 3: User captures email thread about Alpha timeline
-        ├─ System: Recognizes project context + timeline entities
-        ├─ Creates project timeline view
-        ├─ Smart insight: "Project spanning 3 weeks - track milestones?"
-        └─ Offers milestone tracking setup
-
-        Week 4: User captures budget spreadsheet for Alpha
-        ├─ System: Links to existing project constellation
-        ├─ Categorizes as project financials
-        ├─ Cross-references with timeline
-        └─ Insight: "Project budget + timeline captured - track progress?"
-        ```
-
-        **🏠 Home Maintenance Content Evolution:**
-        ```
-        Month 1: User captures appliance receipt (Dishwasher - $899)
-        ├─ System: Detects home/appliance entity
-        ├─ Creates "Kitchen Appliances" category
-        └─ Tracks purchase date for warranty
-
-        Month 2: User captures dishwasher manual and warranty
-        ├─ System: Matches appliance context
-        ├─ Links to original purchase receipt
-        ├─ Creates complete appliance profile
-        └─ Sets warranty expiration reminder
-
-        Month 6: User captures repair service receipt (Dishwasher repair)
-        ├─ System: Connects to existing appliance profile
-        ├─ Tracks service history
-        ├─ Smart insight: "3 repairs in 6 months - warranty claim?"
-        └─ Proactive suggestion: Contact manufacturer
-
-        Year 2: User captures new appliance research (Dishwasher models)
-        ├─ System: Recognizes replacement pattern
-        ├─ Links to service history
-        ├─ Intelligent recommendation: "Based on issues, consider Brand X"
-        └─ Offers comparison with current appliance
-        ```
-
-    *   **Smart Content Tracking Interface:**
-        ```
-        ┌─────────────────────────────────────────┐
-        │ ✈️ Travel Workspace Detected           │
-        │                                       │
-        │ I found 3 travel items for Paris      │
-        │ (June 15-22):                         │
-        │ ✓ Flight booking                      │
-        │ ✓ Hotel reservation                   │
-        │ ✓ Car rental                          │
-        │                                       │
-        │ Would you like me to create a travel   │
-        │ itinerary and track remaining items?   │
-        │                                       │
-        │ [Create Trip Workspace] [Not Now]     │
-        │                                       │
-        │ 💡 I can track activities, dining,    │
-        │    and documents automatically         │
-        └─────────────────────────────────────────┘
-        ```
-
-        **Content Constellation View:**
-        ```
-        ┌─────────────────────────────────────────┐
-        │ 📊 Project Alpha - Content Overview    │
-        │                                       │
-        │ 📅 Timeline: 4 weeks                  │
-        │ 📝 Meeting Notes (3)                  │
-        │ 🎨 Design Sketches (2)               │
-        │ 💰 Budget Documents (1)              │
-        │ 📧 Email Threads (5)                 │
-        │                                       │
-        │ 🔗 Smart Connections Found:           │
-        │ • Timeline → Budget alignment         │
-        │ • Design sketches → Meeting decisions │
-        │ • Email approvals → Next milestones  │
-        │                                       │
-        │ [View Project Timeline] [Add Milestone]│
-        └─────────────────────────────────────────┘
-        ```
-
-    *   **Tasks:**
-        *   Implement smart content relationship detection (entity matching, temporal clustering, contextual similarity)
-        *   Create content constellation algorithms (travel bookings, project documents, home maintenance, life events)
-        *   Build intelligent workspace creation (trip planners, project timelines, home management centers)
-        *   Add proactive content completion suggestions (missing trip components, project milestones, maintenance schedules)
-        *   Implement cross-content insights and recommendations (trip budget alerts, project progress tracking, warranty reminders)
-        *   Create temporal context understanding (date ranges, deadlines, recurring patterns, life transitions)
-    *   **Integration Test:** User captures airline ticket → hotel → car rental for same dates/destination → automatically creates "Trip to Paris" workspace
-    *   **User Experience Test:** 85% accuracy in content relationship detection, 70% reduction in manual organization time
-    *   **Files:** `Services/AI/ContentTrackingService.swift`, `Models/ContentConstellation.swift`, `Views/SmartWorkspaceView.swift`
-
-*   **8.1.2: Context-Aware Smart Actions**
-    *   **Deliverable:** Intelligent action suggestions that adapt to personal context and preferences
-    *   **Personal Productivity Impact:**
-        *   Context-sensitive quick actions that reduce cognitive load
-        *   Personal preference learning for customized automation
-        *   Seamless integration with user's existing app ecosystem
-
-    *   **Detailed User Experience Flows:**
-
-        **📱 Content-Aware Smart Action Menu:**
-        ```
-        Hotel booking screenshot (detected as part of Paris trip):
-        ├─ "Add to Paris Trip" (primary - matches existing trip constellation)
-        ├─ "Set Check-in Reminder" (contextual - based on booking dates)
-        ├─ "Add to Calendar" (creates event with hotel details)
-        ├─ "Share with Travel Companion" (if contacts detected)
-        └─ "Compare with Other Options" (if multiple hotels captured)
-
-        Receipt in restaurant (during active trip dates):
-        ├─ "Add to Paris Trip Expenses" (primary - trip context detected)
-        ├─ "Tag as Business Meal" (if calendar meeting same day)
-        ├─ "Convert Currency" (if foreign transaction detected)
-        ├─ "Add to Expense Report" (if business trip patterns detected)
-        └─ "Review Trip Budget" (shows trip spending overview)
-
-        Project meeting notes (matching existing project timeline):
-        ├─ "Add to Project Alpha" (primary - project constellation match)
-        ├─ "Update Project Timeline" (extract action items, deadlines)
-        ├─ "Share with Team" (based on meeting attendee extraction)
-        ├─ "Create Follow-up Tasks" (intelligent action item detection)
-        └─ "Link to Previous Meeting" (temporal project progression)
-        ```
-
-        **🎯 Contextual Action Intelligence:**
-        ```
-        Business card screenshot detected:
-        ├─ Primary action: "Add to Contacts" (with extracted info pre-filled)
-        ├─ Secondary: "Schedule Follow-up" (creates calendar event)
-        ├─ Tertiary: "Add to LinkedIn" (launches LinkedIn with connection request)
-        └─ Personal preference: "Save to CRM" (if user has connected Salesforce)
-
-        Restaurant receipt with calendar event same day:
-        ├─ Primary: "Tag as Business Meal" (associates with calendar meeting)
-        ├─ Secondary: "Add to Expense Report"
-        └─ Context: "Business lunch with [Meeting Attendees]"
-
-        Hotel booking screenshot 2 weeks before trip:
-        ├─ Primary: "Add to Travel Folder" 
-        ├─ Secondary: "Create Trip Checklist"
-        ├─ Tertiary: "Set Check-in Reminder"
-        └─ Smart: "Share with Emergency Contact" (if user has travel safety enabled)
-        ```
-
-        **🔄 Learning User Preferences Flow:**
-        ```
-        User views receipt → System shows 4 action suggestions
-        ├─ User consistently chooses "Export to Excel" (ignoring other options)
-        ├─ After 5 uses: "Export to Excel" moves to primary position
-        ├─ After 10 uses: System asks "Would you like to auto-export receipts to Excel?"
-        └─ If enabled: Future receipts automatically exported with optional review
-        ```
-
-        **⚡ One-Tap Workflow Integration:**
-        ```
-        Business Card Captured:
-        ┌─────────────────────────────────────────┐
-        │ John Smith - Apple Inc.                │ 
-        │ Senior Software Engineer                │
-        │                                       │
-        │ ⚡ Quick Actions                      │
-        │ ┌─────────┐ ┌─────────┐ ┌─────────┐   │
-        │ │📱 Add to│ │📅 Follow│ │💼 Save  │   │
-        │ │Contacts │ │   Up    │ │to CRM   │   │
-        │ └─────────┘ └─────────┘ └─────────┘   │
-        │                                       │
-        │ 🎛️ More Options ▼                    │
-        └─────────────────────────────────────────┘
-        ```
-
-    *   **Tasks:**
-        *   Implement contextual action engine analyzing screenshot content, user history, and temporal context
-        *   Add machine learning for personal preference detection and action prioritization
-        *   Create seamless handoff system for productivity apps (Notes, Calendar, Contacts, Files)
-        *   Build iOS Shortcuts integration for custom one-tap workflows
-        *   Implement app usage detection for smart third-party integrations
-        *   Add calendar context integration for time-sensitive action suggestions
-    *   **Integration Test:** View receipt → context menu shows "Add to Expense Report", "Save to Tax Folder" based on user history
-    *   **User Experience Test:** 80% of suggested actions match user intent, primary action is correct 90% of time
-    *   **Files:** `Services/SmartActionService.swift`, `Models/ContextualAction.swift`, `Views/SmartActionMenu.swift`
-
-*   **8.1.3: Personal Insight Dashboard**
-    *   **Deliverable:** Beautiful, intuitive dashboard providing personal productivity insights
-    *   **Personal Productivity Impact:**
-        *   Clear visibility into personal productivity patterns and improvements
-        *   Actionable insights for optimizing personal workflows
-        *   Progress tracking for personal productivity goals
-
-    *   **Detailed User Experience Flows:**
-
-        **📊 Dashboard Discovery Journey:**
-        ```
-        Week 1: User opens app → Standard gallery view
-        ├─ No insights yet (insufficient data)
-
-        Week 2: Small insights badge appears in nav
-        ├─ "📊 2 insights ready" 
-        ├─ User taps → First insights: "You've categorized 47 screenshots automatically"
-        └─ Gentle introduction to dashboard concept
-
-        Week 4: Rich insights available
-        ├─ Dashboard tab appears in main navigation
-        ├─ Personalized productivity story told through data
-        └─ Actionable recommendations for workflow optimization
-        ```
-
-        **🎯 Progressive Insight Revelation:**
-        ```
-        Month 1: Basic productivity metrics
-        ├─ "Screenshots organized: 127"
-        ├─ "Time saved: 2.3 hours" 
-        ├─ "Most productive day: Friday"
-
-        Month 2: Pattern recognition insights
-        ├─ "Your expense workflow saves 45 minutes weekly"
-        ├─ "Travel planning is 60% more efficient with smart grouping"
-        ├─ "Suggested optimization: Batch capture receipts for faster processing"
-
-        Month 3: Predictive insights
-        ├─ "Based on your patterns, expect 15 travel screenshots next week"
-        ├─ "Quarterly expense reports ready 3 days early this time!"
-        ├─ "Your productivity score improved 40% since smart workflows enabled"
-        ```
-
-        **📱 Dashboard Interface Design:**
-        ```
-        ┌─────────────────────────────────────────┐
-        │ 🧠 Your Productivity Story              │
-        │                                       │
-        │ ⚡ This Month's Impact                 │
-        │ ┌─ 3.7 hours saved through automation  │
-        │ ├─ 94 screenshots organized instantly   │
-        │ └─ 12 workflows optimized              │
-        │                                       │
-        │ 📈 Trending Up                        │
-        │ ┌─ Expense workflow: +25% efficiency   │
-        │ ├─ Travel planning: +40% faster        │
-        │ └─ Document filing: 90% automated      │
-        │                                       │
-        │ 🎯 Smart Suggestions                  │
-        │ ┌─ "Enable receipt auto-export?"       │
-        │ ├─ "Try voice capture for quick entry" │
-        │ └─ "Set up travel automation?"         │
-        │                                       │
-        │ 📊 [View Detailed Analytics] ──────────│
-        └─────────────────────────────────────────┘
-        ```
-
-        **🔍 Detailed Analytics Deep Dive:**
-        ```
-        User taps "View Detailed Analytics":
-        
-        ┌─────────────────────────────────────────┐
-        │ 📊 Detailed Productivity Analytics      │
-        │                                       │
-        │ ⏱️ Time Analysis                       │
-        │ ├─ Average categorization: 0.3 seconds  │
-        │ ├─ Manual sorting replaced: 94%         │
-        │ └─ Weekly time savings: 1.2 hours       │
-        │                                       │
-        │ 📁 Organization Insights               │
-        │ ├─ Most active category: Finance (31%)  │
-        │ ├─ Fastest growing: Travel (↑127%)      │
-        │ └─ Automation rate: 87% screenshots     │
-        │                                       │
-        │ 🎯 Workflow Effectiveness              │
-        │ ├─ Expense workflow: ★★★★★ (Excellent) │
-        │ ├─ Travel planning: ★★★★☆ (Very Good)  │
-        │ └─ Document filing: ★★★☆☆ (Good)       │
-        │                                       │
-        │ 💡 Optimization Opportunities          │
-        │ ├─ "Auto-tag work receipts for taxes"   │
-        │ ├─ "Batch process weekend screenshots"   │
-        │ └─ "Enable smart search suggestions"     │
-        └─────────────────────────────────────────┘
-        ```
-
-        **🎮 Gamification & Motivation:**
-        ```
-        Achievement Unlocked!
-        ┌─────────────────────────────────────────┐
-        │ 🏆 "Efficiency Expert"                  │
-        │                                       │
-        │ You've automated 90% of your           │
-        │ screenshot organization!                │
-        │                                       │
-        │ 🎯 Next Goal: "Workflow Wizard"        │
-        │ Create 3 custom automation rules        │
-        │ Progress: ██████░░░░ 60%               │
-        │                                       │
-        │ [Share Achievement] [Dismiss]          │
-        └─────────────────────────────────────────┘
-        ```
-
-    *   **Tasks:**
-        *   Create progressive insight revelation system (basic → advanced → predictive)
-        *   Implement beautiful data visualizations with personal productivity focus
-        *   Add trend analysis for workflow effectiveness and optimization recommendations
-        *   Build achievement system for motivation and engagement
-        *   Create goal setting interface for personal productivity targets
-        *   Implement privacy-first analytics with complete on-device processing
-        *   Add export functionality for personal productivity reports
-    *   **Integration Test:** Dashboard shows "You've saved 3.5 hours this month with automated categorization" with accurate calculations
-    *   **User Experience Test:** Users report feeling more productive and organized after using insights; 85% find recommendations actionable
-    *   **Files:** `Views/PersonalInsightDashboard.swift`, `Services/PersonalAnalyticsService.swift`, `Views/ProductivityVisualizationView.swift`
-
-#### **Sub-Sprint 8.2: Unified Bottom Action Bar & Ambient Intelligence** (Week 2)
-
-*   **8.2.1: Voice-Enhanced Bottom Action Bar with Conversational AI**
-    *   **Deliverable:** Multimodal bottom navigation with voice commands and conversational feedback
-    *   **Technical Implementation:**
-        *   Create `VoiceEnabledBottomActionBar.swift` with Liquid Glass materials and voice integration
-        *   Implement 4-button layout with voice command alternatives for each action
-        *   Add conversational AI feedback for all button interactions
-        *   Build voice-responsive glass animations and audio feedback
-    *   **Voice-Enhanced Button Functions:**
-        *   **🔍 Search / "Find..."**: Voice-activated search with conversational results
-        *   **📸 Capture / "Take screenshot"**: Voice-guided capture with AI organization suggestions
-        *   **👁️ Mode / "Switch to..."**: Voice mode switching with confirmation feedback
-        *   **⚙️ Settings / "Configure..."**: Voice-navigable settings with spoken options
-    *   **Conversational Features:**
-        *   Voice confirmation for all actions: "Searching for your Paris trip..."
-        *   Contextual voice suggestions: "Want me to add this to expenses?"
-        *   Error recovery: "I didn't catch that. Try 'show my projects' or tap the icon."
-        *   Success feedback: "Found 3 trip screenshots. Switch to Paris workspace?"
-    *   **Files:** `Views/VoiceEnabledBottomActionBar.swift`, `Voice/BottomBarVoiceHandler.swift`
-
-*   **8.2.2: Personal Quick Capture & Processing**
-    *   **Deliverable:** Effortless capture workflows that instantly process and organize screenshots
-    *   **Personal Productivity Impact:**
-        *   Zero-friction capture from any app or context
-        *   Instant AI processing and smart organization
-        *   Seamless integration with personal capture habits
-    *   **Tasks:**
-        *   Implement intelligent capture suggestions based on screen content
-        *   Add instant processing pipeline for immediate categorization
-        *   Create personal capture shortcuts and automations
-        *   Build batch processing for multiple screenshots
-    *   **Integration Test:** Capture receipt → instantly categorized, text extracted, and added to expense tracking
-    *   **User Experience Test:** Capture-to-organized time under 2 seconds
-    *   **Files:** `Services/QuickCaptureService.swift`, `Views/CaptureWorkflowView.swift`
-
-*   **8.2.3: Personal Workspace Customization**
-    *   **Deliverable:** Highly customizable interface that adapts to individual productivity styles
-    *   **Personal Productivity Impact:**
-        *   Interface that matches personal mental models and workflows
-        *   Customizable layouts for different productivity contexts
-        *   Personal theming and organization preferences
-    *   **Tasks:**
-        *   Implement customizable dashboard layouts for different workflows
-        *   Add personal theming and visual preference options
-        *   Create workflow-specific interface modes (finance, travel, work, etc.)
-        *   Build personal workspace templates and presets
-    *   **Integration Test:** User switches to "Travel Mode" → interface shows travel-focused categories and actions
-    *   **User Experience Test:** Users can customize interface to match their productivity style in under 5 minutes
-    *   **Files:** `Views/CustomizableWorkspace.swift`, `Services/PersonalizationService.swift`
-
-#### **Sub-Sprint 8.3: Intelligent Triage & Content Relevancy Management** (Week 3)
-
-*   **8.3.1: AI-Powered Content Relevancy Engine**
-    *   **Deliverable:** Intelligent system that identifies outdated, duplicate, and irrelevant screenshots
-    *   **Technical Implementation:**
-        *   Create `ContentRelevancyAnalyzer.swift` with AI-driven relevancy scoring
-        *   Implement duplicate detection using visual similarity and OCR comparison
-        *   Add temporal relevancy analysis (age, project completion, seasonal content)
-        *   Build contextual relevancy assessment based on user behavior patterns
-    *   **Relevancy Detection Features:**
-        *   **Age-based analysis**: Screenshots older than user-defined thresholds
-        *   **Completion status**: Content from finished projects/trips/events
-        *   **Duplicate detection**: Visually similar or identical screenshots
-        *   **Abandonment patterns**: Screenshots never organized or accessed
-        *   **Seasonal relevancy**: Event-based content past its useful period
-    *   **AI Intelligence:**
-        *   Machine learning from user triage decisions
-        *   Confidence scoring for deletion recommendations
-        *   Smart categorization of potential cleanup candidates
-        *   Personalized relevancy thresholds
-    *   **Files:** `AI/ContentRelevancyAnalyzer.swift`, `Models/RelevancyScore.swift`
-
-*   **8.3.2: Voice & Touch Triage Interface**
-    *   **Deliverable:** Intuitive multimodal interface for efficient content review and deletion
-    *   **Technical Implementation:**
-        *   Create `TriageModeInterface.swift` with voice-enabled batch operations
-        *   Implement swipe gestures for quick keep/delete/archive decisions
-        *   Add voice commands for bulk actions and smart filtering
-        *   Build progress tracking with undo/redo functionality
-    *   **Triage Interface Features:**
-        *   **Triage Mode activation**: "Clean up my screenshots" or manual trigger
-        *   **Smart filtering**: Show candidates by category (old, duplicates, completed projects)
-        *   **Batch operations**: Select multiple items with voice or touch
-        *   **Quick decisions**: Swipe right (keep), left (delete), up (archive)
-        *   **Voice commands**: "Delete all from Q1 2023", "Keep this, next", "Archive entire project"
-    *   **Liquid Glass Feedback:**
-        *   Glass dissolution animation for deleted items
-        *   Success ripples for batch operations
-        *   Progress indicators with glass completion rings
-        *   Undo animations with glass restoration effects
-    *   **Files:** `Views/TriageModeInterface.swift`, `Triage/VoiceTriageController.swift`
-
-*   **8.3.3: Constellation-Level Cleanup & Archive Management**
-    *   **Deliverable:** Workspace-level triage with intelligent archive and deletion workflows
-    *   **Technical Implementation:**
-        *   Create `ConstellationTriageService.swift` for workspace-level cleanup
-        *   Implement intelligent archiving with selective content preservation
-        *   Add completion-based automatic cleanup suggestions
-        *   Build archive management with easy restoration capabilities
-    *   **Constellation Triage Features:**
-        *   **Project completion detection**: AI identifies finished trips/projects/events
-        *   **Smart archiving**: Keep important items (warranties, receipts), archive planning content
-        *   **Bulk constellation actions**: Archive/delete entire workspaces with one command
-        *   **Graduated cleanup**: Warning periods before permanent deletion
-        *   **Restoration capabilities**: Easy recovery from archives with search
-    *   **Voice Integration:**
-        *   "Archive my completed kitchen renovation"
-        *   "Delete the old marketing campaign but keep the final assets"
-        *   "Show me projects I haven't touched in 6 months"
-        *   "What can I safely delete from my travel folder?"
-    *   **Files:** `Triage/ConstellationTriageService.swift`, `Archive/ArchiveManager.swift`
-
-### **Sprint 9: Advanced Visualization & Predictive Intelligence** 🚀
-
-**Goal:** Enhance the unified interface with advanced visualization capabilities, predictive intelligence, and seamless cross-mode interactions while maintaining Liquid Glass design excellence.
-
-#### **Sub-Sprint 9.1: Advanced Content Visualization & Cross-Mode Intelligence** (Week 1)
-
-*   **9.1.1: Personal Knowledge Graph**
-    *   **Deliverable:** Intelligent connection of personal information across all screenshots
-    *   **Personal Productivity Impact:**
-        *   Discover hidden connections in personal data
-        *   Comprehensive personal knowledge management
-        *   Intelligent insights from connected information
-    *   **Tasks:**
-        *   Build personal entity relationship mapping
-        *   Create intelligent connection discovery algorithms
-        *   Implement visual knowledge graph interface
-        *   Add personal insight generation from connected data
-
-*   **9.1.2: Predictive Personal Assistant**
-    *   **Deliverable:** AI that anticipates personal needs and proactively assists
-    *   **Personal Productivity Impact:**
-        *   Anticipates user needs before they're expressed
-        *   Proactive suggestions and automations
-        *   Reduces cognitive load through intelligent anticipation
-    *   **Tasks:**
-        *   Implement predictive modeling for personal workflows
-        *   Create proactive notification and suggestion system
-        *   Build calendar and context integration for predictions
-        *   Add learning system for improved predictions over time
-
-#### **Sub-Sprint 9.2: Personal Workflow Automation** (Week 2)
-
-*   **9.2.1: Custom Automation Builder**
-    *   **Deliverable:** Visual automation builder for personal workflows
-    *   **Personal Productivity Impact:**
-        *   Create custom automations without coding
-        *   Adapt the app to unique personal workflows
-        *   Continuous optimization of personal productivity
-    *   **Tasks:**
-        *   Build visual workflow automation interface
-        *   Implement trigger and action system for custom automations
-        *   Create template library for common personal workflows
-        *   Add automation sharing and import capabilities
-
-*   **9.2.2: Advanced Personal Templates**
-    *   **Deliverable:** Sophisticated template system for personal productivity workflows
-    *   **Personal Productivity Impact:**
-        *   Instant setup for complex personal workflows
-        *   Consistent organization across different life areas
-        *   Rapid onboarding for new productivity systems
-    *   **Tasks:**
-        *   Create comprehensive template library for personal use cases
-        *   Implement template customization and personalization
-        *   Build template sharing and discovery system
-        *   Add template analytics and optimization suggestions
-
-### **Sprint 10: Production Excellence & Liquid Glass Mastery** 📋
-
-**Goal:** Achieve production-ready excellence with flawless Liquid Glass implementation, comprehensive accessibility, and performance optimization for large-scale content collections.
-
-#### **Sub-Sprint 10.1: Liquid Glass Performance & Accessibility Mastery** (Week 1)
-
-*   **10.1.1: Liquid Glass Performance Optimization**
-    *   **Deliverable:** Flawless Liquid Glass rendering with 120fps ProMotion support
-    *   **Technical Implementation:**
-        *   Optimize real-time rendering engine for consistent 120fps performance
-        *   Implement intelligent material complexity scaling based on device capabilities
-        *   Add thermal throttling adaptation for sustained performance
-        *   Create GPU-accelerated specular highlight computation
-    *   **Apple Design Compliance:**
-        *   Maintain glass-like optical effects even during intensive interactions
-        *   Ensure smooth material transitions across all interface modes
-        *   Preserve translucency and dynamic adaptation under all conditions
-    *   **Performance Targets:**
-        *   120fps ProMotion on supported devices
-        *   <16ms frame rendering time for Liquid Glass effects
-        *   <50MB memory footprint increase for material system
-    *   **Files:** `Rendering/LiquidGlassRenderer.swift`, `Performance/MaterialOptimizer.swift`
-
-*   **10.1.2: Comprehensive Accessibility Excellence**
-    *   **Deliverable:** Best-in-class accessibility with full Liquid Glass compatibility
-    *   **Technical Implementation:**
-        *   Implement high contrast mode with enhanced Liquid Glass visibility
-        *   Add reduced motion support that maintains glass aesthetics
-        *   Create VoiceOver optimizations for constellation navigation
-        *   Build comprehensive keyboard navigation for all interface modes
-    *   **Accessibility Features:**
-        *   High contrast Liquid Glass materials for visual accessibility
-        *   Reduced transparency mode with preserved design elegance
-        *   VoiceOver descriptions for ambient intelligence indicators
-        *   Keyboard shortcuts for constellation and mode switching
-        *   Large text support with dynamic type scaling
-    *   **Compliance Standards:**
-        *   WCAG 2.1 AA compliance across all interface modes
-        *   iOS Accessibility Guidelines full compliance
-        *   Switch Control support for alternative input methods
-    *   **Files:** `Accessibility/LiquidGlassAccessibility.swift`, `VoiceOver/ConstellationNavigator.swift`
-
-*   **10.1.3: Advanced Performance Monitoring & Analytics**
-    *   **Deliverable:** Comprehensive performance monitoring for production optimization
-    *   **Technical Implementation:**
-        *   Create real-time performance monitoring for Liquid Glass effects
-        *   Implement constellation workspace performance analytics
-        *   Add intelligent content processing efficiency tracking
-        *   Build user experience quality metrics and reporting
-    *   **Monitoring Capabilities:**
-        *   Frame rate monitoring with Liquid Glass complexity correlation
-        *   Constellation creation and navigation performance tracking
-        *   AI processing pipeline efficiency measurement
-        *   User interaction responsiveness analytics
-        *   Memory and battery usage optimization insights
-    *   **Files:** `Analytics/PerformanceMonitor.swift`, `Metrics/UserExperienceTracker.swift`
-
-#### **Sub-Sprint 10.2: Intelligent Onboarding & Production Polish** (Week 2)
-
-*   **10.2.1: Adaptive Onboarding Experience**
-    *   **Deliverable:** Intelligent onboarding that adapts to user content patterns
-    *   **Technical Implementation:**
-        *   Create smart onboarding flow that detects user's content types
-        *   Implement personalized feature introduction based on detected patterns
-        *   Add contextual tips that appear during natural usage
-        *   Build progressive feature revelation aligned with user needs
-    *   **Liquid Glass Integration:**
-        *   Beautiful onboarding screens with glass materials
-        *   Smooth transitions between onboarding steps
-        *   Interactive glass elements for feature demonstrations
-        *   Elegant completion animations with glass effects
-    *   **Personalization Features:**
-        *   Automatic workspace creation for detected content patterns
-        *   Customized interface mode suggestions based on usage
-        *   Personalized intelligence level configuration
-        *   Context-aware tutorial system
-    *   **Files:** `Onboarding/AdaptiveOnboardingFlow.swift`, `Tutorial/ContextualTutorialSystem.swift`
-
-*   **10.2.2: Production Polish & Micro-Interactions**
-    *   **Deliverable:** Refined micro-interactions and seamless user experience polish
-    *   **Technical Implementation:**
-        *   Perfect all Liquid Glass transition animations
-        *   Implement sophisticated haptic feedback patterns
-        *   Add contextual sound design for interface interactions
-        *   Create smooth loading states with glass-based progress indicators
-    *   **Micro-Interaction Excellence:**
-        *   Glass ripple effects for touch interactions
-        *   Smooth constellation pill animations with physics
-        *   Elegant mode switching with glass morphing effects
-        *   Contextual progress animations for AI processing
-        *   Refined gesture recognition with haptic confirmation
-    *   **Polish Areas:**
-        *   Interface consistency across all screen sizes
-        *   Smooth performance on older device models
-        *   Battery optimization for background processing
-        *   Edge case handling with graceful degradation
-    *   **Files:** `Animations/MicroInteractionLibrary.swift`, `Polish/UserExperienceRefinements.swift`
-
-#### **Production Excellence Targets**
-
-*   **Performance Excellence:** 120fps ProMotion with Liquid Glass materials, <2s content processing
-*   **Battery Efficiency:** <5% additional battery usage during active constellation management
-*   **Storage Optimization:** Intelligent caching with automatic cleanup for large collections
-*   **Accessibility Mastery:** WCAG 2.1 AA compliance with beautiful glass-accessible design
-*   **User Satisfaction:** 95%+ user satisfaction with unified interface paradigm
+---
+
+## **🎯 Implementation Priority Summary**
+
+### **Immediate Next Steps (8.6.1.1 - 8.6.2.2):** 
+Essential user-facing features that provide immediate productivity value:
+- **Smart Screenshot Grouping:** Automatically organize related screenshots
+- **Quick Actions & Shortcuts:** Essential daily workflow improvements  
+- **Natural Language Search:** Conversational screenshot discovery
+- **Smart Suggestions:** Proactive organization assistance
+
+### **High-Value Features (8.7.1.1 - 8.7.2.2):**
+Productivity powerhouse features that make the app indispensable:
+- **One-Tap Text Actions:** Extract and act on text from screenshots instantly
+- **Screenshot Annotations:** Add context and markup capabilities
+- **Smart Sharing & Export:** Intelligent sharing based on content and context
+- **Workflow Automation:** Templates for common screenshot tasks
+
+### **Polish & Reliability (8.8.1.1 - 8.8.2.2):**
+Final touches that create a delightful, professional experience:
+- **Beautiful Screenshot Viewer:** Enhanced viewing with zoom, navigation, and comparison
+- **Keyboard Shortcuts & Accessibility:** Professional-grade input support
+- **Smart Performance Optimization:** Intelligent resource management
+- **Error Prevention & Recovery:** Bulletproof data protection
 
 ---
 
-## Deprioritized Features (Future Consideration)
+## **🚀 Ready to Begin Implementation**
 
-### Collaborative Features (Low Priority)
-*   Real-time collaborative annotation
-*   Team sharing and permissions
-*   Multi-user workspaces
-*   Collaborative workflows
+**Current Status:** ✅ Sprint 8.5.3.2 (Memory Management & Leak Prevention) **COMPLETE**
+- Build succeeds with zero compilation errors
+- Memory management system operational with real-time monitoring
+- Comprehensive resource cleanup and retain cycle prevention
+- Ready for user-facing feature development
 
-**Rationale:** Focus on individual productivity excellence before expanding to collaborative use cases. Personal productivity tools succeed by being exceptional for individuals first.
-
-### Advanced Sharing Features (Future)
-*   Public screenshot galleries
-*   Social media integration
-*   Community features
-*   Cross-platform collaboration
-
-**Rationale:** Prioritize deep personal utility over broad sharing capabilities. Users need powerful personal tools before sharing becomes valuable.
-
-
-### **🚀 Technical Implementation Highlights**
-
-#### **Voice Architecture Components**
-```swift
-Voice/Conversational Architecture/
-├── ConversationalAIOrchestrator.swift (cross-mode conversation management)
-├── VoiceCommandProcessor.swift (natural language understanding)
-├── ContextAwareVoiceHandler.swift (mode-specific voice behavior)
-├── VoiceGlassFeedbackSystem.swift (visual voice responses)
-├── AmbientVoiceListener.swift (always-on detection)
-├── ConversationalStateManager.swift (conversation flow)
-└── MultimodalInteractionCoordinator.swift (touch + voice coordination)
-```
-
-#### **Enhanced User Experience Examples**
-```
-👆 [Tap Microphone Button]
-🎤 "Add this to my Paris trip"
-├─ Glass ripple animation during voice recognition
-├─ AI: "Adding hotel booking to Paris trip..."
-├─ Glass morphing effect during processing
-├─ ✅ "Added! Your trip is now 85% complete"
-├─ 💡 "Still missing: Return flight"
-└─ 🔄 [Microphone returns to inactive state]
-   
-[User taps microphone again if they want to continue]
-👆 [Tap Microphone Button]
-🎤 "Want to capture that now?"
-```
-
-#### **Intelligent Triage Experience Examples**
-```
-👆 [Tap Microphone Button]
-🎤 "Clean up my old screenshots"
-├─ AI Analysis: Found 47 potentially outdated items
-├─ Glass animation showing categorized groups
-├─ 📅 Screenshots older than 6 months (12)
-├─ 🔄 Duplicate/similar content (8)
-├─ ✅ Completed projects (27)
-├─ 💡 "Review these for deletion?"
-└─ 🔄 [Microphone returns to inactive state]
-
-👆 [Tap Microphone Button]  
-🎤 "Show me the completed projects first"
-└─ 🔄 [Session completes, microphone inactive]
-
-👆 [Tap Microphone Button]
-🎤 "Delete all from Q1 2023 marketing"
-├─ Glass dissolution animation for deleted items
-├─ Progress: 15 of 23 items deleted
-├─ ✅ "Deleted Q1 marketing screenshots"
-├─ 💾 "Kept final assets in archive"
-└─ 🔄 [Microphone returns to inactive state]
-```
-
-### **🎯 Productivity Impact**
-
-#### **Hands-Free Content Management**
-- **90% faster organization**: Voice commands eliminate manual categorization
-- **Context switching efficiency**: "Switch to Project Alpha" instead of navigation taps
-- **Proactive assistance**: AI suggests actions before user needs to think
-- **Error recovery**: Conversational clarification prevents user frustration
-
-#### **Accessibility Excellence**
-- **Voice navigation**: Complete app functionality accessible through voice
-- **Audio feedback**: Every visual element has voice description option
-- **Multimodal alternatives**: Any action achievable through touch OR voice
-- **Conversational help**: "What can I do here?" provides contextual assistance
-
-This voice and conversational integration transforms Screenshot Notes from a visual-only app into a truly intelligent, multimodal assistant that understands, anticipates, and responds to user needs through natural conversation while maintaining the beautiful Liquid Glass aesthetic.
-
+**Next Implementation:** Begin **8.6.1.1: Intelligent Screenshot Grouping** to provide immediate user value
 
 ---
-**Last Updated:** July 13, 2025 - Sprint 7.1.3 Complete + Voice/Conversational AI Integration  
-**Version:** 3.1 - Multimodal Personal Productivity Implementation Plan  
-**Next Milestone:** Sprint 8 - Unified Adaptive Interface with Voice & Liquid Glass  
-**Status:** Ready for multimodal personal productivity implementation with comprehensive voice integration
+
+*This implementation plan prioritizes user-facing functionality that provides immediate productivity benefits over technical vanity projects. Each feature is designed to solve real user problems and deliver measurable time savings.*
