@@ -435,7 +435,7 @@ enum ResourceError: String, CaseIterable {
 
 // MARK: - Error Context and Severity
 
-enum ErrorContext: String, CaseIterable {
+enum ErrorContext: String, CaseIterable, Codable {
     case general = "general"
     case photoImport = "photo_import"
     case ocr = "ocr"
