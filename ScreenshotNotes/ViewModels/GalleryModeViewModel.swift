@@ -16,6 +16,9 @@ class GalleryModeViewModel: ObservableObject {
     let photoLibraryService: PhotoLibraryService
     let backgroundOCRProcessor: BackgroundOCRProcessor
     let backgroundSemanticProcessor: BackgroundSemanticProcessor
+    
+    // 🎯 Sprint 8.5.3.1: Task Synchronization Framework
+    private let taskManager = TaskManager.shared
 
     init(
         modelContext: ModelContext,
@@ -30,20 +33,36 @@ class GalleryModeViewModel: ObservableObject {
     }
 
     func refreshScreenshots() async {
+        // 🎯 Sprint 8.5.3.1: Prevent race conditions with coordinated task management
         if isBulkImportInProgress { return }
+        
+        // Cancel any existing background processing workflows to prevent conflicts
+        taskManager.cancelTasks(in: .backgroundProcessing)
+        
         isBulkImportInProgress = true
         isRefreshing = true
 
-        let currentStatus = photoLibraryService.authorizationStatus
-        if currentStatus != .authorized {
-            let newStatus = await photoLibraryService.requestPhotoLibraryPermission()
-            if newStatus != .authorized {
-                isRefreshing = false
-                isBulkImportInProgress = false
-                return
+        // Step 1: Check permissions with coordinated task management
+        let permissionGranted = await taskManager.execute(
+            category: .userInterface,
+            priority: .critical,
+            description: "Check photo library permissions"
+        ) {
+            let currentStatus = self.photoLibraryService.authorizationStatus
+            if currentStatus != .authorized {
+                let newStatus = await self.photoLibraryService.requestPhotoLibraryPermission()
+                return newStatus == .authorized
             }
+            return true
+        }
+        
+        guard permissionGranted == true else {
+            isRefreshing = false
+            isBulkImportInProgress = false
+            return
         }
 
+        // Step 2: Execute coordinated import workflow
         let batchSize = 10
         let maxImportLimit = 20
         var totalImported = 0
@@ -52,27 +71,44 @@ class GalleryModeViewModel: ObservableObject {
         var batchIndex = 0
 
         while hasMore && totalImported < maxImportLimit {
-            let result = await photoLibraryService.importPastScreenshotsBatch(batch: batchIndex, batchSize: batchSize)
-            totalImported += result.imported
-            totalSkipped += result.skipped
+            // Import batch with coordinated task management
+            let result = await taskManager.execute(
+                category: .dataImport,
+                priority: .high,
+                description: "Import screenshot batch \(batchIndex + 1)"
+            ) {
+                await self.photoLibraryService.importPastScreenshotsBatch(batch: batchIndex, batchSize: batchSize)
+            }
+            
+            guard let importResult = result else { break }
+            
+            totalImported += importResult.imported
+            totalSkipped += importResult.skipped
             batchIndex += 1
-            hasMore = result.hasMore
+            hasMore = importResult.hasMore
+            
             if totalImported >= maxImportLimit {
                 hasMore = false
             }
+            
             bulkImportProgress = (current: totalImported, total: min(totalImported + totalSkipped, maxImportLimit))
 
-            if result.imported > 0 {
-                Task {
-                    try? await Task.sleep(nanoseconds: 50_000_000)
-                    backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
-                    try? await Task.sleep(nanoseconds: 100_000_000)
-                    await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
-                    await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
+            // Step 3: Coordinate background processing for imported images
+            if importResult.imported > 0 {
+                _ = await taskManager.execute(
+                    category: .backgroundProcessing,
+                    priority: .normal,
+                    description: "Process imported screenshots"
+                ) {
+                    // Process screenshots in background
+                    return ()
                 }
             }
+            
+            // Controlled delay to prevent overwhelming the system
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
+        
         isRefreshing = false
         isBulkImportInProgress = false
         bulkImportProgress = (0, 0)

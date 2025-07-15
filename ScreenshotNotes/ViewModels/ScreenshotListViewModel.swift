@@ -17,6 +17,10 @@ class ScreenshotListViewModel: ObservableObject {
     private let backgroundSemanticProcessor: BackgroundSemanticProcessor
     private var modelContext: ModelContext?
     
+    // 🎯 Sprint 8.5.3.1: Task Synchronization Framework
+    private let taskCoordinator = TaskCoordinator.shared
+    private let taskManager = TaskManager.shared
+    
     init(imageStorageService: ImageStorageServiceProtocol = ImageStorageService(),
          ocrService: OCRServiceProtocol = OCRService(),
          backgroundSemanticProcessor: BackgroundSemanticProcessor? = nil) {
@@ -32,20 +36,19 @@ class ScreenshotListViewModel: ObservableObject {
     func importImages(from items: [PhotosPickerItem]) async {
         guard !items.isEmpty else { return }
         
+        // 🎯 Sprint 8.5.3.1: Use coordinated image import workflow
         isImporting = true
         importProgress = 0.0
         
-        let totalItems = Double(items.count)
-        
-        for (index, item) in items.enumerated() {
-            do {
-                try await importSingleImage(from: item)
-                importProgress = Double(index + 1) / totalItems
-            } catch {
-                await handleImportError(error)
-                break
-            }
-        }
+        let importedCount = await taskCoordinator.executeImageImportWorkflow(
+            items: items,
+            modelContext: modelContext!,
+            backgroundProcessors: BackgroundProcessors(
+                ocrProcessor: BackgroundOCRProcessor(),
+                visionProcessor: BackgroundVisionProcessor(),
+                semanticProcessor: backgroundSemanticProcessor
+            )
+        )
         
         isImporting = false
         importProgress = 0.0
@@ -53,6 +56,8 @@ class ScreenshotListViewModel: ObservableObject {
         // Add haptic feedback for completion
         let impact = UIImpactFeedbackGenerator(style: .medium)
         impact.impactOccurred()
+        
+        print("ScreenshotListViewModel: Successfully imported \(importedCount) images")
     }
     
     private func importSingleImage(from item: PhotosPickerItem) async throws {
@@ -91,24 +96,32 @@ class ScreenshotListViewModel: ObservableObject {
     func deleteScreenshot(_ screenshot: Screenshot) {
         guard let modelContext = modelContext else { return }
         
+        // 🎯 Sprint 8.5.3.1: Use coordinated task management for deletion
         Task {
-            do {
-                try await imageStorageService.deleteImageData(screenshot.imageData)
-                
-                await MainActor.run {
-                    modelContext.delete(screenshot)
-                    do {
-                        try modelContext.save()
-                        
-                        // Add haptic feedback for deletion
-                        let impact = UIImpactFeedbackGenerator(style: .light)
-                        impact.impactOccurred()
-                    } catch {
-                        handleDeletionError(error)
+            await taskManager.execute(
+                category: .userInterface,
+                priority: .critical,
+                description: "Delete screenshot: \(screenshot.filename)"
+            ) {
+                do {
+                    try await self.imageStorageService.deleteImageData(screenshot.imageData)
+                    
+                    await MainActor.run {
+                        guard let context = self.modelContext else { return }
+                        context.delete(screenshot)
+                        do {
+                            try context.save()
+                            
+                            // Add haptic feedback for deletion
+                            let impact = UIImpactFeedbackGenerator(style: .light)
+                            impact.impactOccurred()
+                        } catch {
+                            self.handleDeletionError(error)
+                        }
                     }
+                } catch {
+                    self.handleDeletionError(error)
                 }
-            } catch {
-                handleDeletionError(error)
             }
         }
     }

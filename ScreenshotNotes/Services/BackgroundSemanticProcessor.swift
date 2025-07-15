@@ -3,7 +3,7 @@ import SwiftData
 import UIKit
 
 @MainActor
-final class BackgroundSemanticProcessor: ObservableObject {
+public final class BackgroundSemanticProcessor: ObservableObject {
     @Published var isProcessing = false
     @Published var processedCount = 0
     @Published var totalCount = 0
@@ -18,6 +18,9 @@ final class BackgroundSemanticProcessor: ObservableObject {
     private let processingDelay: TimeInterval = 2.0 // Increased to 2.0 seconds for better user experience
     private let mindMapRegenerationDelay: TimeInterval = 5.0 // Debounce mind map regeneration
     private var lastMindMapRegenerationTime: Date = Date.distantPast
+    
+    // 🎯 Sprint 8.5.3.1: Task Synchronization Framework
+    private let taskManager = TaskManager.shared
     
     enum ProcessingPhase: String, CaseIterable {
         case idle = "idle"
@@ -46,65 +49,88 @@ final class BackgroundSemanticProcessor: ObservableObject {
     
     /// Process screenshots that need semantic analysis
     func processScreenshotsNeedingAnalysis(in modelContext: ModelContext) async {
-        // Set bulk import state during background processing
-        await MainActor.run {
-            GalleryPerformanceMonitor.shared.setBulkImportState(true)
-        }
-        defer {
-            Task { @MainActor in
-                GalleryPerformanceMonitor.shared.setBulkImportState(false)
-            }
-        }
-        let descriptor = FetchDescriptor<Screenshot>(
-            predicate: #Predicate<Screenshot> { screenshot in
-                // Need semantic analysis if never analyzed, analysis is stale, or no extracted text
-                screenshot.lastSemanticAnalysis == nil || 
-                screenshot.extractedText == nil
-            }
-        )
-        
-        do {
-            let screenshotsNeedingProcessing = try modelContext.fetch(descriptor)
-            
-            guard !screenshotsNeedingProcessing.isEmpty else {
-                print("No screenshots need semantic processing")
-                return
-            }
-            
+        // 🎯 Sprint 8.5.3.1: Use Task Synchronization Framework for coordinated processing
+        await taskManager.execute(
+            category: .semantic,
+            priority: .normal,
+            description: "Process screenshots needing semantic analysis"
+        ) {
+            // Set bulk import state during background processing
             await MainActor.run {
-                self.isProcessing = true
-                self.totalCount = screenshotsNeedingProcessing.count
-                self.processedCount = 0
-                self.lastError = nil
-                self.currentPhase = .ocr
+                GalleryPerformanceMonitor.shared.setBulkImportState(true)
+            }
+            defer {
+                Task { @MainActor in
+                    GalleryPerformanceMonitor.shared.setBulkImportState(false)
+                }
             }
             
-            print("Starting background semantic processing for \(screenshotsNeedingProcessing.count) screenshots")
+            let descriptor = FetchDescriptor<Screenshot>(
+                predicate: #Predicate<Screenshot> { screenshot in
+                    // Need semantic analysis if never analyzed, analysis is stale, or no extracted text
+                    screenshot.lastSemanticAnalysis == nil || 
+                    screenshot.extractedText == nil
+                }
+            )
             
-            // Process in batches to avoid memory issues
-            for batch in screenshotsNeedingProcessing.chunked(into: batchSize) {
-                await processBatch(batch, in: modelContext)
+            do {
+                let screenshotsNeedingProcessing = try modelContext.fetch(descriptor)
                 
-                // Delay between batches to prevent overwhelming the system
-                try? await Task.sleep(nanoseconds: UInt64(processingDelay * 1_000_000_000))
-            }
-            
-            // Generate mind map after all screenshots have been processed
-            await updatePhase(.mindMapGeneration)
-            await generateMindMapInBackground(in: modelContext)
-            
-            await MainActor.run {
-                self.isProcessing = false
-                self.currentPhase = .idle
-                print("Background semantic processing completed. Processed \(self.processedCount) screenshots.")
-            }
-            
-        } catch {
-            await MainActor.run {
-                self.isProcessing = false
-                self.currentPhase = .idle
-                self.lastError = error
-                print("Error fetching screenshots for semantic processing: \(error)")
+                guard !screenshotsNeedingProcessing.isEmpty else {
+                    print("No screenshots need semantic processing")
+                    return
+                }
+                
+                await MainActor.run {
+                    self.isProcessing = true
+                    self.totalCount = screenshotsNeedingProcessing.count
+                    self.processedCount = 0
+                    self.lastError = nil
+                    self.currentPhase = .ocr
+                }
+                
+                print("Starting background semantic processing for \(screenshotsNeedingProcessing.count) screenshots")
+                
+                // Process in batches with coordinated task management
+                let batches = screenshotsNeedingProcessing.chunked(into: self.batchSize)
+                
+                await self.taskManager.executeGroup(
+                    category: .semantic,
+                    priority: .normal,
+                    description: "Process semantic analysis batches",
+                    operations: batches.enumerated().map { index, batch in
+                        return {
+                            await self.processBatch(batch, in: modelContext)
+                            
+                            // Controlled delay between batches
+                            try? await Task.sleep(nanoseconds: UInt64(self.processingDelay * 1_000_000_000))
+                        }
+                    }
+                )
+                
+                // Generate mind map after all screenshots have been processed
+                await self.updatePhase(.mindMapGeneration)
+                await self.taskManager.execute(
+                    category: .mindMap,
+                    priority: .low,
+                    description: "Generate mind map after semantic processing"
+                ) {
+                    await self.generateMindMapInBackground(in: modelContext)
+                }
+                
+                await MainActor.run {
+                    self.isProcessing = false
+                    self.currentPhase = .idle
+                    print("Background semantic processing completed. Processed \(self.processedCount) screenshots.")
+                }
+                
+            } catch {
+                await MainActor.run {
+                    self.isProcessing = false
+                    self.currentPhase = .idle
+                    self.lastError = error
+                    print("Error fetching screenshots for semantic processing: \(error)")
+                }
             }
         }
     }
@@ -135,9 +161,9 @@ final class BackgroundSemanticProcessor: ObservableObject {
             
             // Phase 3: Semantic Tagging
             await updatePhase(.semanticTagging)
-            let semanticTags = try await semanticTaggingService.generateSemanticTags(
-                for: screenshot.imageData,
-                ocrText: screenshot.extractedText,
+            let semanticTags = await semanticTaggingService.generateSemanticTags(
+                for: screenshot,
+                extractedText: screenshot.extractedText,
                 visualAttributes: visualAttributes
             )
             screenshot.semanticTags = semanticTags

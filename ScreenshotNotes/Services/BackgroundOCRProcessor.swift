@@ -3,7 +3,7 @@ import SwiftData
 import UIKit
 
 @MainActor
-final class BackgroundOCRProcessor: ObservableObject {
+public final class BackgroundOCRProcessor: ObservableObject {
     @Published var isProcessing = false
     @Published var processedCount = 0
     @Published var totalCount = 0

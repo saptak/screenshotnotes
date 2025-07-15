@@ -52,7 +52,7 @@ func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async -> T?) 
 }
 
 @MainActor
-class ThumbnailService: ObservableObject {
+public class ThumbnailService: ObservableObject {
     static let shared = ThumbnailService()
     
     private let logger = Logger(subsystem: "com.screenshotnotes.app", category: "ThumbnailService")

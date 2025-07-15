@@ -24,6 +24,10 @@ struct ContentView: View {
     // 🎯 Sprint 8.5.1: Coordinators for better separation of concerns
     @StateObject private var searchCoordinator: SearchCoordinator
     @StateObject private var modeCoordinator: ModeCoordinator
+    
+    // 🎯 Sprint 8.5.3.1: Task Synchronization Framework
+    @StateObject private var taskManager = TaskManager.shared
+    @StateObject private var taskCoordinator = TaskCoordinator.shared
 
     init() {
         // Initialize coordinators with proper delegate pattern
@@ -107,6 +111,12 @@ struct ContentView: View {
                             .foregroundColor(.blue)
                     }
                     
+                    // 🎯 Sprint 8.5.3.1: Task Manager Debug View
+                    NavigationLink(destination: TaskManagerDebugView()) {
+                        Image(systemName: "cpu")
+                            .foregroundColor(.purple)
+                    }
+                    
                     Button(action: {
                         modeCoordinator.showSettings()
                     }) {
@@ -175,77 +185,32 @@ struct ContentView: View {
                 MindMapView()
             }
             .onAppear {
-                // 🎯 Sprint 8.5.2: Set up services with error handling
+                // 🎯 Sprint 8.5.3.1: Coordinated app startup with Task Synchronization Framework
                 Task {
-                    let result = await errorHandler.handleWithRetry(
-                        operation: {
-                            photoLibraryService.setModelContext(modelContext)
-                            
-                            // Set up enhanced thumbnail services with ModelContext
-                            ThumbnailService.shared.setModelContext(modelContext)
-                            
-                            // Initialize enhanced vision processing
-                            backgroundVisionProcessor.setModelContext(modelContext)
-                        },
-                        context: .photoImport,
-                        source: "ContentView.onAppear"
+                    await taskCoordinator.executeAppStartupWorkflow(
+                        modelContext: modelContext,
+                        services: AppServices(
+                            photoLibraryService: photoLibraryService,
+                            thumbnailService: ThumbnailService.shared,
+                            backgroundVisionProcessor: backgroundVisionProcessor
+                        )
                     )
-                    
-                    switch result {
-                    case .success:
-                        // Start background processing only if setup succeeded
-                        await startBackgroundProcessing()
-                    case .failure(let error):
-                        errorHandler.handle(error, context: .photoImport, source: "ContentView.onAppear")
-                    }
                 }
             }
             .task(id: screenshots) {
-                // Process relationship detection through mode coordinator
-                await modeCoordinator.processRelationshipDetection(with: Array(screenshots))
+                // 🎯 Sprint 8.5.3.1: Coordinated relationship detection
+                await taskManager.execute(
+                    category: .backgroundProcessing,
+                    priority: .normal,
+                    description: "Process relationship detection for \(screenshots.count) screenshots"
+                ) {
+                    await modeCoordinator.processRelationshipDetection(with: Array(screenshots))
+                }
             }
         }
     }
     
-    // MARK: - 🎯 Sprint 8.5.2: Background Processing with Error Handling
-    
-    private func startBackgroundProcessing() async {
-        // Start background vision processing with error handling
-        let visionResult = await errorHandler.handleWithRetry(
-            operation: {
-                await backgroundVisionProcessor.startProcessing()
-            },
-            context: .background,
-            maxRetries: 2,
-            source: "ContentView.startBackgroundProcessing"
-        )
-        
-        if case .success = visionResult {
-            // Schedule periodic processing only if initial processing succeeded
-            backgroundVisionProcessor.scheduleBackgroundVisionProcessing()
-        }
-        
-        // Start semantic processing with error handling
-        let semanticResult = await errorHandler.handleWithRetry(
-            operation: {
-                await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
-            },
-            context: .background,
-            maxRetries: 2,
-            source: "ContentView.startBackgroundProcessing"
-        )
-        
-        switch (visionResult, semanticResult) {
-        case (.success, .success):
-            print("ContentView: All background processing started successfully")
-        case (.failure(let visionError), .success):
-            print("ContentView: Vision processing failed: \(visionError.localizedDescription)")
-        case (.success, .failure(let semanticError)):
-            print("ContentView: Semantic processing failed: \(semanticError.localizedDescription)")
-        case (.failure(let visionError), .failure(let semanticError)):
-            print("ContentView: Both processing systems failed - Vision: \(visionError.localizedDescription), Semantic: \(semanticError.localizedDescription)")
-        }
-    }
+
 }
 
 // MARK: - Delegate Protocol Conformance

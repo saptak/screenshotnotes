@@ -6,6 +6,13 @@ import SwiftUI
 import UIKit
 #endif
 
+// MARK: - Models Namespace
+public enum Models {}
+
+// MARK: - Type Aliases for easier access
+public typealias DominantColor = Models.DominantColor
+public typealias ColorAnalysis = Models.ColorAnalysis
+
 /// Comprehensive visual attributes extracted from screenshot images using Apple's Vision framework
 public struct VisualAttributes: Codable, Sendable {
     
@@ -21,7 +28,7 @@ public struct VisualAttributes: Codable, Sendable {
     public let composition: CompositionAnalysis
     
     /// Dominant colors extracted from the image
-    public let colorAnalysis: ColorAnalysis
+    public let colorAnalysis: Models.ColorAnalysis
     
     /// Overall confidence score for the visual analysis
     public let overallConfidence: Double
@@ -33,7 +40,7 @@ public struct VisualAttributes: Codable, Sendable {
         detectedObjects: [DetectedObject],
         sceneClassification: SceneClassification,
         composition: CompositionAnalysis,
-        colorAnalysis: ColorAnalysis,
+        colorAnalysis: Models.ColorAnalysis,
         overallConfidence: Double,
         analysisTimestamp: Date = Date()
     ) {
@@ -311,9 +318,10 @@ public struct TextRegion: Codable, Sendable {
 // MARK: - Color Analysis
 
 /// Comprehensive color analysis results
-public struct ColorAnalysis: Codable, Sendable {
+extension Models {
+    public struct ColorAnalysis: Codable, Sendable {
     /// Dominant colors in order of prominence
-    public let dominantColors: [DominantColor]
+    public let dominantColors: [Models.DominantColor]
     /// Overall brightness (0.0 to 1.0)
     public let brightness: Double
     /// Contrast level (0.0 to 1.0)
@@ -328,7 +336,7 @@ public struct ColorAnalysis: Codable, Sendable {
     public let visualEmbedding: [Float]
     
     public init(
-        dominantColors: [DominantColor],
+        dominantColors: [Models.DominantColor],
         brightness: Double,
         contrast: Double,
         saturation: Double,
@@ -344,39 +352,43 @@ public struct ColorAnalysis: Codable, Sendable {
         self.colorScheme = colorScheme
         self.visualEmbedding = visualEmbedding
     }
+    }
 }
 
-/// Dominant color with metadata
-public struct DominantColor: Codable, Sendable {
-    /// RGB color values (0.0 to 1.0)
-    public let red: Double
-    public let green: Double
-    public let blue: Double
-    /// Color prominence percentage (0.0 to 1.0)
-    public let prominence: Double
-    /// Human-readable color name
-    public let colorName: String
-    /// Hex representation
-    public let hexValue: String
-    
-    public init(red: Double, green: Double, blue: Double, prominence: Double, colorName: String, hexValue: String) {
-        self.red = red
-        self.green = green
-        self.blue = blue
-        self.prominence = prominence
-        self.colorName = colorName
-        self.hexValue = hexValue
-    }
-    
-    /// Convert to SwiftUI Color
-    #if canImport(UIKit)
-    public var uiColor: UIColor {
-        return UIColor(red: red, green: green, blue: blue, alpha: 1.0)
-    }
-    #endif
-    
-    public var color: Color {
-        return Color(red: red, green: green, blue: blue)
+// MARK: - DominantColor Extension
+extension Models {
+    /// Dominant color with metadata
+    public struct DominantColor: Codable, Sendable {
+        /// RGB color values (0.0 to 1.0)
+        public let red: Double
+        public let green: Double
+        public let blue: Double
+        /// Color prominence percentage (0.0 to 1.0)
+        public let prominence: Double
+        /// Human-readable color name
+        public let colorName: String
+        /// Hex representation
+        public let hexValue: String
+        
+        public init(red: Double, green: Double, blue: Double, prominence: Double, colorName: String, hexValue: String) {
+            self.red = red
+            self.green = green
+            self.blue = blue
+            self.prominence = prominence
+            self.colorName = colorName
+            self.hexValue = hexValue
+        }
+        
+        /// Convert to SwiftUI Color
+        #if canImport(UIKit)
+        public var uiColor: UIColor {
+            return UIColor(red: red, green: green, blue: blue, alpha: 1.0)
+        }
+        #endif
+        
+        public var color: Color {
+            return Color(red: red, green: green, blue: blue)
+        }
     }
 }
 

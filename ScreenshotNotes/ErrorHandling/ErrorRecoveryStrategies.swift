@@ -255,14 +255,14 @@ struct ResourceRecoveryStrategy: ErrorRecoveryStrategy {
         await QualityManager.shared.reduceQuality()
         
         // Pause non-essential operations
-        await TaskManager.shared.pauseNonEssentialTasks()
+        await ErrorRecoveryTaskManager.shared.pauseNonEssentialTasks()
         
         logger.info("Resource recovery: Cleared caches, reduced quality, paused non-essential tasks")
     }
     
     private func handleDiskSpaceLow() async {
         // Clean up temporary files
-        await FileManager.shared.cleanupTemporaryFiles()
+        await ErrorRecoveryFileManager.shared.cleanupTemporaryFiles()
         
         // Compress old data
         await DataCompressor.shared.compressOldData()
@@ -521,8 +521,8 @@ class QualityManager: ObservableObject {
 }
 
 @MainActor
-class TaskManager: ObservableObject {
-    static let shared = TaskManager()
+class ErrorRecoveryTaskManager: ObservableObject {
+    static let shared = ErrorRecoveryTaskManager()
     private init() {}
     
     func pauseNonEssentialTasks() async {
@@ -531,8 +531,8 @@ class TaskManager: ObservableObject {
 }
 
 @MainActor
-class FileManager: ObservableObject {
-    static let shared = FileManager()
+class ErrorRecoveryFileManager: ObservableObject {
+    static let shared = ErrorRecoveryFileManager()
     private init() {}
     
     func cleanupTemporaryFiles() async {

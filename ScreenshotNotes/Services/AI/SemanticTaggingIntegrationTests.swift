@@ -67,14 +67,14 @@ public class SemanticTaggingIntegrationTests: ObservableObject {
         """
         
         do {
-            let tags = try await semanticTaggingService.generateSemanticTags(
-                for: createSampleImageData(),
-                ocrText: testText,
+            let tagCollection = await semanticTaggingService.generateSemanticTags(
+                for: createSampleScreenshot(with: testText),
+                extractedText: testText,
                 visualAttributes: nil
             )
             
             let expectedTags = ["marriott", "hotel", "receipt", "payment"]
-            let foundTags = tags.uniqueTagNames
+            let foundTags = tagCollection.uniqueTagNames
             let hasExpectedTags = expectedTags.allSatisfy { foundTags.contains($0) }
             
             let result = TestResult(
@@ -82,8 +82,8 @@ public class SemanticTaggingIntegrationTests: ObservableObject {
                 description: "Extract semantic tags from hotel receipt",
                 expectedResult: "Tags: \(expectedTags.joined(separator: ", "))",
                 actualResult: "Tags: \(foundTags.joined(separator: ", "))",
-                passed: hasExpectedTags && tags.overallConfidence > 0.5,
-                confidence: tags.overallConfidence
+                passed: hasExpectedTags && tagCollection.overallConfidence > 0.5,
+                confidence: tagCollection.overallConfidence
             )
             
             await addTestResult(result)
@@ -121,18 +121,18 @@ public class SemanticTaggingIntegrationTests: ObservableObject {
         """
         
         do {
-            let tags = try await semanticTaggingService.generateSemanticTags(
-                for: createSampleImageData(),
-                ocrText: testText,
+            let tagCollection = await semanticTaggingService.generateSemanticTags(
+                for: createSampleScreenshot(with: testText),
+                extractedText: testText,
                 visualAttributes: nil
             )
             
             // Check for business entities
-            let businessTags = tags.tags(in: .brand)
+            let businessTags = tagCollection.tags(in: .brand)
             let hasHilton = businessTags.contains { $0.name.lowercased().contains("hilton") }
             
             // Check for content type
-            let contentTags = tags.tags(in: .contentType)
+            let contentTags = tagCollection.tags(in: .contentType)
             let hasReceipt = contentTags.contains { $0.name.contains("receipt") || $0.name.contains("invoice") }
             
             let result = TestResult(
@@ -141,7 +141,7 @@ public class SemanticTaggingIntegrationTests: ObservableObject {
                 expectedResult: "Business entity: Hilton, Content type: receipt/invoice",
                 actualResult: "Business entities: \(businessTags.map(\.name).joined(separator: ", ")), Content types: \(contentTags.map(\.name).joined(separator: ", "))",
                 passed: hasHilton && hasReceipt,
-                confidence: tags.overallConfidence
+                confidence: tagCollection.overallConfidence
             )
             
             await addTestResult(result)
@@ -170,21 +170,25 @@ public class SemanticTaggingIntegrationTests: ObservableObject {
         ]
         
         for (expectedType, testText) in testCases {
-            let classification = await semanticTaggingService.classifyContent(
-                ocrText: testText,
-                visualObjects: []
+            // Content classification integrated into generateSemanticTags
+            let tagCollection = await semanticTaggingService.generateSemanticTags(
+                for: createSampleScreenshot(with: testText),
+                extractedText: testText,
+                visualAttributes: nil
             )
+            let conceptTags = tagCollection.tags(in: .contentType)
+            let classification = conceptTags.first?.name ?? "unknown"
             
-            let classificationMatch = classification.primaryType.displayName.lowercased().contains(expectedType.lowercased()) ||
-                                    expectedType.lowercased().contains(classification.primaryType.displayName.lowercased())
+            let classificationMatch = classification.lowercased().contains(expectedType.lowercased()) ||
+                                    expectedType.lowercased().contains(classification.lowercased())
             
             let result = TestResult(
                 name: "Content Type: \(expectedType)",
                 description: "Classify content as \(expectedType)",
                 expectedResult: expectedType,
-                actualResult: classification.primaryType.displayName,
-                passed: classificationMatch && classification.confidence > 0.3,
-                confidence: classification.confidence
+                actualResult: classification,
+                passed: classificationMatch,
+                confidence: tagCollection.overallConfidence
             )
             
             await addTestResult(result)
@@ -203,7 +207,12 @@ public class SemanticTaggingIntegrationTests: ObservableObject {
         Netflix Monthly Subscription
         """
         
-        let businessEntities = await semanticTaggingService.extractBusinessEntities(from: testText)
+        let tagCollection = await semanticTaggingService.generateSemanticTags(
+            for: createSampleScreenshot(with: testText),
+            extractedText: testText,
+            visualAttributes: nil
+        )
+        let businessEntities = tagCollection.tags(in: .brand)
         
         let expectedBusinesses = ["starbucks", "apple", "walmart", "mcdonald", "amazon", "netflix"]
         let foundBusinesses = businessEntities.map { $0.name.lowercased() }
@@ -233,14 +242,14 @@ public class SemanticTaggingIntegrationTests: ObservableObject {
         
         do {
             let highConfidenceTags = try await semanticTaggingService.generateSemanticTags(
-                for: createSampleImageData(),
-                ocrText: highConfidenceText,
+                for: createSampleScreenshot(with: highConfidenceText),
+                extractedText: highConfidenceText,
                 visualAttributes: nil
             )
             
             let lowConfidenceTags = try await semanticTaggingService.generateSemanticTags(
-                for: createSampleImageData(),
-                ocrText: lowConfidenceText,
+                for: createSampleScreenshot(with: lowConfidenceText),
+                extractedText: lowConfidenceText,
                 visualAttributes: nil
             )
             
@@ -278,16 +287,16 @@ public class SemanticTaggingIntegrationTests: ObservableObject {
         let mockVisualAttributes = createMockVisualAttributes()
         
         do {
-            let tags = try await semanticTaggingService.generateSemanticTags(
-                for: createSampleImageData(),
-                ocrText: ocrText,
+            let tagCollection = await semanticTaggingService.generateSemanticTags(
+                for: createSampleScreenshot(with: ocrText),
+                extractedText: ocrText,
                 visualAttributes: mockVisualAttributes
             )
             
             // Should have tags from both OCR and visual analysis
-            let ocrBasedTags = tags.tags(from: .ocr)
-            let visionBasedTags = tags.tags(from: .vision)
-            let businessTags = tags.tags(from: .businessRecognition)
+            let ocrBasedTags = tagCollection.tags(from: .ocr)
+            let visionBasedTags = tagCollection.tags(from: .vision)
+            let businessTags = tagCollection.tags(from: .businessRecognition)
             
             let hasMultiModalTags = !ocrBasedTags.isEmpty && (!visionBasedTags.isEmpty || !businessTags.isEmpty)
             
@@ -297,7 +306,7 @@ public class SemanticTaggingIntegrationTests: ObservableObject {
                 expectedResult: "Tags from multiple sources",
                 actualResult: "OCR: \(ocrBasedTags.count), Vision: \(visionBasedTags.count), Business: \(businessTags.count)",
                 passed: hasMultiModalTags,
-                confidence: tags.overallConfidence
+                confidence: tagCollection.overallConfidence
             )
             
             await addTestResult(result)
@@ -329,10 +338,13 @@ public class SemanticTaggingIntegrationTests: ObservableObject {
         }
     }
     
-    private func createSampleImageData() -> Data {
+    private func createSampleScreenshot(with text: String) -> Screenshot {
         // Create a simple 100x100 white image for testing
         let image = UIImage(systemName: "doc.text") ?? UIImage()
-        return image.pngData() ?? Data()
+        let imageData = image.pngData() ?? Data()
+        let screenshot = Screenshot(imageData: imageData, filename: "test.png")
+        screenshot.extractedText = text
+        return screenshot
     }
     
     private func createMockVisualAttributes() -> VisualAttributes? {

@@ -16,7 +16,7 @@ protocol PhotoLibraryServiceProtocol {
 
 
 @MainActor
-class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObject {
+public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObject {
     private var modelContext: ModelContext?
     private let imageStorageService: ImageStorageServiceProtocol
     private let hapticService: HapticFeedbackService
@@ -564,7 +564,7 @@ class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, ObservableObje
 
 // MARK: - PHPhotoLibraryChangeObserver
 extension PhotoLibraryService: @preconcurrency PHPhotoLibraryChangeObserver {
-    func photoLibraryDidChange(_ changeInstance: PHChange) {
+    public func photoLibraryDidChange(_ changeInstance: PHChange) {
         Task { @MainActor in
             print("📸 Photo library changed - checking for screenshots")
             

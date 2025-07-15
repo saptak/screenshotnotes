@@ -204,9 +204,9 @@ public final class AdvancedVisionService: ObservableObject {
         }
     }
 
-    private func convertToLegacyColorAnalysis(_ colorAnalysisResult: ColorAnalysisService.ColorAnalysisResult) -> ColorAnalysis {
+    private func convertToLegacyColorAnalysis(_ colorAnalysisResult: ColorAnalysisService.ColorAnalysisResult) -> Models.ColorAnalysis {
         let dominantColors = colorAnalysisResult.dominantColors.map {
-            DominantColor(
+            Models.DominantColor(
                 red: $0.red,
                 green: $0.green,
                 blue: $0.blue,
@@ -216,7 +216,7 @@ public final class AdvancedVisionService: ObservableObject {
             )
         }
 
-        return ColorAnalysis(
+        return Models.ColorAnalysis(
             dominantColors: dominantColors,
             brightness: colorAnalysisResult.brightness,
             contrast: colorAnalysisResult.contrast,
@@ -227,8 +227,8 @@ public final class AdvancedVisionService: ObservableObject {
         )
     }
 
-    private func createBasicColorAnalysis() -> ColorAnalysis {
-        return ColorAnalysis(
+    private func createBasicColorAnalysis() -> Models.ColorAnalysis {
+        return Models.ColorAnalysis(
             dominantColors: [],
             brightness: 0.5,
             contrast: 0.5,

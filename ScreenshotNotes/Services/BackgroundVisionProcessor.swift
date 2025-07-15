@@ -34,6 +34,9 @@ public final class BackgroundVisionProcessor: ObservableObject {
     private var backgroundTask: BGProcessingTask?
     private var processingTimer: Timer?
     
+    // 🎯 Sprint 8.5.3.1: Task Synchronization Framework
+    private let taskManager = TaskManager.shared
+    
     // MARK: - Initialization
     
     public init() {
@@ -52,13 +55,20 @@ public final class BackgroundVisionProcessor: ObservableObject {
     public func startProcessing() async {
         guard !isProcessing else { return }
         
-        isProcessing = true
-        processedCount = 0
-        
-        await processScreenshotsNeedingAnalysis()
-        
-        isProcessing = false
-        lastProcessingDate = Date()
+        // 🎯 Sprint 8.5.3.1: Use Task Synchronization Framework for coordinated processing
+        await taskManager.execute(
+            category: .vision,
+            priority: .normal,
+            description: "Start vision processing for screenshots"
+        ) {
+            self.isProcessing = true
+            self.processedCount = 0
+            
+            await self.processScreenshotsNeedingAnalysis()
+            
+            self.isProcessing = false
+            self.lastProcessingDate = Date()
+        }
     }
     
     /// Process a specific screenshot with enhanced vision analysis
