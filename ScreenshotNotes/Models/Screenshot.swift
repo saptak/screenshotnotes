@@ -15,6 +15,10 @@ public final class Screenshot {
     public var isFavorite: Bool = false
     public var assetIdentifier: String?
     
+    // Collections relationship
+    @Relationship(deleteRule: .nullify)
+    public var collections: [Collection] = []
+    
     // Phase 5.2.1: Enhanced Vision Processing
     public var visualAttributesData: Data?
     public var lastVisionAnalysis: Date?

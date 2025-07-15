@@ -2,6 +2,7 @@ import SwiftUI
 import Foundation
 import PhotosUI
 import UniformTypeIdentifiers
+import UIKit
 
 /// Quick action service for executing contextual menu actions with sophisticated animations and feedback
 /// Provides implementation for share, copy, delete, tag, and other quick actions
@@ -342,56 +343,89 @@ final class QuickActionService: NSObject, ObservableObject, UIDocumentPickerDele
     private func executeDuplicateAction(_ screenshots: [Screenshot]) async {
         await updateActionMessage("Creating duplicates...")
         await updateProgress(0.3)
-        
-        // TODO: Implement duplication system
-        // For now, simulate the duplication process
-        try? await Task.sleep(nanoseconds: 600_000_000) // 0.6 seconds
-        
-        await updateProgress(1.0)
+
+        await MainActor.run {
+            if let modelContext = screenshots.first?.modelContext {
+                for screenshot in screenshots {
+                    let newScreenshot = Screenshot(
+                        imageData: screenshot.imageData,
+                        filename: "\(screenshot.filename)_copy",
+                        timestamp: Date(),
+                        assetIdentifier: nil
+                    )
+                    modelContext.insert(newScreenshot)
+                }
+
+                do {
+                    try modelContext.save()
+                    print("✅ Successfully duplicated \(screenshots.count) screenshot(s)")
+                } catch {
+                    print("❌ Failed to duplicate screenshots: \(error)")
+                }
+            }
+        }
+
         await updateActionMessage("Screenshots duplicated")
+
+        await updateProgress(1.0)
     }
     
     private func executeAddToCollectionAction(_ screenshots: [Screenshot]) async {
-        await updateActionMessage("Adding to collection...")
-        await updateProgress(0.4)
+        await updateActionMessage("Opening collection picker...")
+        await updateProgress(0.3)
         
-        // TODO: Implement collection system
-        // For now, simulate adding to collection
-        try? await Task.sleep(nanoseconds: 400_000_000) // 0.4 seconds
-        
-        await updateProgress(1.0)
-        await updateActionMessage("Added to collection")
+        // Show collection picker
+        if let collections = await showCollectionPicker(for: screenshots) {
+            await updateProgress(0.7)
+            await updateActionMessage("Adding to collections...")
+            
+            // Add screenshots to selected collections
+            await addScreenshotsToCollections(screenshots, collections: collections)
+            
+            await updateProgress(1.0)
+            let message = collections.count == 1 ? 
+                "Added to \(collections[0].name)" : 
+                "Added to \(collections.count) collections"
+            await updateActionMessage(message)
+        } else {
+            // User cancelled
+            await updateActionStatus(.cancelled)
+        }
     }
     
     private func executeViewDetailsAction(_ screenshot: Screenshot?) async {
         await updateActionMessage("Opening details...")
         await updateProgress(0.5)
         
-        guard screenshot != nil else {
+        guard let screenshot = screenshot else {
             await updateActionStatus(.failed(QuickActionError.invalidScreenshot))
             return
         }
         
-        // TODO: Implement details view navigation
-        // For now, simulate opening details
-        try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+        await updateProgress(0.8)
+        await updateActionMessage("Navigating to detail view...")
+        
+        // Show detail view
+        await showDetailView(for: screenshot)
         
         await updateProgress(1.0)
-        await updateActionMessage("Details opened")
+        await updateActionMessage("Detail view opened")
     }
     
     private func executeEditMetadataAction(_ screenshot: Screenshot?) async {
         await updateActionMessage("Opening metadata editor...")
         await updateProgress(0.3)
         
-        guard screenshot != nil else {
+        guard let screenshot = screenshot else {
             await updateActionStatus(.failed(QuickActionError.invalidScreenshot))
             return
         }
         
-        // TODO: Implement metadata editing
-        // For now, simulate opening metadata editor
-        try? await Task.sleep(nanoseconds: 400_000_000) // 0.4 seconds
+        await updateProgress(0.7)
+        await updateActionMessage("Loading metadata editor...")
+        
+        // Show metadata editor
+        await showMetadataEditor(for: screenshot)
         
         await updateProgress(1.0)
         await updateActionMessage("Metadata editor opened")
@@ -431,6 +465,7 @@ final class QuickActionService: NSObject, ObservableObject, UIDocumentPickerDele
     }
 
     private var documentPickerContinuation: CheckedContinuation<URL?, Never>?
+    private var collectionPickerContinuation: CheckedContinuation<[Collection]?, Never>?
 
     public func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         documentPickerContinuation?.resume(returning: urls.first)
@@ -500,6 +535,79 @@ final class QuickActionService: NSObject, ObservableObject, UIDocumentPickerDele
                 } catch {
                     print("❌ Failed to apply tags: \(error)")
                 }
+            }
+        }
+    }
+    
+    private func showCollectionPicker(for screenshots: [Screenshot]) async -> [Collection]? {
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.main.async {
+                let collectionPickerView = CollectionPickerView(screenshots: screenshots) { collections in
+                    continuation.resume(returning: collections.isEmpty ? nil : collections)
+                }
+                
+                let hostingController = UIHostingController(rootView: collectionPickerView)
+                
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first,
+                   let rootVC = window.rootViewController {
+                    rootVC.present(hostingController, animated: true)
+                }
+            }
+        }
+    }
+    
+    private func addScreenshotsToCollections(_ screenshots: [Screenshot], collections: [Collection]) async {
+        await MainActor.run {
+            let collectionService = CollectionService.shared
+            
+            for collection in collections {
+                collectionService.addScreenshots(screenshots, to: collection)
+            }
+            
+            print("✅ Successfully added \(screenshots.count) screenshot(s) to \(collections.count) collection(s)")
+        }
+    }
+    
+    private func showDetailView(for screenshot: Screenshot) async {
+        await MainActor.run {
+            // Create a namespace for hero animations
+            let namespace = Namespace().wrappedValue
+            
+            // For detail view, we need all screenshots for navigation
+            // This is a simplified approach - in a real app, you'd get this from the current context
+            let allScreenshots = [screenshot] // For now, just the single screenshot
+            
+            let detailView = ScreenshotDetailView(
+                screenshot: screenshot,
+                heroNamespace: namespace,
+                allScreenshots: allScreenshots,
+                onDelete: { deletedScreenshot in
+                    // Handle deletion if needed
+                    print("Screenshot deleted from detail view: \(deletedScreenshot.filename)")
+                }
+            )
+            
+            let hostingController = UIHostingController(rootView: detailView)
+            hostingController.modalPresentationStyle = .fullScreen
+            
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first,
+               let rootVC = window.rootViewController {
+                rootVC.present(hostingController, animated: true)
+            }
+        }
+    }
+    
+    private func showMetadataEditor(for screenshot: Screenshot) async {
+        await MainActor.run {
+            let metadataEditorView = MetadataEditorView(screenshot: screenshot)
+            let hostingController = UIHostingController(rootView: metadataEditorView)
+            
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first,
+               let rootVC = window.rootViewController {
+                rootVC.present(hostingController, animated: true)
             }
         }
     }
