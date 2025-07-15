@@ -726,7 +726,7 @@ This dual approach gives users both **exploratory power** (Mind Map) and **organ
 *   **Implementation:**
     *   ✅ Implement tagging system.
     *   ✅ Implement favorite system.
-    *   🔧 Implement export system.
+    *   ✅ Implement export system.
     *   🔧 Implement duplication system.
     *   🔧 Implement collection system.
     *   🔧 Implement details view navigation.

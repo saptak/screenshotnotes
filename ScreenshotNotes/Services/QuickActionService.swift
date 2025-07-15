@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 /// Quick action service for executing contextual menu actions with sophisticated animations and feedback
 /// Provides implementation for share, copy, delete, tag, and other quick actions
 @MainActor
-final class QuickActionService: ObservableObject {
+final class QuickActionService: NSObject, ObservableObject, UIDocumentPickerDelegate {
     
     // MARK: - Singleton
     static let shared = QuickActionService()
@@ -44,7 +44,7 @@ final class QuickActionService: ObservableObject {
     
     @Published var actionHistory: [ActionRecord] = []
     
-    private init() {}
+    override private init() {}
     
     // MARK: - Public Action Interface
     
@@ -321,13 +321,22 @@ final class QuickActionService: ObservableObject {
     private func executeExportAction(_ screenshots: [Screenshot]) async {
         await updateActionMessage("Preparing export...")
         await updateProgress(0.2)
-        
-        // TODO: Implement export system
-        // For now, simulate the export process
-        try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-        
+
+        let images = screenshots.compactMap { UIImage(data: $0.imageData) }
+        guard !images.isEmpty else {
+            await updateActionStatus(.failed(QuickActionError.noValidImages))
+            return
+        }
+
+        await updateProgress(0.6)
+        await updateActionMessage("Presenting export dialog...")
+
+        if let url = await showExportDialog() {
+            await exportImages(images, to: url)
+        }
+
         await updateProgress(1.0)
-        await updateActionMessage("Export ready")
+        await updateActionMessage("Export complete")
     }
     
     private func executeDuplicateAction(_ screenshots: [Screenshot]) async {
@@ -386,6 +395,51 @@ final class QuickActionService: ObservableObject {
         
         await updateProgress(1.0)
         await updateActionMessage("Metadata editor opened")
+    }
+
+    private func showExportDialog() async -> URL? {
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.main.async {
+                let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder])
+                documentPicker.delegate = self
+                documentPicker.allowsMultipleSelection = false
+                self.documentPickerContinuation = continuation
+
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first,
+                   let rootVC = window.rootViewController {
+                    rootVC.present(documentPicker, animated: true)
+                }
+            }
+        }
+    }
+
+    private func exportImages(_ images: [UIImage], to directoryURL: URL) async {
+        for (index, image) in images.enumerated() {
+            let filename = "screenshot_\(index).png"
+            let fileURL = directoryURL.appendingPathComponent(filename)
+
+            if let data = image.pngData() {
+                do {
+                    try data.write(to: fileURL)
+                    print("✅ Successfully exported image to \(fileURL.path)")
+                } catch {
+                    print("❌ Failed to export image: \(error)")
+                }
+            }
+        }
+    }
+
+    private var documentPickerContinuation: CheckedContinuation<URL?, Never>?
+
+    public func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        documentPickerContinuation?.resume(returning: urls.first)
+        documentPickerContinuation = nil
+    }
+
+    public func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+        documentPickerContinuation?.resume(returning: nil)
+        documentPickerContinuation = nil
     }
 
     private func showTagEditor(for screenshots: [Screenshot]) async -> [String]? {
