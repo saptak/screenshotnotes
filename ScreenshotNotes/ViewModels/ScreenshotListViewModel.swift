@@ -59,13 +59,21 @@ class ScreenshotListViewModel: ObservableObject, MemoryTrackable, ResourceCleanu
     func importImages(from items: [PhotosPickerItem]) async {
         guard !items.isEmpty else { return }
         
+        // Ensure modelContext is available before proceeding
+        guard let modelContext = modelContext else {
+            logger.error("❌ Cannot import images: ModelContext is not available")
+            errorMessage = "Database is not available. Please restart the app."
+            showingError = true
+            return
+        }
+        
         // 🎯 Sprint 8.5.3.1: Use coordinated image import workflow
         isImporting = true
         importProgress = 0.0
         
         let importedCount = await taskCoordinator.executeImageImportWorkflow(
             items: items,
-            modelContext: modelContext!,
+            modelContext: modelContext,
             backgroundProcessors: BackgroundProcessors(
                 ocrProcessor: BackgroundOCRProcessor(),
                 visionProcessor: BackgroundVisionProcessor(),

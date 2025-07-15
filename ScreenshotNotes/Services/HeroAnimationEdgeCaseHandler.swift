@@ -182,8 +182,20 @@ final class HeroAnimationEdgeCaseHandler: ObservableObject {
             completion(false, detectedEdgeCases, config)
         } else {
             // Non-critical edge cases - proceed with modifications
-            let primaryEdgeCase = detectedEdgeCases.first!
-            let config = configurations[primaryEdgeCase]!
+            guard let primaryEdgeCase = detectedEdgeCases.first,
+                  let config = configurations[primaryEdgeCase] else {
+                // If no edge cases or no configuration found, use default
+                let defaultConfig = EdgeCaseConfiguration(
+                    shouldCancelAnimation: false,
+                    shouldReduceQuality: false,
+                    fallbackDuration: 0.3,
+                    alternativeAnimation: nil,
+                    memoryThreshold: 100.0,
+                    recoveryStrategy: .immediate
+                )
+                completion(true, detectedEdgeCases, defaultConfig)
+                return
+            }
             recordEdgeCase(primaryEdgeCase)
             completion(true, detectedEdgeCases, config)
         }

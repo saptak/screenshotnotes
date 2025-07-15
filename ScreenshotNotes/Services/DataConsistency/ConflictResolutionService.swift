@@ -568,7 +568,18 @@ struct TimestampBasedStrategy: ConflictResolutionStrategy {
         // Sort changes by timestamp, most recent wins
         let sortedChanges = conflict.changes.sorted { $0.timestamp > $1.timestamp }
         
-        let acceptedChanges = [sortedChanges.first!]
+        // Guard against empty changes array
+        guard let mostRecentChange = sortedChanges.first else {
+            return StrategyResult(
+                acceptedChanges: [],
+                rejectedChanges: [],
+                strategy: .timestampBased,
+                success: false,
+                message: "No changes to resolve"
+            )
+        }
+        
+        let acceptedChanges = [mostRecentChange]
         let rejectedChanges = Array(sortedChanges.dropFirst())
         
         return StrategyResult(
@@ -645,7 +656,10 @@ struct ContentMergeStrategy: ConflictResolutionStrategy {
     private func createMergedChange(_ changes: [DataChange]) async -> DataChange {
         // Create a new change that represents the merger
         // This is simplified - real implementation would merge actual data
-        let primaryChange = changes.first!
+        guard let primaryChange = changes.first else {
+            // If no changes provided, create a default change with a placeholder UUID
+            return DataChange(type: .screenshotAdded(UUID()))
+        }
         return DataChange(type: primaryChange.type)
     }
 }
@@ -662,7 +676,18 @@ struct ConfidenceBasedStrategy: ConflictResolutionStrategy {
         // Choose change with higher confidence score
         let rankedChanges = await rankByConfidence(conflict.changes)
         
-        let acceptedChanges = [rankedChanges.first!]
+        // Guard against empty changes array
+        guard let highestConfidenceChange = rankedChanges.first else {
+            return StrategyResult(
+                acceptedChanges: [],
+                rejectedChanges: [],
+                strategy: .confidenceBased,
+                success: false,
+                message: "No changes to resolve"
+            )
+        }
+        
+        let acceptedChanges = [highestConfidenceChange]
         let rejectedChanges = Array(rankedChanges.dropFirst())
         
         return StrategyResult(
