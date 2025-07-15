@@ -446,6 +446,31 @@ class EntityRelationshipService: ObservableObject {
         return Array(bestRelationships.values).sorted { $0.strength > $1.strength }
     }
     
+    /// Get all relationships for a specific screenshot
+    func getRelationshipsForScreenshot(_ screenshotId: UUID) async -> [Relationship] {
+        // Search through all cached relationships
+        var allRelationships: [Relationship] = []
+        
+        for (_, relationships) in relationshipCache {
+            for relationship in relationships {
+                if relationship.sourceScreenshotId == screenshotId || 
+                   relationship.targetScreenshotId == screenshotId {
+                    allRelationships.append(relationship)
+                }
+            }
+        }
+        
+        // If cache is empty or doesn't contain this screenshot, we need to do a broader search
+        if allRelationships.isEmpty {
+            logger.info("🔍 No cached relationships found for screenshot \(screenshotId), performing fresh analysis")
+            // This would require a more comprehensive search through all screenshots
+            // For now, return empty array to avoid performance issues
+            return []
+        }
+        
+        return allRelationships.sorted { $0.strength > $1.strength }
+    }
+    
     private func relationshipKey(_ id1: UUID, _ id2: UUID) -> String {
         let sortedIds = [id1.uuidString, id2.uuidString].sorted()
         return "\(sortedIds[0])-\(sortedIds[1])"

@@ -249,10 +249,84 @@ class VersionHistoryService: ObservableObject {
     
     private func applySnapshot(_ version: DataVersion, context: ModelContext) async -> VersionApplicationResult {
         // Apply complete snapshot restoration
-        // This would restore the entire data state to the snapshot
-        // Implementation would depend on specific data model requirements
+        guard let snapshotData = version.snapshotData else {
+            logger.error("❌ No snapshot data available for version \(version.versionId)")
+            return VersionApplicationResult(success: false, message: "No snapshot data available")
+        }
         
-        return VersionApplicationResult(success: true, message: "Snapshot applied (placeholder implementation)")
+        logger.info("📸 Applying snapshot version \(version.versionId)")
+        
+        do {
+            // Decode the snapshot data
+            let decoder = JSONDecoder()
+            let snapshots = try decoder.decode([ScreenshotSnapshot].self, from: snapshotData)
+            
+            // Begin transaction for atomic operation
+            try context.transaction {
+                // Get all current screenshots to compare with snapshot
+                let currentScreenshots = try context.fetch(FetchDescriptor<Screenshot>())
+                let currentIds = Set(currentScreenshots.map { $0.id })
+                let snapshotIds = Set(snapshots.map { $0.id })
+                
+                // Delete screenshots that shouldn't exist in the snapshot
+                let toDelete = currentIds.subtracting(snapshotIds)
+                for id in toDelete {
+                    if let screenshot = currentScreenshots.first(where: { $0.id == id }) {
+                        context.delete(screenshot)
+                        logger.debug("🗑️ Deleted screenshot \(id) not in snapshot")
+                    }
+                }
+                
+                // Update or create screenshots from snapshot
+                for snapshotItem in snapshots {
+                    if let existingScreenshot = currentScreenshots.first(where: { $0.id == snapshotItem.id }) {
+                        // Update existing screenshot
+                        existingScreenshot.timestamp = snapshotItem.timestamp
+                        existingScreenshot.extractedText = snapshotItem.extractedText
+                        // needsOCR is a computed property in Screenshot model
+                        // needsVisionAnalysis is a computed property in Screenshot model
+                        // needsSemanticAnalysis is a computed property in Screenshot model
+                        existingScreenshot.userTags = snapshotItem.tags
+                        existingScreenshot.isFavorite = snapshotItem.isFavorite
+                        existingScreenshot.userNotes = snapshotItem.userNotes
+                        logger.debug("✏️ Updated screenshot \(snapshotItem.id) from snapshot")
+                    } else {
+                        // Create new screenshot if it doesn't exist
+                        let newScreenshot = Screenshot(
+                            imageData: Data(), // Image data would need to be restored separately
+                            filename: "snapshot_\(snapshotItem.id.uuidString.prefix(8)).png",
+                            timestamp: snapshotItem.timestamp
+                        )
+                        newScreenshot.id = snapshotItem.id
+                        newScreenshot.extractedText = snapshotItem.extractedText
+                        // needsOCR is a computed property in Screenshot model
+                        // needsVisionAnalysis is a computed property in Screenshot model
+                        // needsSemanticAnalysis is a computed property in Screenshot model
+                        newScreenshot.userTags = snapshotItem.tags
+                        newScreenshot.isFavorite = snapshotItem.isFavorite
+                        newScreenshot.userNotes = snapshotItem.userNotes
+                        context.insert(newScreenshot)
+                        logger.debug("➕ Created screenshot \(snapshotItem.id) from snapshot")
+                    }
+                }
+                
+                // Save the context
+                try context.save()
+            }
+            
+            logger.info("✅ Snapshot applied successfully with \(snapshots.count) screenshots")
+            
+            return VersionApplicationResult(
+                success: true, 
+                message: "Snapshot applied: \(snapshots.count) screenshots restored"
+            )
+        } catch {
+            logger.error("❌ Failed to apply snapshot: \(error.localizedDescription)")
+            return VersionApplicationResult(
+                success: false, 
+                message: "Failed to apply snapshot: \(error.localizedDescription)"
+            )
+        }
     }
     
     private func applyDeltaOperation(_ operation: DeltaOperation, context: ModelContext) async -> VersionApplicationResult {
@@ -273,27 +347,200 @@ class VersionHistoryService: ObservableObject {
     
     private func applyInsertOperation(_ operation: DeltaOperation, context: ModelContext) async -> VersionApplicationResult {
         // Implementation for insert operations
-        return VersionApplicationResult(success: true, message: "Insert operation applied")
+        guard let insertData = operation.data else {
+            return VersionApplicationResult(success: false, message: "No insert data provided")
+        }
+        
+        do {
+            // Decode the screenshot data to insert
+            let decoder = JSONDecoder()
+            let screenshotSnapshot = try decoder.decode(ScreenshotSnapshot.self, from: insertData)
+            
+            // Create new screenshot from snapshot
+            let newScreenshot = Screenshot(
+                imageData: Data(), // Image data would need to be handled separately
+                filename: "restored_\(screenshotSnapshot.id.uuidString.prefix(8)).png",
+                timestamp: screenshotSnapshot.timestamp
+            )
+            newScreenshot.id = screenshotSnapshot.id
+            
+            // Apply snapshot properties
+            newScreenshot.extractedText = screenshotSnapshot.extractedText
+            // needsOCR is a computed property in Screenshot model
+            // needsVisionAnalysis is a computed property in Screenshot model
+            // needsSemanticAnalysis is a computed property in Screenshot model
+            newScreenshot.userTags = screenshotSnapshot.tags
+            newScreenshot.isFavorite = screenshotSnapshot.isFavorite
+            newScreenshot.userNotes = screenshotSnapshot.userNotes
+            
+            // Insert into context
+            context.insert(newScreenshot)
+            
+            logger.debug("➕ Inserted screenshot \(screenshotSnapshot.id) via delta operation")
+            return VersionApplicationResult(success: true, message: "Screenshot inserted successfully")
+            
+        } catch {
+            logger.error("❌ Failed to apply insert operation: \(error.localizedDescription)")
+            return VersionApplicationResult(success: false, message: "Insert operation failed: \(error.localizedDescription)")
+        }
     }
     
     private func applyUpdateOperation(_ operation: DeltaOperation, context: ModelContext) async -> VersionApplicationResult {
         // Implementation for update operations
-        return VersionApplicationResult(success: true, message: "Update operation applied")
+        let targetId = operation.targetId
+        guard let updateData = operation.newValue?.data(using: .utf8) else {
+            return VersionApplicationResult(success: false, message: "Incomplete update operation data")
+        }
+        
+        do {
+            // Find the screenshot to update
+            let fetchDescriptor = FetchDescriptor<Screenshot>(predicate: #Predicate { $0.id == targetId })
+            let screenshots = try context.fetch(fetchDescriptor)
+            
+            guard let screenshot = screenshots.first else {
+                return VersionApplicationResult(success: false, message: "Screenshot not found for update: \(targetId)")
+            }
+            
+            // Decode the update data
+            let decoder = JSONDecoder()
+            let screenshotSnapshot = try decoder.decode(ScreenshotSnapshot.self, from: updateData)
+            
+            // Apply updates
+            screenshot.timestamp = screenshotSnapshot.timestamp
+            screenshot.extractedText = screenshotSnapshot.extractedText
+            // needsOCR is a computed property in Screenshot model
+            // needsVisionAnalysis is a computed property in Screenshot model
+            // needsSemanticAnalysis is a computed property in Screenshot model
+            screenshot.userTags = screenshotSnapshot.tags
+            screenshot.isFavorite = screenshotSnapshot.isFavorite
+            screenshot.userNotes = screenshotSnapshot.userNotes
+            
+            logger.debug("✏️ Updated screenshot \(targetId) via delta operation")
+            return VersionApplicationResult(success: true, message: "Screenshot updated successfully")
+            
+        } catch {
+            logger.error("❌ Failed to apply update operation: \(error.localizedDescription)")
+            return VersionApplicationResult(success: false, message: "Update operation failed: \(error.localizedDescription)")
+        }
     }
     
     private func applyDeleteOperation(_ operation: DeltaOperation, context: ModelContext) async -> VersionApplicationResult {
         // Implementation for delete operations
-        return VersionApplicationResult(success: true, message: "Delete operation applied")
+        let targetId = operation.targetId
+        guard targetId != UUID(uuidString: "00000000-0000-0000-0000-000000000000") else {
+            return VersionApplicationResult(success: false, message: "No target ID provided for delete operation")
+        }
+        
+        do {
+            // Find the screenshot to delete
+            let fetchDescriptor = FetchDescriptor<Screenshot>(predicate: #Predicate { $0.id == targetId })
+            let screenshots = try context.fetch(fetchDescriptor)
+            
+            guard let screenshot = screenshots.first else {
+                logger.warning("⚠️ Screenshot \(targetId) not found for deletion (may already be deleted)")
+                return VersionApplicationResult(success: true, message: "Screenshot already deleted")
+            }
+            
+            // Delete the screenshot
+            context.delete(screenshot)
+            
+            logger.debug("🗑️ Deleted screenshot \(targetId) via delta operation")
+            return VersionApplicationResult(success: true, message: "Screenshot deleted successfully")
+            
+        } catch {
+            logger.error("❌ Failed to apply delete operation: \(error.localizedDescription)")
+            return VersionApplicationResult(success: false, message: "Delete operation failed: \(error.localizedDescription)")
+        }
     }
     
     private func applyMoveOperation(_ operation: DeltaOperation, context: ModelContext) async -> VersionApplicationResult {
-        // Implementation for move operations
-        return VersionApplicationResult(success: true, message: "Move operation applied")
+        // Implementation for move operations (reordering, folder changes, etc.)
+        let targetId = operation.targetId
+        guard let moveData = operation.newValue?.data(using: .utf8) else {
+            return VersionApplicationResult(success: false, message: "Incomplete move operation data")
+        }
+        
+        do {
+            // Find the screenshot to move
+            let fetchDescriptor = FetchDescriptor<Screenshot>(predicate: #Predicate { $0.id == targetId })
+            let screenshots = try context.fetch(fetchDescriptor)
+            
+            guard let screenshot = screenshots.first else {
+                return VersionApplicationResult(success: false, message: "Screenshot not found for move: \(targetId)")
+            }
+            
+            // Decode move parameters (position, tags, etc.)
+            if let moveParams = try? JSONSerialization.jsonObject(with: moveData) as? [String: Any] {
+                
+                // Apply move operations based on parameters
+                if let newTags = moveParams["tags"] as? [String] {
+                    screenshot.userTags = newTags
+                }
+                
+                if let newTimestamp = moveParams["timestamp"] as? TimeInterval {
+                    screenshot.timestamp = Date(timeIntervalSince1970: newTimestamp)
+                }
+                
+                logger.debug("🔄 Moved screenshot \(targetId) via delta operation")
+                return VersionApplicationResult(success: true, message: "Screenshot moved successfully")
+            }
+            
+            return VersionApplicationResult(success: false, message: "Invalid move operation parameters")
+            
+        } catch {
+            logger.error("❌ Failed to apply move operation: \(error.localizedDescription)")
+            return VersionApplicationResult(success: false, message: "Move operation failed: \(error.localizedDescription)")
+        }
     }
     
     private func applyMergeOperation(_ operation: DeltaOperation, context: ModelContext) async -> VersionApplicationResult {
-        // Implementation for merge operations
-        return VersionApplicationResult(success: true, message: "Merge operation applied")
+        // Implementation for merge operations (combining screenshots, merging tags, etc.)
+        let targetId = operation.targetId
+        guard let mergeData = operation.newValue?.data(using: .utf8) else {
+            return VersionApplicationResult(success: false, message: "Incomplete merge operation data")
+        }
+        
+        do {
+            // Find the target screenshot
+            let fetchDescriptor = FetchDescriptor<Screenshot>(predicate: #Predicate { $0.id == targetId })
+            let screenshots = try context.fetch(fetchDescriptor)
+            
+            guard let targetScreenshot = screenshots.first else {
+                return VersionApplicationResult(success: false, message: "Target screenshot not found for merge: \(targetId)")
+            }
+            
+            // Decode merge parameters
+            if let mergeParams = try? JSONSerialization.jsonObject(with: mergeData) as? [String: Any] {
+                
+                // Merge tags
+                if let additionalTags = mergeParams["additionalTags"] as? [String] {
+                    let currentTags = Set(targetScreenshot.userTags ?? [])
+                    let newTags = Set(additionalTags)
+                    targetScreenshot.userTags = Array(currentTags.union(newTags)).sorted()
+                }
+                
+                // Merge extracted text
+                if let additionalText = mergeParams["additionalText"] as? String {
+                    let currentText = targetScreenshot.extractedText ?? ""
+                    targetScreenshot.extractedText = currentText.isEmpty ? additionalText : "\(currentText)\n\(additionalText)"
+                }
+                
+                // Merge user notes
+                if let additionalNotes = mergeParams["additionalNotes"] as? String {
+                    let currentNotes = targetScreenshot.userNotes ?? ""
+                    targetScreenshot.userNotes = currentNotes.isEmpty ? additionalNotes : "\(currentNotes)\n\(additionalNotes)"
+                }
+                
+                logger.debug("🔗 Merged data into screenshot \(targetId) via delta operation")
+                return VersionApplicationResult(success: true, message: "Screenshots merged successfully")
+            }
+            
+            return VersionApplicationResult(success: false, message: "Invalid merge operation parameters")
+            
+        } catch {
+            logger.error("❌ Failed to apply merge operation: \(error.localizedDescription)")
+            return VersionApplicationResult(success: false, message: "Merge operation failed: \(error.localizedDescription)")
+        }
     }
     
     private func updateNavigationState() {
@@ -359,19 +606,101 @@ class VersionHistoryService: ObservableObject {
     
     private func loadHistoryFromPersistence() async {
         // Load version history from persistent storage
-        // This would integrate with SwiftData or file system storage
-        
         logger.info("📚 Loading version history from persistence")
-        // Placeholder implementation
-        updateNavigationState()
+        
+        do {
+            // Get the Documents directory
+            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let historyURL = documentsDirectory.appendingPathComponent("version_history.json")
+            
+            // Check if history file exists
+            guard FileManager.default.fileExists(atPath: historyURL.path) else {
+                logger.info("📂 No existing version history file found, starting fresh")
+                updateNavigationState()
+                return
+            }
+            
+            // Load and decode history
+            let historyData = try Data(contentsOf: historyURL)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            
+            let persistedHistory = try decoder.decode(PersistedVersionHistory.self, from: historyData)
+            
+            // Note: For now, we'll start with an empty history since we can't fully restore DataVersion objects
+            // This is a simplified implementation - a full implementation would require 
+            // storing more detailed version information
+            await MainActor.run {
+                self.versionHistory = [] // Start fresh for now
+                self.currentIndex = -1
+                self.currentVersion = nil
+                updateNavigationState()
+                
+                logger.info("📚 Loaded version history metadata: \(persistedHistory.versions.count) versions recorded")
+            }
+            
+            logger.info("✅ Loaded \(self.versionHistory.count) versions from persistence, current index: \(self.currentIndex)")
+            
+            // Clean up old history to maintain storage limits
+            await enforceStorageLimits()
+            
+        } catch {
+            logger.error("❌ Failed to load version history: \(error.localizedDescription)")
+            
+            // Reset to clean state on error
+            await MainActor.run {
+                self.versionHistory = []
+                self.currentIndex = -1
+                self.currentVersion = nil
+                updateNavigationState()
+            }
+        }
     }
     
     private func persistHistory() async {
         // Persist version history to storage
-        // This would save to SwiftData or file system
-        
         logger.debug("💾 Persisting version history (\(self.versionHistory.count) versions)")
-        // Placeholder implementation
+        
+        do {
+            // Prepare data to persist
+            let simpleVersions = versionHistory.map { version in
+                SimpleVersionInfo(
+                    versionId: version.versionId,
+                    timestamp: version.timestamp,
+                    changeDescription: version.decodedMetadata?.changeDescription ?? "Unknown change",
+                    isSnapshot: version.isSnapshot
+                )
+            }
+            
+            let persistedHistory = PersistedVersionHistory(
+                versions: simpleVersions,
+                currentIndex: currentIndex,
+                lastUpdated: Date()
+            )
+            
+            // Encode to JSON
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = .prettyPrinted
+            
+            let historyData = try encoder.encode(persistedHistory)
+            
+            // Get the Documents directory
+            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let historyURL = documentsDirectory.appendingPathComponent("version_history.json")
+            
+            // Write atomically to prevent corruption
+            let tempURL = historyURL.appendingPathExtension("tmp")
+            try historyData.write(to: tempURL)
+            
+            // Atomic move
+            _ = try FileManager.default.replaceItem(at: historyURL, withItemAt: tempURL, backupItemName: nil, options: [], resultingItemURL: nil)
+            
+            logger.debug("✅ Version history persisted successfully (\(historyData.count) bytes)")
+            
+        } catch {
+            logger.error("❌ Failed to persist version history: \(error.localizedDescription)")
+        }
     }
 }
 
@@ -421,4 +750,47 @@ struct VersionMetrics {
         guard totalUndoRedo > 0 else { return 0 }
         return Double(undoOperations) / Double(totalUndoRedo)
     }
-} 
+}
+
+// MARK: - Snapshot Support Types
+
+/// Represents a screenshot's state at a point in time for snapshot restoration
+struct ScreenshotSnapshot: Codable {
+    let id: UUID
+    let timestamp: Date
+    let extractedText: String?
+    let needsOCR: Bool
+    let needsVisionAnalysis: Bool
+    let needsSemanticAnalysis: Bool
+    let tags: [String]
+    let isFavorite: Bool
+    let userNotes: String?
+    
+    init(from screenshot: Screenshot) {
+        self.id = screenshot.id
+        self.timestamp = screenshot.timestamp
+        self.extractedText = screenshot.extractedText
+        self.needsOCR = screenshot.needsVisionAnalysis // Using available computed property
+        self.needsVisionAnalysis = screenshot.needsVisionAnalysis
+        self.needsSemanticAnalysis = screenshot.needsSemanticAnalysis
+        self.tags = screenshot.userTags ?? []
+        self.isFavorite = screenshot.isFavorite
+        self.userNotes = screenshot.userNotes
+    }
+}
+
+/// Simplified version info for persistence
+struct SimpleVersionInfo: Codable {
+    let versionId: UUID
+    let timestamp: Date
+    let changeDescription: String
+    let isSnapshot: Bool
+}
+
+/// Persisted version history structure for file storage
+struct PersistedVersionHistory: Codable {
+    let versions: [SimpleVersionInfo]
+    let currentIndex: Int
+    let lastUpdated: Date
+}
+

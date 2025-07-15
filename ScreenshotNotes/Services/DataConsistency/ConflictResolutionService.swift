@@ -368,14 +368,92 @@ class ConflictResolutionService: ObservableObject {
     
     private func hasActiveRelationships(screenshotId: UUID) async -> Bool {
         // Check if screenshot has active relationships that would be orphaned
-        // This would query the relationship data
-        return false // Placeholder
+        do {
+            // Get all relationships where this screenshot is either source or target
+            let relationships = await EntityRelationshipService.shared.getRelationshipsForScreenshot(screenshotId)
+            
+            // Filter for meaningful relationships (strong connections only)
+            let strongRelationships = relationships.filter { relationship in
+                relationship.strength >= 0.6 && relationship.confidence >= 0.7
+            }
+            
+            // Check if any of these relationships would leave orphaned data
+            for relationship in strongRelationships {
+                let otherScreenshotId = relationship.sourceScreenshotId == screenshotId ? 
+                    relationship.targetScreenshotId : relationship.sourceScreenshotId
+                
+                // Check if the other screenshot has limited relationships (would become isolated)
+                let otherRelationships = await EntityRelationshipService.shared.getRelationshipsForScreenshot(otherScreenshotId)
+                if otherRelationships.count <= 2 { // Would become isolated or nearly isolated
+                    return true
+                }
+            }
+            
+            return strongRelationships.count > 0
+        } catch {
+            // If we can't determine relationships, err on the side of caution
+            return true
+        }
     }
     
     private func wouldCreateCircularReference(from: UUID, to: UUID) async -> Bool {
         // Check if adding this relationship would create a circular reference
-        // This would traverse the relationship graph
-        return false // Placeholder
+        // This uses a depth-first search to detect cycles in the relationship graph
+        
+        // If from and to are the same, it's immediately circular
+        if from == to {
+            return true
+        }
+        
+        // Keep track of visited nodes to detect cycles
+        var visited: Set<UUID> = []
+        var currentPath: Set<UUID> = []
+        
+        // Recursive function to traverse the graph
+        func hasPath(current: UUID, target: UUID) async -> Bool {
+            // If we've reached the target, we found a path
+            if current == target {
+                return true
+            }
+            
+            // If we've already visited this node in the current path, it's a cycle
+            if currentPath.contains(current) {
+                return true
+            }
+            
+            // If we've already explored this node completely, skip it
+            if visited.contains(current) {
+                return false
+            }
+            
+            // Mark as visited and add to current path
+            visited.insert(current)
+            currentPath.insert(current)
+            
+            // Get all relationships from this node
+            let relationships = await EntityRelationshipService.shared.getRelationshipsForScreenshot(current)
+            
+            // Check all connected nodes
+            for relationship in relationships {
+                let nextNode = relationship.sourceScreenshotId == current ? 
+                    relationship.targetScreenshotId : relationship.sourceScreenshotId
+                
+                // Only follow strong relationships to avoid false positives
+                if relationship.strength >= 0.5 {
+                    if await hasPath(current: nextNode, target: target) {
+                        return true
+                    }
+                }
+            }
+            
+            // Remove from current path when backtracking
+            currentPath.remove(current)
+            return false
+        }
+        
+        // Check if there's already a path from 'to' back to 'from'
+        // If there is, adding a direct relationship from 'from' to 'to' would create a cycle
+        return await hasPath(current: to, target: from)
     }
     
     private func hasRecentUserAnnotation(screenshotId: UUID) async -> Bool {

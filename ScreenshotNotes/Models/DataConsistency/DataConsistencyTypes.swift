@@ -110,8 +110,19 @@ enum DataHealthStatus {
     case unknown
 }
 
+enum IssueType {
+    case orphanedData
+    case missingReferences
+    case dataCorruption
+    case duplicateEntries
+    case invalidRelationships
+    case schemaViolation
+    case unknown
+}
+
 struct IntegrityIssue {
     let id: UUID
+    let type: IssueType
     let severity: IssueSeverity
     let description: String
     let affectedData: Set<UUID>
@@ -121,8 +132,9 @@ struct IntegrityIssue {
         case critical, warning, info
     }
     
-    init(severity: IssueSeverity, description: String, affectedData: Set<UUID>) {
+    init(type: IssueType = .unknown, severity: IssueSeverity, description: String, affectedData: Set<UUID>) {
         self.id = UUID()
+        self.type = type
         self.severity = severity
         self.description = description
         self.affectedData = affectedData

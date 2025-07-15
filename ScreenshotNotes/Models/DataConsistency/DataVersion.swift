@@ -13,6 +13,7 @@ class DataVersion: @unchecked Sendable {
     
     // Delta compression fields
     var deltaData: Data? // Compressed change data
+    var snapshotData: Data? // Complete snapshot data
     var parentVersionId: UUID? // For version chain
     var isSnapshot: Bool // Full snapshot vs delta
     
@@ -202,15 +203,17 @@ struct DeltaOperation: Codable {
     let field: String // Which field changed
     let oldValue: String? // Previous value (encoded)
     let newValue: String? // New value (encoded)
+    let data: Data? // Binary data for complex operations
     let timestamp: Date
     
-    init(type: DeltaOperationType, targetId: UUID, field: String, oldValue: String? = nil, newValue: String? = nil) {
+    init(type: DeltaOperationType, targetId: UUID, field: String, oldValue: String? = nil, newValue: String? = nil, data: Data? = nil) {
         self.id = UUID()
         self.type = type
         self.targetId = targetId
         self.field = field
         self.oldValue = oldValue
         self.newValue = newValue
+        self.data = data
         self.timestamp = Date()
     }
 }

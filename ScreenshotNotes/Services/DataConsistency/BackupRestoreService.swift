@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import os.log
+import CryptoKit
 
 /// Backup and Restore Service for data corruption recovery
 /// Provides automatic backup system with corruption detection and recovery workflows
@@ -348,25 +349,65 @@ class BackupRestoreService: ObservableObject {
     
     private func repairIndividualIssue(_ issue: IntegrityIssue) async -> RepairAttemptResult {
         // Attempt to repair specific integrity issue
-        // Implementation would depend on issue type
+        logger.info("🔧 Attempting to repair issue: \(issue.description)")
         
-        switch issue.severity {
-        case .critical:
-            // Attempt data reconstruction or fallback to backup
-            return RepairAttemptResult(success: false, message: "Critical issues require manual intervention")
-        case .warning:
-            // Attempt automatic fix
-            return RepairAttemptResult(success: true, message: "Warning issue auto-resolved")
-        case .info:
-            // Usually doesn't need repair
-            return RepairAttemptResult(success: true, message: "Info issue noted")
+        guard let modelContext = modelContext else {
+            return RepairAttemptResult(success: false, message: "No model context available for repair")
+        }
+        
+        switch issue.type {
+        case .orphanedData:
+            return await repairOrphanedData(issue: issue, context: modelContext)
+            
+        case .missingReferences:
+            return await repairMissingReferences(issue: issue, context: modelContext)
+            
+        case .dataCorruption:
+            return await repairDataCorruption(issue: issue, context: modelContext)
+            
+        case .duplicateEntries:
+            return await repairDuplicateEntries(issue: issue, context: modelContext)
+            
+        case .invalidRelationships:
+            return await repairInvalidRelationships(issue: issue, context: modelContext)
+            
+        case .schemaViolation:
+            return await repairSchemaViolation(issue: issue, context: modelContext)
+            
+        default:
+            // Fallback based on severity
+            switch issue.severity {
+            case .critical:
+                return RepairAttemptResult(success: false, message: "Critical issue requires manual intervention: \(issue.type)")
+            case .warning:
+                return RepairAttemptResult(success: true, message: "Warning issue acknowledged: \(issue.type)")
+            case .info:
+                return RepairAttemptResult(success: true, message: "Info issue noted: \(issue.type)")
+            }
         }
     }
     
     private func schedulePeriodicBackups() async {
         // Schedule automatic backups based on configuration
         logger.info("📅 Scheduling periodic backups every \(self.config.autoBackupInterval / 3600) hours")
-        // Implementation would use Timer or background tasks
+        
+        // Schedule periodic backup using Timer
+        Timer.scheduledTimer(withTimeInterval: config.autoBackupInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+                
+                // Only create backup if we have significant data changes
+                let shouldBackup = await self.shouldCreatePeriodicBackup()
+                if shouldBackup {
+                    let result = await self.createBackup()
+                    if result.success {
+                        self.logger.info("✅ Periodic backup completed successfully")
+                    } else {
+                        self.logger.error("❌ Periodic backup failed: \(result.message)")
+                    }
+                }
+            }
+        }
     }
     
     private func createBackupDirectory() {
@@ -449,6 +490,211 @@ class BackupRestoreService: ObservableObject {
             let totalTime = metrics.averageRestoreTime * Double(metrics.successfulRestores - 1) + time
             metrics.averageRestoreTime = totalTime / Double(metrics.successfulRestores)
         }
+    }
+    
+    // MARK: - Data Repair Methods
+    
+    private func repairOrphanedData(issue: IntegrityIssue, context: ModelContext) async -> RepairAttemptResult {
+        do {
+            // Find and remove orphaned data entries
+            let screenshots = try context.fetch(FetchDescriptor<Screenshot>())
+            var repairedCount = 0
+            
+            for screenshot in screenshots {
+                // Check if screenshot has valid image data
+                if screenshot.imageData.isEmpty {
+                    logger.debug("🖾 Removing orphaned screenshot: \(screenshot.id)")
+                    context.delete(screenshot)
+                    repairedCount += 1
+                }
+                
+                // Check for other orphaned data conditions
+                if screenshot.filename.isEmpty && screenshot.extractedText?.isEmpty != false {
+                    logger.debug("🖾 Removing empty screenshot: \(screenshot.id)")
+                    context.delete(screenshot)
+                    repairedCount += 1
+                }
+            }
+            
+            if repairedCount > 0 {
+                try context.save()
+                return RepairAttemptResult(success: true, message: "Removed \(repairedCount) orphaned data entries")
+            } else {
+                return RepairAttemptResult(success: true, message: "No orphaned data found to repair")
+            }
+            
+        } catch {
+            return RepairAttemptResult(success: false, message: "Failed to repair orphaned data: \(error.localizedDescription)")
+        }
+    }
+    
+    private func repairMissingReferences(issue: IntegrityIssue, context: ModelContext) async -> RepairAttemptResult {
+        do {
+            // Check for screenshots with missing file references
+            let screenshots = try context.fetch(FetchDescriptor<Screenshot>())
+            var repairedCount = 0
+            
+            for screenshot in screenshots {
+                // If filename is missing but we have image data, generate filename
+                if screenshot.filename.isEmpty && !screenshot.imageData.isEmpty {
+                    screenshot.filename = "screenshot_\(screenshot.id.uuidString.prefix(8)).png"
+                    repairedCount += 1
+                    logger.debug("🔧 Generated filename for screenshot: \(screenshot.id)")
+                }
+                
+                // If timestamp is invalid, use current date
+                if screenshot.timestamp < Date(timeIntervalSince1970: 0) {
+                    screenshot.timestamp = Date()
+                    repairedCount += 1
+                    logger.debug("🔧 Fixed invalid timestamp for screenshot: \(screenshot.id)")
+                }
+            }
+            
+            if repairedCount > 0 {
+                try context.save()
+                return RepairAttemptResult(success: true, message: "Repaired \(repairedCount) missing references")
+            } else {
+                return RepairAttemptResult(success: true, message: "No missing references found to repair")
+            }
+            
+        } catch {
+            return RepairAttemptResult(success: false, message: "Failed to repair missing references: \(error.localizedDescription)")
+        }
+    }
+    
+    private func repairDataCorruption(issue: IntegrityIssue, context: ModelContext) async -> RepairAttemptResult {
+        // For critical data corruption, we need to fall back to backups
+        if availableBackups.isEmpty {
+            return RepairAttemptResult(success: false, message: "No backups available for corruption repair")
+        }
+        
+        // Find the most recent valid backup
+        for backup in availableBackups.sorted(by: { $0.createdAt > $1.createdAt }) {
+            let integrityCheck = await verifyBackupIntegrity(backup)
+            if integrityCheck.isValid {
+                logger.info("🔄 Attempting to restore from backup to repair corruption: \(backup.id)")
+                let restoreResult = await restoreData(from: backup)
+                
+                if restoreResult.success {
+                    return RepairAttemptResult(success: true, message: "Data corruption repaired by restoring from backup")
+                } else {
+                    continue // Try next backup
+                }
+            }
+        }
+        
+        return RepairAttemptResult(success: false, message: "Could not repair data corruption - no valid backups available")
+    }
+    
+    private func repairDuplicateEntries(issue: IntegrityIssue, context: ModelContext) async -> RepairAttemptResult {
+        do {
+            let screenshots = try context.fetch(FetchDescriptor<Screenshot>())
+            var seenIds: Set<UUID> = []
+            var duplicatesRemoved = 0
+            
+            for screenshot in screenshots {
+                if seenIds.contains(screenshot.id) {
+                    // Remove duplicate
+                    context.delete(screenshot)
+                    duplicatesRemoved += 1
+                    logger.debug("🖾 Removed duplicate screenshot: \(screenshot.id)")
+                } else {
+                    seenIds.insert(screenshot.id)
+                }
+            }
+            
+            if duplicatesRemoved > 0 {
+                try context.save()
+                return RepairAttemptResult(success: true, message: "Removed \(duplicatesRemoved) duplicate entries")
+            } else {
+                return RepairAttemptResult(success: true, message: "No duplicate entries found")
+            }
+            
+        } catch {
+            return RepairAttemptResult(success: false, message: "Failed to repair duplicate entries: \(error.localizedDescription)")
+        }
+    }
+    
+    private func repairInvalidRelationships(issue: IntegrityIssue, context: ModelContext) async -> RepairAttemptResult {
+        // This would repair relationships between screenshots and other entities
+        // For now, we'll implement a basic check
+        
+        do {
+            let screenshots = try context.fetch(FetchDescriptor<Screenshot>())
+            var repairedCount = 0
+            
+            for screenshot in screenshots {
+                // Validate and repair screenshot relationships
+                // For example, ensure tags are properly formatted
+                let validTags = (screenshot.userTags ?? []).filter { !$0.isEmpty && $0.count <= 50 }
+                if validTags.count != (screenshot.userTags ?? []).count {
+                    screenshot.userTags = validTags
+                    repairedCount += 1
+                    logger.debug("🔧 Cleaned invalid tags for screenshot: \(screenshot.id)")
+                }
+            }
+            
+            if repairedCount > 0 {
+                try context.save()
+                return RepairAttemptResult(success: true, message: "Repaired \(repairedCount) invalid relationships")
+            } else {
+                return RepairAttemptResult(success: true, message: "No invalid relationships found")
+            }
+            
+        } catch {
+            return RepairAttemptResult(success: false, message: "Failed to repair invalid relationships: \(error.localizedDescription)")
+        }
+    }
+    
+    private func repairSchemaViolation(issue: IntegrityIssue, context: ModelContext) async -> RepairAttemptResult {
+        // Schema violations typically require data migration or structure fixes
+        do {
+            let screenshots = try context.fetch(FetchDescriptor<Screenshot>())
+            var repairedCount = 0
+            
+            for screenshot in screenshots {
+                // Ensure required fields are not nil/empty
+                if screenshot.id == UUID(uuidString: "00000000-0000-0000-0000-000000000000") {
+                    screenshot.id = UUID()
+                    repairedCount += 1
+                    logger.debug("🔧 Generated new UUID for screenshot with invalid ID")
+                }
+                
+                // Ensure timestamp is valid
+                if screenshot.timestamp.timeIntervalSince1970 < 0 {
+                    screenshot.timestamp = Date()
+                    repairedCount += 1
+                    logger.debug("🔧 Fixed invalid timestamp for screenshot: \(screenshot.id)")
+                }
+            }
+            
+            if repairedCount > 0 {
+                try context.save()
+                return RepairAttemptResult(success: true, message: "Repaired \(repairedCount) schema violations")
+            } else {
+                return RepairAttemptResult(success: true, message: "No schema violations found")
+            }
+            
+        } catch {
+            return RepairAttemptResult(success: false, message: "Failed to repair schema violations: \(error.localizedDescription)")
+        }
+    }
+    
+    private func shouldCreatePeriodicBackup() async -> Bool {
+        // Check if enough changes have occurred since last backup to warrant a new one
+        guard let lastBackup = lastBackupDate else {
+            return true // No previous backup exists
+        }
+        
+        // Check if enough time has passed
+        let timeSinceLastBackup = Date().timeIntervalSince(lastBackup)
+        if timeSinceLastBackup < config.autoBackupInterval * 0.8 {
+            return false // Too soon for another backup
+        }
+        
+        // Check if there are significant data changes
+        // This could be enhanced to track actual change volume
+        return true
     }
 }
 
@@ -572,8 +818,8 @@ struct RepairAttemptResult {
 
 extension Data {
     var sha256Hash: String {
-        // Simplified hash implementation
-        // In production, use CryptoKit
-        return String(abs(self.hashValue))
+        // Enhanced hash implementation using CryptoKit
+        let digest = SHA256.hash(data: self)
+        return digest.compactMap { String(format: "%02x", $0) }.joined()
     }
 } 
