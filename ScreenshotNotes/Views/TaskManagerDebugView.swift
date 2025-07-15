@@ -296,8 +296,8 @@ struct TaskManagerDebugView: View {
                 modelContext: ModelContext(ModelContainer.preview),
                 backgroundProcessors: BackgroundProcessors(
                     ocrProcessor: BackgroundOCRProcessor(),
-                    visionProcessor: BackgroundVisionProcessor(),
-                    semanticProcessor: BackgroundSemanticProcessor()
+                    visionProcessor: BackgroundVisionProcessor.shared,
+                    semanticProcessor: BackgroundSemanticProcessor.shared
                 )
             )
         }

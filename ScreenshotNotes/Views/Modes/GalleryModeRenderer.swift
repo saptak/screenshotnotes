@@ -4,6 +4,7 @@ import SwiftData
 
 struct GalleryModeRenderer: View {
     @StateObject private var viewModel: GalleryModeViewModel
+    @State private var showGroupedView = false
     
     let screenshots: [Screenshot]
     let searchOrchestrator: GlassConversationalSearchOrchestrator
@@ -34,6 +35,39 @@ struct GalleryModeRenderer: View {
 
     var body: some View {
         VStack {
+            // Gallery view toggle (only show when we have screenshots)
+            if !screenshots.isEmpty && !viewModel.isImporting {
+                HStack {
+                    Spacer()
+                    
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showGroupedView.toggle()
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: showGroupedView ? "rectangle.grid.1x2" : "rectangle.3.group")
+                                .font(.system(size: 14, weight: .medium))
+                            Text(showGroupedView ? "Grid View" : "Smart Groups")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    Capsule()
+                                        .stroke(.blue.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 4)
+                }
+            }
+            
             if screenshots.isEmpty && !viewModel.isImporting {
                 if let photoService = viewModel.getPhotoLibraryService,
                    let ocrProcessor = viewModel.getBackgroundOCRProcessor,
@@ -70,23 +104,33 @@ struct GalleryModeRenderer: View {
                    let context = viewModel.getModelContext,
                    let ocrProcessor = viewModel.getBackgroundOCRProcessor,
                    let semanticProcessor = viewModel.getBackgroundSemanticProcessor {
-                    ScreenshotGridView(
-                        screenshots: screenshots,
-                        photoLibraryService: photoService,
-                        isRefreshing: $viewModel.isRefreshing,
-                        bulkImportProgress: $viewModel.bulkImportProgress,
-                        isBulkImportInProgress: $viewModel.isBulkImportInProgress,
-                        backgroundOCRProcessor: ocrProcessor,
-                        backgroundSemanticProcessor: semanticProcessor,
-                        modelContext: context,
-                    searchOrchestrator: searchOrchestrator,
-                    selectedScreenshot: $viewModel.selectedScreenshot,
-                    scrollOffset: $viewModel.galleryScrollOffset,
-                    viewportManager: viewportManager,
-                    qualityManager: qualityManager,
-                    onRefresh: viewModel.refreshScreenshots
-                    )
-                    .id("enhanced-gallery-grid")
+                    
+                    // Show either grouped view or standard grid view
+                    if showGroupedView {
+                        GroupedGalleryView()
+                            .environment(\.modelContext, context)
+                            .id("enhanced-gallery-grouped")
+                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    } else {
+                        ScreenshotGridView(
+                            screenshots: screenshots,
+                            photoLibraryService: photoService,
+                            isRefreshing: $viewModel.isRefreshing,
+                            bulkImportProgress: $viewModel.bulkImportProgress,
+                            isBulkImportInProgress: $viewModel.isBulkImportInProgress,
+                            backgroundOCRProcessor: ocrProcessor,
+                            backgroundSemanticProcessor: semanticProcessor,
+                            modelContext: context,
+                            searchOrchestrator: searchOrchestrator,
+                            selectedScreenshot: $viewModel.selectedScreenshot,
+                            scrollOffset: $viewModel.galleryScrollOffset,
+                            viewportManager: viewportManager,
+                            qualityManager: qualityManager,
+                            onRefresh: viewModel.refreshScreenshots
+                        )
+                        .id("enhanced-gallery-grid")
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    }
                 } else {
                     Text("Services not available")
                         .foregroundColor(.secondary)

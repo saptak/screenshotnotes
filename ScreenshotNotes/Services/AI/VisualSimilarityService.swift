@@ -24,27 +24,10 @@ final class VisualSimilarityService: ObservableObject {
     @Published var processingProgress: Double = 0.0
     
     // MARK: - Vision Requests
-    private lazy var featureExtractorRequest: VNGenerateImageFeaturePrintRequest = {
-        return VNGenerateImageFeaturePrintRequest()
-    }()
-    
-    // No longer store as property, use inline @available(iOS 17, *) where needed
-    
-    private lazy var textDetectionRequest: VNRecognizeTextRequest = {
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .fast
-        request.usesLanguageCorrection = false
-        return request
-    }()
-    
-    private lazy var imageClassificationRequest: VNClassifyImageRequest = {
-    let request = VNClassifyImageRequest()
-    // VNClassifyImageRequest does not have maximumObservations property, so remove it
-    return request
-    }()
+    // Note: Vision requests are now created locally in methods to avoid memory management issues with @MainActor
     
     private init() {
-        setupVisionRequests()
+        // Vision requests are now created locally in methods
     }
     
     // MARK: - Public Interface
@@ -158,6 +141,20 @@ private extension VisualSimilarityService {
     
     /// Extracts comprehensive visual features from an image
     func extractVisualFeatures(from cgImage: CGImage) async -> VisualFeatures {
+        // Validate CGImage before processing
+        guard cgImage.width > 0 && cgImage.height > 0 else {
+            return VisualFeatures(
+                dominantColors: [],
+                averageColor: UIColor.gray,
+                colorVariance: 0.0,
+                textureComplexity: 0.0,
+                edgeDensity: 0.0,
+                featurePoints: [],
+                contentClassification: [],
+                aspectRatio: 1.0
+            )
+        }
+        
         let colorAnalysis = await analyzeImageColors(cgImage)
         let textureAnalysis = await analyzeImageTexture(cgImage)
         let featurePoints = await extractFeaturePoints(cgImage)
@@ -265,8 +262,13 @@ private extension VisualSimilarityService {
     /// Analyzes texture and edge information
     func analyzeImageTexture(_ cgImage: CGImage) async -> TextureAnalysis {
         return await withCheckedContinuation { continuation in
-            let request = VNGenerateImageFeaturePrintRequest()
+            // Validate CGImage before processing
+            guard cgImage.width > 0 && cgImage.height > 0 else {
+                continuation.resume(returning: TextureAnalysis(complexity: 0.0, edgeDensity: 0.0))
+                return
+            }
             
+            let request = VNGenerateImageFeaturePrintRequest()
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             
             do {
@@ -292,6 +294,12 @@ private extension VisualSimilarityService {
     /// Extracts feature points using Vision framework
     func extractFeaturePoints(_ cgImage: CGImage) async -> [CGPoint] {
         return await withCheckedContinuation { continuation in
+            // Validate CGImage before processing
+            guard cgImage.width > 0 && cgImage.height > 0 else {
+                continuation.resume(returning: [])
+                return
+            }
+            
             let request = VNDetectContoursRequest()
             request.maximumImageDimension = 512 // Optimize for performance
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
@@ -310,12 +318,20 @@ private extension VisualSimilarityService {
     /// Classifies image content using Vision framework
     func classifyImageContent(_ cgImage: CGImage) async -> [String] {
         return await withCheckedContinuation { continuation in
+            // Validate CGImage before processing
+            guard cgImage.width > 0 && cgImage.height > 0 else {
+                continuation.resume(returning: [])
+                return
+            }
+            
+            // Create request locally to avoid memory management issues with @MainActor
+            let request = VNClassifyImageRequest()
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             
             do {
-                try handler.perform([imageClassificationRequest])
+                try handler.perform([request])
                 
-                let classifications = imageClassificationRequest.results?.prefix(5).compactMap { observation in
+                let classifications = request.results?.prefix(5).compactMap { observation in
                     observation.confidence > 0.3 ? observation.identifier : nil
                 } ?? []
                 
@@ -427,12 +443,23 @@ private extension VisualSimilarityService {
     /// Detects text regions in an image
     func detectTextRegions(in cgImage: CGImage) async -> [CGRect] {
         return await withCheckedContinuation { continuation in
+            // Validate CGImage before processing
+            guard cgImage.width > 0 && cgImage.height > 0 else {
+                continuation.resume(returning: [])
+                return
+            }
+            
+            // Create request locally to avoid memory management issues with @MainActor
+            let request = VNRecognizeTextRequest()
+            request.recognitionLevel = .fast
+            request.usesLanguageCorrection = false
+            
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             
             do {
-                try handler.perform([textDetectionRequest])
+                try handler.perform([request])
                 
-                let regions = textDetectionRequest.results?.compactMap { observation in
+                let regions = request.results?.compactMap { observation in
                     observation.boundingBox
                 } ?? []
                 
@@ -446,11 +473,17 @@ private extension VisualSimilarityService {
     /// Detects object regions in an image
     func detectObjectRegions(in cgImage: CGImage) async -> [CGRect] {
         return await withCheckedContinuation { continuation in
+            // Validate CGImage before processing
+            guard cgImage.width > 0 && cgImage.height > 0 else {
+                continuation.resume(returning: [])
+                return
+            }
+            
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             if #available(iOS 17, *) {
                 if let VNRecognizeObjectsRequestType = NSClassFromString("VNRecognizeObjectsRequest") as? NSObject.Type {
                     let request = VNRecognizeObjectsRequestType.init() as! VNRequest
-                    (request as NSObject).setValue(20, forKey: "maximumObservations")
+                    // Note: VNRecognizeObjectsRequest doesn't have maximumObservations property
                     do {
                         try handler.perform([request])
                         let results = request.value(forKey: "results") as? [Any]
@@ -477,11 +510,6 @@ private extension VisualSimilarityService {
 // MARK: - Helper Methods
 
 private extension VisualSimilarityService {
-    
-    /// Sets up Vision framework requests
-    func setupVisionRequests() {
-        // Additional setup if needed
-    }
     
     /// Quantizes a color for counting purposes
     nonisolated static func quantizeColor(red: CGFloat, green: CGFloat, blue: CGFloat) -> String {

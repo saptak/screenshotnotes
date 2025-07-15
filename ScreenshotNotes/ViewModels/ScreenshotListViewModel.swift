@@ -76,8 +76,8 @@ class ScreenshotListViewModel: ObservableObject, MemoryTrackable, ResourceCleanu
             modelContext: modelContext,
             backgroundProcessors: BackgroundProcessors(
                 ocrProcessor: BackgroundOCRProcessor(),
-                visionProcessor: BackgroundVisionProcessor(),
-                semanticProcessor: backgroundSemanticProcessor ?? BackgroundSemanticProcessor()
+                visionProcessor: BackgroundVisionProcessor.shared,
+                semanticProcessor: backgroundSemanticProcessor ?? BackgroundSemanticProcessor.shared
             )
         )
         

@@ -286,7 +286,7 @@ struct MetadataEditorView: View {
                         
                         // Trigger mind map regeneration if needed
                         Task {
-                            await BackgroundSemanticProcessor().triggerMindMapRegeneration(in: modelContext)
+                            await BackgroundSemanticProcessor.shared.triggerMindMapRegeneration(in: modelContext)
                         }
                         
                         hapticService.notification(.success)

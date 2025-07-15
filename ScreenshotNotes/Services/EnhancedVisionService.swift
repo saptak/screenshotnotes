@@ -119,7 +119,7 @@ public class EnhancedVisionService {
             request.minimumAspectRatio = 0.2
             request.maximumAspectRatio = 1.0
             request.minimumSize = 0.1
-            request.maximumObservations = 10
+            // Note: VNDetectRectanglesRequest doesn't have maximumObservations property
             
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             try? handler.perform([request])

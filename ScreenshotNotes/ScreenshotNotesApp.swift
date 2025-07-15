@@ -22,6 +22,7 @@ struct ScreenshotNotesApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Screenshot.self,
+            ScreenshotGroup.self,
         ])
         
         // Try primary persistent storage first

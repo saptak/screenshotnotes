@@ -259,7 +259,7 @@ final class QuickActionService: NSObject, ObservableObject, UIDocumentPickerDele
                     
                     // Trigger mind map regeneration after deletion
                     Task {
-                        await BackgroundSemanticProcessor().triggerMindMapRegeneration(in: modelContext)
+                        await BackgroundSemanticProcessor.shared.triggerMindMapRegeneration(in: modelContext)
                     }
                 } catch {
                     print("❌ Failed to delete screenshots: \(error)")

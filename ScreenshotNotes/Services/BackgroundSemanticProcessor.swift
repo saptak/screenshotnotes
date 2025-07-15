@@ -5,6 +5,8 @@ import os.log
 
 @MainActor
 public final class BackgroundSemanticProcessor: ObservableObject, MemoryTrackable, ResourceCleanupProtocol {
+    public static let shared = BackgroundSemanticProcessor()
+    
     @Published var isProcessing = false
     @Published var processedCount = 0
     @Published var totalCount = 0

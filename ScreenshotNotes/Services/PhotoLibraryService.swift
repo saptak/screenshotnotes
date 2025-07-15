@@ -614,7 +614,7 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
                 Task.detached { @MainActor in
                     // Small delay to ensure the screenshot is fully saved
                     try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-                    await BackgroundSemanticProcessor().processScreenshotsNeedingAnalysis(in: modelContext)
+                    await BackgroundSemanticProcessor.shared.processScreenshotsNeedingAnalysis(in: modelContext)
                 }
             } catch {
                 print("❌ Failed to auto-import screenshot with retry: \(error)")

@@ -19,6 +19,10 @@ public final class Screenshot {
     @Relationship(deleteRule: .nullify)
     public var collections: [Collection] = []
     
+    // Smart grouping relationship
+    @Relationship(deleteRule: .nullify)
+    public var groups: [ScreenshotGroup] = []
+    
     // Phase 5.2.1: Enhanced Vision Processing
     public var visualAttributesData: Data?
     public var lastVisionAnalysis: Date?

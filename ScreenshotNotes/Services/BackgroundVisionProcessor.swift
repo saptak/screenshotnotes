@@ -7,6 +7,7 @@ import os.log
 /// Integrates with Phase 5.2.1 Enhanced Vision Processing
 @MainActor
 public final class BackgroundVisionProcessor: ObservableObject, MemoryTrackable, ResourceCleanupProtocol {
+    public static let shared = BackgroundVisionProcessor()
     
     // MARK: - Configuration
     
