@@ -32,7 +32,7 @@ public final class SmartGroupingService: ObservableObject {
     // MARK: - Services
     
     private let ocrService = OCRService()
-    // Visual similarity service reference removed for performance optimizations
+    private let visualSimilarityIndexService = VisualSimilarityIndexService.shared
     
     // MARK: - Cancellation Support
     
@@ -113,16 +113,23 @@ public final class SmartGroupingService: ObservableObject {
             
             guard !Task.isCancelled else { return }
             
-            // Step 2: Content Similarity (60% of progress) - Optimized with batching
+            // Step 2: Content Similarity (40% of progress) - Optimized with batching
             await updateProgress(0.4)
             let contentGroups = await detectContentSimilarityGroups(screenshots, in: modelContext)
             logger.info("Created \(contentGroups.count) content similarity groups")
             
             guard !Task.isCancelled else { return }
             
-            // Step 3: Merge and optimize groups
+            // Step 3: Visual Similarity (20% of progress) - Using indexed features
+            await updateProgress(0.7)
+            let visualGroups = await detectVisualSimilarityGroupsOptimized(screenshots, in: modelContext)
+            logger.info("Created \(visualGroups.count) visual similarity groups from indexed features")
+            
+            guard !Task.isCancelled else { return }
+            
+            // Step 4: Merge and optimize groups
             await updateProgress(0.9)
-            let allGroups = sequenceGroups + contentGroups
+            let allGroups = sequenceGroups + contentGroups + visualGroups
             let optimizedGroups = await optimizeGroups(allGroups, in: modelContext)
             logger.info("Optimized to \(optimizedGroups.count) final groups")
             
@@ -382,30 +389,58 @@ public final class SmartGroupingService: ObservableObject {
         return group
     }
     
-    // MARK: - Visual Similarity Detection (Disabled for Performance)
+    // MARK: - Optimized Visual Similarity Detection (Using Indexed Features)
     
-    /// Visual similarity detection temporarily disabled for performance
-    /// This was causing the major performance issues with Vision Framework calls
-    private func detectVisualSimilarityGroups(_ screenshots: [Screenshot], in modelContext: ModelContext) async -> [ScreenshotGroup] {
-        // Temporarily disabled to improve performance
-        // Visual similarity detection requires expensive Vision Framework operations
-        // that were causing 2+ second hangs. Will be re-enabled with proper background processing.
-        logger.info("Visual similarity detection temporarily disabled for performance")
-        return []
+    /// Visual similarity detection using pre-computed indexed features
+    /// This eliminates expensive on-demand Vision Framework calls for dramatically improved performance
+    private func detectVisualSimilarityGroupsOptimized(_ screenshots: [Screenshot], in modelContext: ModelContext) async -> [ScreenshotGroup] {
+        logger.info("Starting visual similarity detection using indexed features")
+        
+        // Use the indexed visual similarity service for fast lookup
+        let visualSimilarityGroups = await visualSimilarityIndexService.findVisualSimilarityGroups(
+            from: screenshots,
+            in: modelContext
+        )
+        
+        var groups: [ScreenshotGroup] = []
+        
+        // Convert similarity groups to ScreenshotGroup objects
+        for (index, similarScreenshots) in visualSimilarityGroups.enumerated() {
+            guard !Task.isCancelled else { break }
+            
+            let group = await createVisualSimilarityGroupOptimized(
+                from: similarScreenshots,
+                groupIndex: index,
+                in: modelContext
+            )
+            groups.append(group)
+        }
+        
+        logger.info("Created \(groups.count) visual similarity groups using indexed features")
+        return groups
     }
     
-    // Visual similarity temporarily disabled for performance
+    /// Fast visual similarity check using indexed features
     private func isVisuallySimilar(_ screenshot1: Screenshot, _ screenshot2: Screenshot) async -> Bool {
-        // This was causing major performance issues with Vision Framework calls
-        return false
+        // Use indexed visual similarity service for fast comparison
+        return await visualSimilarityIndexService.areVisuallySimilar(screenshot1, screenshot2)
     }
     
-    // Visual similarity group creation disabled for performance
-    private func createVisualSimilarityGroup(from screenshots: [Screenshot], in modelContext: ModelContext) async -> ScreenshotGroup {
+    /// Create visual similarity group using indexed data (optimized)
+    private func createVisualSimilarityGroupOptimized(
+        from screenshots: [Screenshot],
+        groupIndex: Int,
+        in modelContext: ModelContext
+    ) async -> ScreenshotGroup {
+        // Generate a descriptive title based on the group
+        let appName = await extractAppNameOptimized(from: screenshots.first ?? screenshots[0])
+        let title = "\(appName ?? "Similar") Layout \(groupIndex + 1)"
+        
         let group = ScreenshotGroup(
-            title: "Visual Group",
+            title: title,
             groupType: .visualSimilarity,
-            confidence: 0.75
+            confidence: 0.85, // Higher confidence since using indexed features
+            appName: appName
         )
         
         for screenshot in screenshots {
