@@ -868,8 +868,3 @@ extension ContextualMenuService.MenuAction {
     }
 }
 
-extension String {
-    func contains(regex pattern: String) -> Bool {
-        return range(of: pattern, options: .regularExpression) != nil
-    }
-}
