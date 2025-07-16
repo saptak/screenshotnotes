@@ -43,6 +43,37 @@ struct ContentView: View {
         searchCoordinator.filterScreenshots(screenshots)
     }
     
+    // MARK: - Smart Suggestions Methods
+    
+    /// Trigger smart suggestions generation and overlay display
+    private func showSmartSuggestions() async {
+        let context = SmartSuggestionsService.SuggestionContext(
+            currentScreenshots: Array(screenshots.prefix(100)), // Limit for performance
+            recentActivity: [],
+            timeOfDay: getCurrentTimeOfDay(),
+            userBehaviorProfile: nil
+        )
+        
+        let suggestions = await SmartSuggestionsService.shared.generateSuggestionCards(
+            for: context,
+            in: modelContext
+        )
+        
+        if !suggestions.isEmpty {
+            SmartSuggestionsService.shared.showSuggestionOverlay(with: suggestions)
+        }
+    }
+    
+    private func getCurrentTimeOfDay() -> SmartSuggestionsService.SuggestionContext.TimeOfDay {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 6..<12: return .morning
+        case 12..<17: return .afternoon
+        case 17..<22: return .evening
+        default: return .night
+        }
+    }
+    
     // MARK: - 🎯 Sprint 5.4.1: Glass Search Bar View Components
     
     /// Main content area with adaptive interface mode support
@@ -91,6 +122,9 @@ struct ContentView: View {
                 // Add the contextual menu overlay
                 ContextualMenuOverlay()
                 
+                // 🎯 Iteration 8.6.2.2: Smart Suggestions overlay
+                SmartSuggestionOverlay()
+                
                 // 🎯 Sprint 8.5.2: Error presentation overlay
                 ErrorPresentationView(errorHandler: errorHandler)
             }
@@ -113,6 +147,16 @@ struct ContentView: View {
                     }) {
                         Image(systemName: "brain.head.profile")
                             .foregroundColor(.blue)
+                    }
+                    
+                    // 🎯 Iteration 8.6.2.2: Smart Suggestions
+                    Button(action: {
+                        Task {
+                            await showSmartSuggestions()
+                        }
+                    }) {
+                        Image(systemName: "sparkles")
+                            .foregroundColor(.purple)
                     }
                     
                     // 🎯 Sprint 8.5.3.1: Task Manager Debug View
