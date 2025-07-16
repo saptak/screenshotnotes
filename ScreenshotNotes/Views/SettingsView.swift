@@ -416,6 +416,59 @@ struct SettingsView: View {
                         }
                     }
                     
+                    // Developer Tools Section
+                    Section {
+                        NavigationLink(destination: TaskManagerDebugView()) {
+                            HStack {
+                                Image(systemName: "cpu")
+                                    .foregroundColor(.purple)
+                                    .font(.title2)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Task Manager")
+                                        .font(.headline)
+                                    Text("View active tasks and performance metrics")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        
+                        NavigationLink(destination: MemoryManagerDebugView()) {
+                            HStack {
+                                Image(systemName: "memorychip")
+                                    .foregroundColor(.orange)
+                                    .font(.title2)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Memory Manager")
+                                        .font(.headline)
+                                    Text("Monitor memory usage and detect leaks")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    } header: {
+                        Text("Developer Tools")
+                    } footer: {
+                        Text("Advanced debugging tools for monitoring app performance and resource usage.")
+                    }
+                    
                     Section {
                         Button("Reset to Defaults") {
                             settingsService.resetToDefaults()

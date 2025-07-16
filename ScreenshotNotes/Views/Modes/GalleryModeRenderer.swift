@@ -461,7 +461,12 @@ struct ScreenshotGridView: View {
         switch type {
         case "lowFPS":
             print("🐌 Optimizing for low FPS")
-            // Already using optimized thumbnails, could reduce quality further if needed
+            // Force quality manager to use optimized quality
+            qualityManager.forceQualityLevel(.optimized)
+            // Clear thumbnail cache to reduce memory pressure
+            ThumbnailService.shared.clearCache()
+            // Reduce viewport prediction to save resources
+            viewportManager.setPerformanceMode(enabled: true)
             
         case "highMemory":
             print("🧠 Optimizing for high memory usage")

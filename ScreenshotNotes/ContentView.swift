@@ -159,17 +159,6 @@ struct ContentView: View {
                             .foregroundColor(.purple)
                     }
                     
-                    // 🎯 Sprint 8.5.3.1: Task Manager Debug View
-                    NavigationLink(destination: TaskManagerDebugView()) {
-                        Image(systemName: "cpu")
-                            .foregroundColor(.purple)
-                    }
-                    
-                    // 🎯 Sprint 8.5.3.2: Memory Manager Debug View
-                    NavigationLink(destination: MemoryManagerDebugView()) {
-                        Image(systemName: "memorychip")
-                            .foregroundColor(.orange)
-                    }
                     
                     Button(action: {
                         modeCoordinator.showSettings()

@@ -14,6 +14,7 @@ class PredictiveViewportManager: ObservableObject {
     @Published var scrollVelocity: CGFloat = 0
     @Published var isScrolling = false
     @Published var isPredictiveLoadingEnabled = true
+    @Published var isPerformanceModeEnabled = false
     
     // MARK: - Scroll Analysis
     
@@ -40,6 +41,12 @@ class PredictiveViewportManager: ObservableObject {
     
     private init() {
         print("🔮 PredictiveViewportManager initialized")
+    }
+    
+    /// Enable or disable performance mode to reduce resource usage
+    func setPerformanceMode(enabled: Bool) {
+        isPerformanceModeEnabled = enabled
+        print("🔮 Performance mode: \(enabled ? "enabled" : "disabled")")
     }
     
     // MARK: - Public Interface
@@ -230,6 +237,11 @@ class PredictiveViewportManager: ObservableObject {
     // MARK: - Resource Management
     
     private func isOptimizingForResourcePressure() -> Bool {
+        // Check performance mode
+        if isPerformanceModeEnabled {
+            return true
+        }
+        
         // Check thermal state
         if ProcessInfo.processInfo.thermalState == .serious || ProcessInfo.processInfo.thermalState == .critical {
             return true

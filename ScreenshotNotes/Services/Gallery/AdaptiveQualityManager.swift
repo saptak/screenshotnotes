@@ -122,6 +122,13 @@ class AdaptiveQualityManager: ObservableObject {
         print("🎨 Adaptive quality re-enabled")
     }
     
+    /// Force specific quality level temporarily for performance optimization
+    func forceQualityLevel(_ level: QualityLevel) {
+        let previousQuality = currentQualityLevel
+        currentQualityLevel = level
+        print("🎨 Quality forced to \(level.debugDescription) for performance (was \(previousQuality.debugDescription))")
+    }
+    
     /// Get quality level for specific collection size (without changing current state)
     func getQualityLevel(for collectionSize: Int) -> QualityLevel {
         return calculateOptimalQuality(for: collectionSize)

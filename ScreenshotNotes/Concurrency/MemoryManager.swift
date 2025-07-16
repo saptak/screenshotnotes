@@ -95,8 +95,31 @@ public final class MemoryManager: ObservableObject {
         static let monitoringInterval: TimeInterval = 5.0 // 5 seconds
         static let historyLimit = 100
         static let leakDetectionThreshold: TimeInterval = 300.0 // 5 minutes
+        static let singletonLeakThreshold: TimeInterval = 3600.0 // 1 hour for singleton services
         static let emergencyCleanupThreshold: Double = 90.0
         static let warningThreshold: Double = 75.0
+        
+        // Singleton service class names that are expected to live for the app lifecycle
+        static let singletonServiceClasses: Set<String> = [
+            "BackgroundVisionProcessor",
+            "PhotoLibraryService", 
+            "BackgroundSemanticProcessor",
+            "BackgroundOCRProcessor",
+            "ThumbnailService",
+            "SettingsService",
+            "TaskManager",
+            "TaskCoordinator",
+            "MemoryManager",
+            "WeakReferenceManager"
+        ]
+        
+        // ViewModels and coordinators that can legitimately live for extended periods
+        static let longLivedViewClasses: Set<String> = [
+            "GalleryModeViewModel",
+            "SearchCoordinator",
+            "ModeCoordinator",
+            "SmartSuggestionsService"
+        ]
     }
     
     // MARK: - Internal State
@@ -357,7 +380,18 @@ public final class MemoryManager: ObservableObject {
             
             // Check if object has been alive too long
             let lifetime = now.timeIntervalSince(lifecycle.createdAt)
-            if lifetime > Configuration.leakDetectionThreshold {
+            
+            // Use different thresholds based on object type
+            let threshold: TimeInterval
+            if Configuration.singletonServiceClasses.contains(lifecycle.className) {
+                threshold = Configuration.singletonLeakThreshold
+            } else if Configuration.longLivedViewClasses.contains(lifecycle.className) {
+                threshold = Configuration.singletonLeakThreshold // Same threshold as singletons
+            } else {
+                threshold = Configuration.leakDetectionThreshold
+            }
+            
+            if lifetime > threshold {
                 // Check if the object is still in weak references (still alive)
                 let isStillAlive = weakReferences.allObjects.contains { object in
                     String(format: "%p", unsafeBitCast(object, to: Int.self)) == instanceId
@@ -368,7 +402,16 @@ public final class MemoryManager: ObservableObject {
                     trackedObjects[instanceId] = lifecycle
                     newLeaks.append(lifecycle)
                     
-                    logger.warning("MemoryManager: Potential memory leak detected - \(lifecycle.className) [\(instanceId)] alive for \(lifetime.formatted()) seconds")
+                    let objectType: String
+                    if Configuration.singletonServiceClasses.contains(lifecycle.className) {
+                        objectType = "singleton service"
+                    } else if Configuration.longLivedViewClasses.contains(lifecycle.className) {
+                        objectType = "long-lived view component"
+                    } else {
+                        objectType = "object"
+                    }
+                    
+                    logger.warning("MemoryManager: Potential memory leak detected - \(lifecycle.className) [\(instanceId)] \(objectType) alive for \(lifetime.formatted()) seconds")
                 }
             }
         }
