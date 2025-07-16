@@ -81,9 +81,12 @@ public final class TaskCoordinator: ObservableObject {
     private init() {}
     
     deinit {
-        Task { @MainActor in
-            cancelAllWorkflows()
+        // Cancel all workflow tasks synchronously to avoid capture issues
+        for (_, task) in workflowTasks {
+            task.cancel()
         }
+        // Note: Cannot modify @Published properties from deinit
+        // Cleanup will be handled by the system
     }
     
     // MARK: - Public Workflow Management
@@ -289,7 +292,7 @@ public final class TaskCoordinator: ObservableObject {
             // Step 1: Initialize core services
             await self.updateWorkflowProgress(workflow, step: "Initializing core services", progress: 0.2)
             
-            await taskManager.executeWithDependencies(
+            let _ = await taskManager.executeWithDependencies(
                 category: .userInterface,
                 priority: .critical,
                 description: "Initialize app services",
@@ -335,7 +338,7 @@ public final class TaskCoordinator: ObservableObject {
     /// Cancel a specific workflow
     /// - Parameter workflowId: ID of the workflow to cancel
     public func cancelWorkflow(_ workflowId: UUID) {
-        guard let workflow = activeWorkflows.first(where: { $0.id == workflowId }) else { return }
+        guard let _ = activeWorkflows.first(where: { $0.id == workflowId }) else { return }
         
         // Cancel associated task
         workflowTasks[workflowId]?.cancel()

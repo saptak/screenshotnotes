@@ -123,9 +123,10 @@ public final class MemoryManager: ObservableObject {
     }
     
     deinit {
-        Task { @MainActor in
-            stopMonitoring()
-        }
+        // Clean up synchronously to avoid capture issues
+        monitoringTimer?.invalidate()
+        monitoringTimer = nil
+        // Note: Cannot modify @Published properties from deinit
         NotificationCenter.default.removeObserver(self)
     }
     
@@ -175,8 +176,11 @@ public final class MemoryManager: ObservableObject {
             isLeaked: false
         )
         
-        trackedObjects[instanceId] = lifecycle
-        weakReferences.add(object)
+        // Use detached task to avoid publishing changes warning during view updates
+        Task.detached { @MainActor [weak self] in
+            self?.trackedObjects[instanceId] = lifecycle
+            self?.weakReferences.add(object)
+        }
         
         logger.debug("MemoryManager: Tracking object \(finalClassName) [\(instanceId)]")
     }
@@ -184,12 +188,15 @@ public final class MemoryManager: ObservableObject {
     /// Untrack an object (called from deinit)
     /// - Parameter instanceId: Instance identifier
     public func untrackObject(instanceId: String) {
-        guard var lifecycle = trackedObjects[instanceId] else { return }
-        
-        lifecycle.deallocatedAt = Date()
-        trackedObjects[instanceId] = lifecycle
-        
-        logger.debug("MemoryManager: Object deallocated \(lifecycle.className) [\(instanceId)] after \(lifecycle.lifetime?.formatted() ?? "unknown") seconds")
+        // Use detached task to avoid publishing changes warning during view updates
+        Task.detached { @MainActor [weak self] in
+            guard let self = self, var lifecycle = self.trackedObjects[instanceId] else { return }
+            
+            lifecycle.deallocatedAt = Date()
+            self.trackedObjects[instanceId] = lifecycle
+            
+            self.logger.debug("MemoryManager: Object deallocated \(lifecycle.className) [\(instanceId)] after \(lifecycle.lifetime?.formatted() ?? "unknown") seconds")
+        }
     }
     
     /// Register a cleanup handler for a specific component
@@ -214,12 +221,8 @@ public final class MemoryManager: ObservableObject {
         
         // Execute all registered cleanup handlers
         for (identifier, handler) in cleanupHandlers {
-            do {
-                await handler()
-                logger.info("MemoryManager: Executed cleanup handler: \(identifier)")
-            } catch {
-                logger.error("MemoryManager: Cleanup handler failed [\(identifier)]: \(error)")
-            }
+            await handler()
+            logger.info("MemoryManager: Executed cleanup handler: \(identifier)")
         }
         
         // Force garbage collection
@@ -499,7 +502,9 @@ public extension MemoryTrackable {
     }
     
     @MainActor func startMemoryTracking() {
-        MemoryManager.shared.trackObject(self)
+        Task.detached { @MainActor in
+            MemoryManager.shared.trackObject(self)
+        }
     }
     
     @MainActor func stopMemoryTracking() {
@@ -507,7 +512,6 @@ public extension MemoryTrackable {
     }
 }
 
-// MARK: - Automatic Memory Tracking Macro (Swift 5.9+)
-
-@attached(member, names: named(deinit))
-public macro MemoryTracked() = #externalMacro(module: "MemoryTrackingMacros", type: "MemoryTrackedMacro")
+// MARK: - Automatic Memory Tracking (Manual Implementation)
+// Note: Macro removed to avoid external dependency issues
+// Use MemoryTrackingProtocol directly for memory tracking

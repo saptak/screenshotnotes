@@ -151,9 +151,8 @@ public final class TaskManager: ObservableObject {
     
     deinit {
         deadlockDetectionTimer?.invalidate()
-        Task { @MainActor in
-            cancelAllTasks()
-        }
+        // Note: Cannot access @Published properties from deinit
+        // Task cleanup will be handled by the system
     }
     
     // MARK: - Public Task Management

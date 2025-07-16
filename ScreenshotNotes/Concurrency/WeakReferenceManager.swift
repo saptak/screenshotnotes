@@ -223,19 +223,20 @@ public final class WeakReferenceManager: ObservableObject {
         var deadCount = 0
         
         // Clean up weak collections
-        for (identifier, collection) in weakCollections {
+        for (_, _) in weakCollections {
             // Collections will be cleaned up automatically through weak references
             // No manual cleanup needed since we're using weak references
         }
         
         // Clean up weak delegates
         let deadDelegates = weakDelegates.filter { _, value in
-            guard let weakDelegate = value as? AnyObject else { return true }
             // Use reflection to check if delegate is nil
-            let mirror = Mirror(reflecting: weakDelegate)
+            let mirror = Mirror(reflecting: value)
             for child in mirror.children {
                 if child.label == "delegate" {
-                    return child.value == nil
+                    // Check if the value is an optional and is nil
+                    let childMirror = Mirror(reflecting: child.value)
+                    return childMirror.displayStyle == .optional && childMirror.children.isEmpty
                 }
             }
             return false
@@ -368,7 +369,7 @@ public struct WeakRef<T: AnyObject> {
     public var wrappedValue: T? {
         get { container.value }
         set {
-            if let newValue = newValue {
+            if let _ = newValue {
                 // This is a limitation of the property wrapper approach
                 // In practice, you'd want to create a new container
                 // For now, we'll just log the limitation
