@@ -17,6 +17,11 @@ struct ScreenshotDetailView: View {
     @StateObject private var glassSystem = GlassDesignSystem.shared
     @State private var currentScreenshot: Screenshot
     @State private var showingActionSheet = false
+    
+    // Iteration 8.7.1.1: One-Tap Text Actions
+    @StateObject private var textActionService = SmartTextActionService.shared
+    @State private var detectedTextActions: [SmartTextActionService.TextAction] = []
+    @State private var showingTextActions = false
 
     // Navigation support
     private let minScale: CGFloat = 0.5
@@ -92,7 +97,10 @@ struct ScreenshotDetailView: View {
                             addHapticFeedback(.light)
                         },
                         showingUnifiedPanel: $showingUnifiedPanel,
-                        isTextPanelExpanded: $isTextPanelExpanded
+                        isTextPanelExpanded: $isTextPanelExpanded,
+                        onTriggerTextActions: {
+                            detectAndShowTextActions()
+                        }
                     )
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
@@ -132,6 +140,9 @@ struct ScreenshotDetailView: View {
                             if let extractedText = currentScreenshot.extractedText, !extractedText.isEmpty {
                                 Button("Copy Text", systemImage: "text.quote") {
                                     copyExtractedText()
+                                }
+                                Button("Text Actions", systemImage: "wand.and.rays") {
+                                    detectAndShowTextActions()
                                 }
                             }
                             Button(showingUnifiedPanel ? "Hide Details Panel" : "Show Details Panel", systemImage: showingUnifiedPanel ? "eye.slash" : "eye") {
@@ -289,6 +300,25 @@ struct ScreenshotDetailView: View {
                 }
             )
         }
+        .textActionOverlay(
+            actions: detectedTextActions,
+            onActionTapped: { action in
+                executeTextAction(action)
+            },
+            onDismiss: {
+                showingTextActions = false
+                detectedTextActions = []
+                
+                // Clean up text action service resources
+                textActionService.cleanup()
+                
+                // Trigger memory cleanup
+                Task {
+                    await TextActionMemoryMonitor.shared.performMemoryCleanup()
+                }
+            }
+        )
+        .responsiveLayout()
     }
 
     var allGestures: some Gesture {
@@ -487,6 +517,57 @@ struct ScreenshotDetailView: View {
         let notification = UINotificationFeedbackGenerator()
         notification.notificationOccurred(type)
     }
+    
+    // MARK: - Iteration 8.7.1.1: One-Tap Text Actions
+    
+    private func detectAndShowTextActions() {
+        guard let extractedText = currentScreenshot.extractedText, !extractedText.isEmpty else {
+            addHapticFeedback(.error)
+            return
+        }
+        
+        addHapticFeedback(.light)
+        
+        Task {
+            // Use memory-safe detection
+            let actions = await textActionService.detectActionsSafely(in: extractedText)
+            
+            await MainActor.run {
+                if !actions.isEmpty {
+                    detectedTextActions = actions
+                    withAnimation(GlassDesignSystem.glassSpring(.responsive)) {
+                        showingTextActions = true
+                    }
+                } else {
+                    addHapticFeedback(.warning)
+                }
+            }
+        }
+    }
+    
+    private func executeTextAction(_ action: SmartTextActionService.TextAction) {
+        Task {
+            let success = await textActionService.executeAction(action)
+            
+            await MainActor.run {
+                if success {
+                    addHapticFeedback(.success)
+                    
+                    // Auto-dismiss for most actions except copy
+                    if action.type != .copy {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            withAnimation(GlassDesignSystem.glassSpring(.gentle)) {
+                                showingTextActions = false
+                                detectedTextActions = []
+                            }
+                        }
+                    }
+                } else {
+                    addHapticFeedback(.error)
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Collapsible Section Components
@@ -637,6 +718,9 @@ struct UnifiedDetailsPanel: View {
     @StateObject private var glassSystem = GlassDesignSystem.shared
     private let hapticService = HapticService.shared
     
+    // Iteration 8.7.1.1: One-Tap Text Actions callback
+    let onTriggerTextActions: (() -> Void)?
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Pull-down indicator and panel controls
@@ -774,9 +858,8 @@ struct UnifiedDetailsPanel: View {
         let hasContent = !contentItems.isEmpty
         
         VStack(alignment: .leading, spacing: 12) {
-            // Copy button for extracted text
-            HStack {
-                Spacer()
+            // Action buttons for extracted text
+            HStack(spacing: 8) {
                 Button(action: {
                     UIPasteboard.general.string = text
                     hapticService.impact(.light)
@@ -796,6 +879,27 @@ struct UnifiedDetailsPanel: View {
                     )
                 }
                 .buttonStyle(.plain)
+                
+                Button(action: {
+                    onTriggerTextActions?()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "wand.and.rays")
+                        Text("Smart Actions")
+                    }
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.purple)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                    )
+                }
+                .buttonStyle(.plain)
+                
+                Spacer()
             }
             
             // Content items

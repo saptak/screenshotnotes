@@ -285,12 +285,12 @@ class MockImageStorageService: ImageStorageServiceProtocol {
     }
 }
 
-class MockHapticFeedbackService: HapticFeedbackServiceProtocol {
-    func triggerHaptic(_ pattern: HapticPattern, intensity: CGFloat? = nil) {
+class MockHapticFeedbackService {
+    func triggerHaptic(_ pattern: HapticFeedbackService.HapticPattern, intensity: CGFloat? = nil) {
         // Mock implementation - no actual haptic feedback
     }
     
-    func triggerHapticSequence(_ patterns: [HapticPattern]) {
+    func triggerHapticSequence(_ patterns: [HapticFeedbackService.HapticPattern]) {
         // Mock implementation - no actual haptic feedback
     }
 }
