@@ -43,6 +43,50 @@ struct ContentView: View {
         searchCoordinator.filterScreenshots(screenshots)
     }
     
+    // MARK: - Photo Import Methods
+    
+    /// Import images from PhotosPicker selection
+    private func importImages(from items: [PhotosPickerItem]) async {
+        guard !items.isEmpty else { return }
+        
+        // Import each image directly using the real implementation
+        for item in items {
+            do {
+                guard let data = try await item.loadTransferable(type: Data.self),
+                      let _ = UIImage(data: data) else {
+                    print("Failed to load image data from PhotosPicker item")
+                    continue
+                }
+                
+                let filename = generateFilename(from: item.itemIdentifier)
+                let screenshot = Screenshot(imageData: data, filename: filename)
+                
+                // Insert into SwiftData model context
+                modelContext.insert(screenshot)
+                
+                // Save immediately so the screenshot is available
+                try modelContext.save()
+                
+                // Process background semantic analysis
+                Task {
+                    await backgroundSemanticProcessor.processScreenshot(screenshot, in: modelContext)
+                }
+                
+                print("Successfully imported image: \(filename)")
+                
+            } catch {
+                print("Error importing image: \(error)")
+            }
+        }
+    }
+    
+    /// Generate filename for imported image
+    private func generateFilename(from identifier: String?) -> String {
+        let timestamp = Date().formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))
+        let suffix = String(identifier?.suffix(8) ?? UUID().uuidString.prefix(8))
+        return "screenshot_\(timestamp)_\(suffix).jpg"
+    }
+    
     // MARK: - Smart Suggestions Methods
     
     /// Trigger smart suggestions generation and overlay display
@@ -167,9 +211,7 @@ struct ContentView: View {
                             .fontWeight(.semibold)
                             .foregroundColor(.primary)
                     }
-                    Button(action: {
-                        // This is now handled by the GalleryModeViewModel
-                    }) {
+                    PhotosPicker(selection: $selectedItems, matching: .images) {
                         Image(systemName: "plus")
                             .fontWeight(.semibold)
                             .foregroundColor(.primary)
@@ -183,8 +225,7 @@ struct ContentView: View {
             .onChange(of: selectedItems) { _, newItems in
                 if !newItems.isEmpty {
                     Task {
-                        // This is now handled by the GalleryModeViewModel
-                        // await importImages(from: newItems)
+                        await importImages(from: newItems)
                         selectedItems = []
                     }
                 }
