@@ -584,7 +584,7 @@ public final class NaturalLanguageSearchService: ObservableObject {
     private func extractEntityFilters(_ query: String) async -> [EntityFilter] {
         // Use existing EntityExtractionService for advanced entity detection
         // TODO: Integrate entity extraction when service is available
-        let entities: [String] = []
+        let _: [String] = []
         
         // Return empty filters for now
         return []

@@ -40,11 +40,11 @@ class InterfaceSettings: ObservableObject {
     
     // MARK: - Published Properties
     
-    /// Whether the Enhanced Interface is enabled (disabled by default)
-    @Published var isEnhancedInterfaceEnabled: Bool = false
+    /// Whether the Enhanced Interface is enabled (enabled by default)
+    @Published var isEnhancedInterfaceEnabled: Bool = true
     
     /// User's preferred interface type
-    @Published var interfacePreference: InterfaceType = .legacy
+    @Published var interfacePreference: InterfaceType = .enhanced
     
     /// Whether user has seen the Enhanced Interface introduction
     @Published var hasSeenEnhancedInterfaceIntro: Bool = false {
@@ -75,10 +75,10 @@ class InterfaceSettings: ObservableObject {
     // MARK: - Initialization
     
     init() {
-        // Load saved preferences
-        let savedEnabled = UserDefaults.standard.bool(forKey: "isEnhancedInterfaceEnabled")
+        // Load saved preferences - default to Enhanced Interface for new users
+        let savedEnabled = UserDefaults.standard.object(forKey: "isEnhancedInterfaceEnabled") as? Bool ?? true
         let savedPreference = UserDefaults.standard.string(forKey: "interfacePreference")
-        let preference = InterfaceType(rawValue: savedPreference ?? InterfaceType.legacy.rawValue) ?? .legacy
+        let preference = InterfaceType(rawValue: savedPreference ?? InterfaceType.enhanced.rawValue) ?? .enhanced
         
         // Set values directly to avoid triggering observers during initialization
         self.isEnhancedInterfaceEnabled = savedEnabled
@@ -157,7 +157,7 @@ class InterfaceSettings: ObservableObject {
     /// Resets all interface settings to defaults
     func resetToDefaults() {
         SwiftUI.withAnimation(.easeInOut(duration: 0.3)) {
-            updateInterfacePreference(.legacy, withAnimation: false) // Avoid double animation
+            updateInterfacePreference(.enhanced, withAnimation: false) // Avoid double animation
             hasSeenEnhancedInterfaceIntro = false
             showEnhancedInterfaceOptions = true
         }

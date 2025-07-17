@@ -611,7 +611,7 @@ public final class VoiceSearchInterface: NSObject, ObservableObject {
 // MARK: - SFSpeechRecognizerDelegate
 
 extension VoiceSearchInterface: SFSpeechRecognizerDelegate {
-    public func speechRecognizer(_ speechRecognizer: SFSpeechRecognizer, availabilityDidChange available: Bool) {
+    public nonisolated func speechRecognizer(_ speechRecognizer: SFSpeechRecognizer, availabilityDidChange available: Bool) {
         Task { @MainActor in
             if !available {
                 voiceSearchState = .disabled

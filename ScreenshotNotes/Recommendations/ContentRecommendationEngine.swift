@@ -536,7 +536,7 @@ public final class ContentRecommendationEngine: ObservableObject {
         
         // Find screenshots from similar times of day
         let timeOfDay = Calendar.current.component(.hour, from: screenshot.timestamp)
-        let dayOfWeek = Calendar.current.component(.weekday, from: screenshot.timestamp)
+        let _ = Calendar.current.component(.weekday, from: screenshot.timestamp)
         
         let sameTimeOfDay = candidates.filter { candidate in
             let candidateHour = Calendar.current.component(.hour, from: candidate.timestamp)

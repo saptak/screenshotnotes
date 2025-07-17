@@ -400,7 +400,7 @@ public final class TemporalQueryProcessor: ObservableObject {
     private func extractNamedPeriods(_ query: String) async -> [TemporalPeriod] {
         var periods: [TemporalPeriod] = []
         
-        for (pattern, eventType) in namedPeriodPatterns {
+        for (pattern, _) in namedPeriodPatterns {
             if query.contains(pattern) {
                 let context = extractContextForNamedPeriod(pattern, in: query)
                 let confidence = calculateNamedPeriodConfidence(pattern, context: context, in: query)
@@ -479,7 +479,7 @@ public final class TemporalQueryProcessor: ObservableObject {
     private func extractTimeOfDayReferences(_ query: String) async -> [TemporalPeriod] {
         var periods: [TemporalPeriod] = []
         
-        for (timePhrase, info) in timeOfDayPatterns {
+        for (timePhrase, _) in timeOfDayPatterns {
             if query.contains(timePhrase) {
                 // For time of day, we'll provide a template that can be applied to any date
                 periods.append(TemporalPeriod(
@@ -595,8 +595,8 @@ public final class TemporalQueryProcessor: ObservableObject {
         // Extract location, activity, and purpose from context
         var location: String?
         var activity: String?
-        var purpose: String?
-        var participants: [String] = []
+        let purpose: String? = nil
+        let participants: [String] = []
         var relatedKeywords: [String] = []
         
         // Simple location extraction (in real app, would use more sophisticated NLP)

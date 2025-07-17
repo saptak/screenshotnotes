@@ -1220,7 +1220,7 @@ public final class IntelligentQueryOrchestrator: ObservableObject {
         var themes: [String] = []
         
         for screenshot in screenshots {
-            if let visualAttributes = screenshot.visualAttributes {
+            if screenshot.visualAttributes != nil {
                 // Add prominent objects as themes
                 themes.append("visual content")
                 

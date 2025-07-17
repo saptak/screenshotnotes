@@ -36,7 +36,7 @@ class ModeCoordinator: ObservableObject {
     
     /// Determines if Enhanced Interface is enabled
     var isEnhancedInterfaceEnabled: Bool {
-        interfaceSettings.isEnhancedInterfaceEnabled
+        interfaceSettings.isUsingEnhancedInterface
     }
     
     /// Sets up two-way binding between currentMode and modeManager
@@ -125,7 +125,7 @@ class ModeCoordinator: ObservableObject {
                     .tag(InterfaceMode.gallery)
 
                     // Constellation mode
-                    ConstellationModeRenderer(screenshots: screenshots)
+                    ConstellationModeView()
                         .tag(InterfaceMode.constellation)
 
                     // Exploration mode (placeholder)
