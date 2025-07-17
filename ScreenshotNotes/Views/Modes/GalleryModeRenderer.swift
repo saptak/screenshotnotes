@@ -84,6 +84,10 @@ struct GalleryModeRenderer: View {
                         modelContext: context,
                         scrollOffset: $viewModel.galleryScrollOffset
                     )
+                    .onAppear {
+                        print("📸 GalleryModeRenderer: EmptyStateView appeared with services available")
+                        print("📸 - photoService authorization: \(photoService.authorizationStatus)")
+                    }
                 } else {
                     // Fallback empty state when services are not available
                     VStack {
@@ -98,6 +102,13 @@ struct GalleryModeRenderer: View {
                             .foregroundColor(.secondary)
                     }
                     .id("enhanced-gallery-empty-state")
+                    .onAppear {
+                        print("📸 GalleryModeRenderer: Showing fallback empty state - services not available")
+                        print("📸 - photoService: \(viewModel.getPhotoLibraryService != nil ? "✅" : "❌")")
+                        print("📸 - ocrProcessor: \(viewModel.getBackgroundOCRProcessor != nil ? "✅" : "❌")")
+                        print("📸 - semanticProcessor: \(viewModel.getBackgroundSemanticProcessor != nil ? "✅" : "❌")")
+                        print("📸 - context: \(viewModel.getModelContext != nil ? "✅" : "❌")")
+                    }
                 }
             } else {
                 if let photoService = viewModel.getPhotoLibraryService,
@@ -276,12 +287,15 @@ struct EmptyStateView: View {
     }
     
     private func refreshScreenshots() async {
+        print("📸 Pull-to-import triggered")
+        
         // Prevent concurrent bulk imports
         if isBulkImportInProgress {
             print("📸 Bulk import already in progress, skipping")
             return
         }
         
+        print("📸 Starting bulk import process")
         isBulkImportInProgress = true
         isRefreshing = true
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -289,9 +303,12 @@ struct EmptyStateView: View {
 
         // Check and request photo permission if needed
         let currentStatus = photoLibraryService.authorizationStatus
+        print("📸 Current photo permission status: \(currentStatus)")
+        
         if currentStatus != .authorized {
             print("📸 Photo permission not granted (\(currentStatus)), requesting permission...")
             let newStatus = await photoLibraryService.requestPhotoLibraryPermission()
+            print("📸 Permission request result: \(newStatus)")
             
             if newStatus != .authorized {
                 print("📸 Photo permission denied, cannot import screenshots")
@@ -303,6 +320,8 @@ struct EmptyStateView: View {
             }
             
             print("📸 Photo permission granted, proceeding with import")
+        } else {
+            print("📸 Photo permission already granted, proceeding with import")
         }
 
         // Extremely lazy, incremental import in batches with 20-screenshot limit
@@ -314,7 +333,10 @@ struct EmptyStateView: View {
         var batchIndex = 0
 
         while hasMore && totalImported < maxImportLimit {
+            print("📸 Processing batch \(batchIndex + 1) (batchSize: \(batchSize))")
             let result = await photoLibraryService.importPastScreenshotsBatch(batch: batchIndex, batchSize: batchSize)
+            print("📸 Batch \(batchIndex + 1) result: imported=\(result.imported), skipped=\(result.skipped), hasMore=\(result.hasMore)")
+            
             totalImported += result.imported
             totalSkipped += result.skipped
             batchIndex += 1
@@ -323,10 +345,12 @@ struct EmptyStateView: View {
             // Stop if we've reached the import limit
             if totalImported >= maxImportLimit {
                 hasMore = false
+                print("📸 Reached import limit of \(maxImportLimit), stopping")
             }
             
             // Update progress for UI feedback
             bulkImportProgress = (current: totalImported, total: min(totalImported + totalSkipped, maxImportLimit))
+            print("📸 Progress: \(bulkImportProgress.current)/\(bulkImportProgress.total)")
 
             // Allow UI to update immediately after each batch import
             if result.imported > 0 {
@@ -354,10 +378,13 @@ struct EmptyStateView: View {
         let notificationFeedback = UINotificationFeedbackGenerator()
         if totalImported > 0 {
             notificationFeedback.notificationOccurred(.success)
+            print("📸 ✅ Pull-to-refresh import SUCCESS: \(totalImported) imported, \(totalSkipped) skipped (limit: \(maxImportLimit))")
         } else {
             notificationFeedback.notificationOccurred(.warning)
+            print("📸 ⚠️ Pull-to-refresh import WARNING: \(totalImported) imported, \(totalSkipped) skipped (limit: \(maxImportLimit))")
         }
-        print("📸 Pull-to-refresh import completed: \(totalImported) imported, \(totalSkipped) skipped (limit: \(maxImportLimit))")
+        
+        print("📸 Resetting import state")
         isRefreshing = false
         isBulkImportInProgress = false
         bulkImportProgress = (0, 0) // Reset progress

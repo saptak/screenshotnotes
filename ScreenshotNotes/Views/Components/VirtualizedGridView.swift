@@ -92,10 +92,14 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
                 }
             }
             .refreshable {
+                print("📸 VirtualizedGridView: Pull-to-refresh triggered")
                 if let onRefresh = onRefresh {
+                    print("📸 VirtualizedGridView: Calling onRefresh callback")
                     await onRefresh()
-                    }
+                } else {
+                    print("📸 VirtualizedGridView: No onRefresh callback available")
                 }
+            }
             }
             .onAppear {
                 containerHeight = geometry.size.height

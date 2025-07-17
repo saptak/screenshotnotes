@@ -1,6 +1,7 @@
 
 import SwiftUI
 import SwiftData
+import Photos
 
 struct ConstellationModeView: View {
     @Environment(\.modelContext) private var modelContext
@@ -11,6 +12,10 @@ struct ConstellationModeView: View {
     @State private var isLoading = false
     @State private var sortCriteria: ContentWorkspace.SortCriteria = .lastUpdated
     @State private var showingCreateWorkspace = false
+    
+    // Photo import state
+    @State private var isImporting = false
+    @State private var importProgress: (current: Int, total: Int) = (0, 0)
     
     private let glassDesign = GlassDesignSystem.shared
     
@@ -27,8 +32,10 @@ struct ConstellationModeView: View {
                         // Header Section
                         headerSection
                         
-                        // Loading State
-                        if isLoading {
+                        // Import State
+                        if isImporting {
+                            importingSection
+                        } else if isLoading {
                             loadingSection
                         } else if workspaces.isEmpty {
                             emptyStateSection
@@ -40,7 +47,8 @@ struct ConstellationModeView: View {
                     .padding()
                 }
                 .refreshable {
-                    await detectWorkspaces()
+                    print("📸 ConstellationModeView: Pull-to-refresh triggered")
+                    await importPhotosAndDetectWorkspaces()
                 }
             }
             .navigationTitle("Constellation")
@@ -129,6 +137,31 @@ struct ConstellationModeView: View {
         .glassBackground(material: .thin, cornerRadius: 16, shadow: true)
     }
     
+    private var importingSection: some View {
+        VStack(spacing: 16) {
+            if importProgress.total > 0 {
+                ProgressView(value: Double(importProgress.current), total: Double(importProgress.total))
+                    .progressViewStyle(LinearProgressViewStyle())
+                    .frame(height: 8)
+                
+                Text("Importing \(importProgress.current) of \(importProgress.total) screenshots...")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            } else {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle())
+                
+                Text("Importing screenshots from Photos...")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding()
+        .glassBackground(material: .regular, cornerRadius: 12, shadow: false)
+    }
+    
     private var loadingSection: some View {
         VStack(spacing: 16) {
             ProgressView(value: detectionService.detectionProgress)
@@ -184,6 +217,7 @@ struct ConstellationModeView: View {
     // MARK: - Helper Methods
     
     private func detectWorkspaces() async {
+        print("📸 ConstellationModeView: detectWorkspaces called")
         isLoading = true
         
         let detectedWorkspaces = await detectionService.detectWorkspaces(from: screenshots)
@@ -191,11 +225,148 @@ struct ConstellationModeView: View {
         await MainActor.run {
             workspaces = ContentWorkspace.sortWorkspaces(detectedWorkspaces, by: sortCriteria)
             isLoading = false
+            print("📸 ConstellationModeView: detectWorkspaces completed, found \(workspaces.count) workspaces")
         }
     }
     
     private func sortWorkspaces() {
         workspaces = ContentWorkspace.sortWorkspaces(workspaces, by: sortCriteria)
+    }
+    
+    private func importPhotosAndDetectWorkspaces() async {
+        print("📸 ConstellationModeView: importPhotosAndDetectWorkspaces called")
+        
+        // First, try to import new photos
+        await importNewPhotos()
+        
+        // Then detect workspaces with updated screenshot list
+        await detectWorkspaces()
+    }
+    
+    private func importNewPhotos() async {
+        print("📸 ConstellationModeView: importNewPhotos called")
+        
+        // Check photo library permission
+        let currentStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        print("📸 ConstellationModeView: Photo permission status: \(currentStatus)")
+        
+        if currentStatus != .authorized {
+            print("📸 ConstellationModeView: Photo permission not granted, requesting...")
+            let newStatus = await withCheckedContinuation { continuation in
+                PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
+                    continuation.resume(returning: status)
+                }
+            }
+            print("📸 ConstellationModeView: New photo permission status: \(newStatus)")
+            guard newStatus == .authorized else {
+                print("📸 ConstellationModeView: Photo permission denied, cannot import")
+                return
+            }
+        }
+        
+        isImporting = true
+        print("📸 ConstellationModeView: Starting photo import")
+        
+        // Import photos similar to the GalleryModeRenderer approach
+        let batchSize = 10
+        let maxImportLimit = 20
+        var totalImported = 0
+        var totalSkipped = 0
+        var hasMore = true
+        var batchIndex = 0
+        
+        // Get screenshot assets from photo library
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.predicate = NSPredicate(format: "mediaSubtype & %d != 0", PHAssetMediaSubtype.photoScreenshot.rawValue)
+        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        let allScreenshots = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+        
+        print("📸 ConstellationModeView: Found \(allScreenshots.count) screenshots in photo library")
+        
+        while hasMore && totalImported < maxImportLimit {
+            let start = batchIndex * batchSize
+            let end = min(start + batchSize, allScreenshots.count)
+            
+            if start >= end {
+                hasMore = false
+                break
+            }
+            
+            print("📸 ConstellationModeView: Processing batch \(batchIndex + 1), range \(start)..<\(end)")
+            
+            for i in start..<end {
+                let asset = allScreenshots.object(at: i)
+                let assetId = asset.localIdentifier
+                
+                // Check if already imported
+                let existingScreenshots = try? modelContext.fetch(
+                    FetchDescriptor<Screenshot>(
+                        predicate: #Predicate<Screenshot> { screenshot in
+                            screenshot.assetIdentifier == assetId
+                        }
+                    )
+                )
+                
+                if existingScreenshots?.isEmpty == false {
+                    totalSkipped += 1
+                    continue
+                }
+                
+                // Import the screenshot
+                do {
+                    let imageManager = PHImageManager.default()
+                    let requestOptions = PHImageRequestOptions()
+                    requestOptions.isSynchronous = true
+                    requestOptions.deliveryMode = .highQualityFormat
+                    requestOptions.isNetworkAccessAllowed = true
+                    
+                    let image = await withCheckedContinuation { continuation in
+                        imageManager.requestImage(
+                            for: asset,
+                            targetSize: PHImageManagerMaximumSize,
+                            contentMode: .aspectFit,
+                            options: requestOptions
+                        ) { image, _ in
+                            continuation.resume(returning: image)
+                        }
+                    }
+                    
+                    guard let image = image,
+                          let imageData = image.jpegData(compressionQuality: 0.8) else {
+                        totalSkipped += 1
+                        continue
+                    }
+                    
+                    let screenshot = Screenshot(
+                        imageData: imageData,
+                        filename: "screenshot_\(asset.creationDate?.timeIntervalSince1970 ?? Date().timeIntervalSince1970)",
+                        timestamp: asset.creationDate ?? Date(),
+                        assetIdentifier: asset.localIdentifier
+                    )
+                    
+                    modelContext.insert(screenshot)
+                    try modelContext.save()
+                    totalImported += 1
+                    
+                    print("📸 ConstellationModeView: Imported screenshot \(totalImported): \(asset.localIdentifier)")
+                    
+                } catch {
+                    print("📸 ConstellationModeView: Failed to import screenshot: \(error)")
+                    totalSkipped += 1
+                }
+            }
+            
+            batchIndex += 1
+            importProgress = (current: totalImported, total: min(totalImported + totalSkipped, maxImportLimit))
+            
+            if totalImported >= maxImportLimit {
+                hasMore = false
+            }
+        }
+        
+        print("📸 ConstellationModeView: Import completed - imported: \(totalImported), skipped: \(totalSkipped)")
+        isImporting = false
+        importProgress = (0, 0)
     }
 }
 

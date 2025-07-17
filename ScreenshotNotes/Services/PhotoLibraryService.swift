@@ -84,6 +84,8 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
     ///   - batchSize: The number of screenshots to import per batch
     /// - Returns: (imported: Int, skipped: Int, hasMore: Bool)
     func importPastScreenshotsBatch(batch: Int, batchSize: Int) async -> (imported: Int, skipped: Int, hasMore: Bool) {
+        print("📸 PhotoLibraryService: importPastScreenshotsBatch called (batch: \(batch), batchSize: \(batchSize))")
+        
         // Attempt to start import operation with async-safe coordination
         guard let importId = await importCoordinator.startImport() else {
             print("⚠️ Import already in progress, skipping batch \(batch)")
@@ -100,13 +102,15 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
         }
         
         guard authorizationStatus == .authorized else {
-            print("❌ Photo library access not authorized")
+            print("❌ Photo library access not authorized (status: \(authorizationStatus))")
             return (imported: 0, skipped: 0, hasMore: false)
         }
         guard let modelContext = modelContext else {
             print("❌ Model context not available")
             return (imported: 0, skipped: 0, hasMore: false)
         }
+        
+        print("📸 PhotoLibraryService: Permissions and context OK, proceeding with batch import")
         let fetchOptions = PHFetchOptions()
         fetchOptions.predicate = NSPredicate(format: "mediaSubtype & %d != 0", PHAssetMediaSubtype.photoScreenshot.rawValue)
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
@@ -114,7 +118,11 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
         let total = allScreenshots.count
         let start = batch * batchSize
         let end = min(start + batchSize, total)
+        
+        print("📸 PhotoLibraryService: Found \(total) total screenshots, processing range \(start)..<\(end)")
+        
         if start >= end {
+            print("📸 PhotoLibraryService: No more screenshots to process (start=\(start), end=\(end))")
             return (imported: 0, skipped: 0, hasMore: false)
         }
         var importedCount = 0
@@ -188,6 +196,7 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
         return (imported: importedCount, skipped: skippedCount, hasMore: hasMore)
     }
     func setModelContext(_ context: ModelContext) {
+        print("📸 PhotoLibraryService: setModelContext called")
         self.modelContext = context
     }
     

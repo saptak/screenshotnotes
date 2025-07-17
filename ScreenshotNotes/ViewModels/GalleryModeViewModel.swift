@@ -78,8 +78,15 @@ class GalleryModeViewModel: ObservableObject, MemoryTrackable, ResourceCleanupPr
     }
 
     func refreshScreenshots() async {
+        print("📸 GalleryModeViewModel: refreshScreenshots called")
+        
         // 🎯 Sprint 8.5.3.1: Prevent race conditions with coordinated task management
-        if isBulkImportInProgress { return }
+        if isBulkImportInProgress { 
+            print("📸 GalleryModeViewModel: Bulk import already in progress, returning")
+            return 
+        }
+        
+        print("📸 GalleryModeViewModel: Starting refresh process")
         
         // Cancel any existing background processing workflows to prevent conflicts
         taskManager.cancelTasks(in: .backgroundProcessing)
@@ -88,25 +95,35 @@ class GalleryModeViewModel: ObservableObject, MemoryTrackable, ResourceCleanupPr
         isRefreshing = true
 
         // Step 1: Check permissions with coordinated task management
+        print("📸 GalleryModeViewModel: Checking photo library permissions")
         let permissionGranted = await taskManager.execute(
             category: .userInterface,
             priority: .critical,
             description: "Check photo library permissions"
         ) {
-            guard let photoService = self.photoLibraryService else { return false }
+            guard let photoService = self.photoLibraryService else { 
+                print("📸 GalleryModeViewModel: PhotoLibraryService is nil")
+                return false 
+            }
             let currentStatus = photoService.authorizationStatus
+            print("📸 GalleryModeViewModel: Current authorization status: \(currentStatus)")
             if currentStatus != .authorized {
+                print("📸 GalleryModeViewModel: Requesting photo library permission")
                 let newStatus = await photoService.requestPhotoLibraryPermission()
+                print("📸 GalleryModeViewModel: New authorization status: \(newStatus)")
                 return newStatus == .authorized
             }
             return true
         }
         
         guard permissionGranted == true else {
+            print("📸 GalleryModeViewModel: Permission not granted, stopping refresh")
             isRefreshing = false
             isBulkImportInProgress = false
             return
         }
+        
+        print("📸 GalleryModeViewModel: Permission granted, starting batch import")
 
         // Step 2: Execute coordinated import workflow
         let batchSize = 10
