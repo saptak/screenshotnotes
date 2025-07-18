@@ -353,26 +353,27 @@ struct EmptyStateView: View {
             print("📸 Progress: \(bulkImportProgress.current)/\(bulkImportProgress.total)")
 
             // Allow UI to update immediately after each batch import
-            if result.imported > 0 {
-                // Schedule background processing (rate-limited to prevent overlapping tasks)
-                Task {
-                    // Small delay to allow UI update
-                    try? await Task.sleep(nanoseconds: 50_000_000) // 0.05s
-                    
-                    backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
-                    
-                    // Wait briefly for OCR to initialize  
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
-                    
-                    await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)
-                    await backgroundSemanticProcessor.triggerMindMapRegeneration(in: modelContext)
-                    
-                    print("✅ Background processing completed for batch")
-                }
-            }
+            // Note: Background processing moved to after all imports complete
 
             // Shorter yield for more responsive UI updates
             try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s between batches
+        }
+        
+        // Trigger background processing ONCE after all imports are complete
+        if totalImported > 0 {
+            print("📸 GalleryModeRenderer: All imports complete (\(totalImported) screenshots), starting background processing")
+            
+            // Start OCR processing
+            backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
+            
+            // Wait briefly for OCR to initialize  
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+            
+            // Use shared instance to avoid conflicts
+            await BackgroundSemanticProcessor.shared.processScreenshotsNeedingAnalysis(in: modelContext)
+            await BackgroundSemanticProcessor.shared.triggerMindMapRegeneration(in: modelContext)
+            
+            print("📸 GalleryModeRenderer: Background processing completed for all imported screenshots")
         }
 
         let notificationFeedback = UINotificationFeedbackGenerator()

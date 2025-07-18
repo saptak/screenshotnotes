@@ -35,6 +35,10 @@ public final class Screenshot {
     public var semanticTagsData: Data?
     public var lastSemanticAnalysis: Date?
     
+    // Phase 5.1.2: Entity Extraction
+    public var entitiesData: Data?
+    public var lastEntityExtraction: Date?
+    
     // Sprint 7.1.2: Smart Categorization
     public var categoryResultData: Data?
     public var lastCategorization: Date?
@@ -55,6 +59,8 @@ public final class Screenshot {
         self.lastVisionAnalysis = nil
         self.semanticTagsData = nil
         self.lastSemanticAnalysis = nil
+        self.entitiesData = nil
+        self.lastEntityExtraction = nil
         self.categoryResultData = nil
         self.lastCategorization = nil
         self.manualCategoryOverride = nil
@@ -126,6 +132,77 @@ extension Screenshot {
         }
         
         return Array(Set(tagNames))
+    }
+}
+
+// MARK: - Entity Extraction Support
+
+extension Screenshot {
+    
+    /// Get extracted entities from stored data
+    public var entities: [ExtractedEntity]? {
+        get {
+            guard let data = entitiesData else { return nil }
+            return try? JSONDecoder().decode([ExtractedEntity].self, from: data)
+        }
+        set {
+            if let entities = newValue {
+                entitiesData = try? JSONEncoder().encode(entities)
+                lastEntityExtraction = Date()
+            } else {
+                entitiesData = nil
+                lastEntityExtraction = nil
+            }
+        }
+    }
+    
+    /// Check if entity extraction needs to be refreshed
+    public var needsEntityExtraction: Bool {
+        guard let lastExtraction = lastEntityExtraction else { return true }
+        
+        // Consider extraction stale after 30 days
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date.distantPast
+        return lastExtraction < thirtyDaysAgo
+    }
+    
+    /// Get entities by type
+    public func entities(ofType type: EntityType) -> [ExtractedEntity] {
+        return entities?.filter { $0.type == type } ?? []
+    }
+    
+    /// Get all location entities
+    public var locationEntities: [ExtractedEntity] {
+        return entities(ofType: .place)
+    }
+    
+    /// Get all date entities
+    public var dateEntities: [ExtractedEntity] {
+        return entities(ofType: .date)
+    }
+    
+    /// Get all person entities
+    public var personEntities: [ExtractedEntity] {
+        return entities(ofType: .person)
+    }
+    
+    /// Get all organization entities
+    public var organizationEntities: [ExtractedEntity] {
+        return entities(ofType: .organization)
+    }
+    
+    /// Get all currency entities
+    public var currencyEntities: [ExtractedEntity] {
+        return entities(ofType: .currency)
+    }
+    
+    /// Get high-confidence entities for search
+    public var highConfidenceEntities: [ExtractedEntity] {
+        return entities?.filter { $0.confidence.rawValue >= 0.7 } ?? []
+    }
+    
+    /// Get searchable entity values
+    public var searchableEntityValues: [String] {
+        return entities?.map { $0.normalizedValue } ?? []
     }
 }
 

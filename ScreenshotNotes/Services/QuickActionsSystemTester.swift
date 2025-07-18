@@ -745,9 +745,9 @@ private struct TestResultRowView: View {
             
             if let metrics = result.performanceMetrics {
                 HStack(spacing: 16) {
-                    MetricView(title: "Response", value: "\(Int(metrics.averageResponseTime * 1000))ms")
-                    MetricView(title: "Success", value: "\(Int(metrics.successRate * 100))%")
-                    MetricView(title: "Throughput", value: String(format: "%.1f/s", metrics.throughput))
+                    TestMetricView(title: "Response", value: "\(Int(metrics.averageResponseTime * 1000))ms")
+                    TestMetricView(title: "Success", value: "\(Int(metrics.successRate * 100))%")
+                    TestMetricView(title: "Throughput", value: String(format: "%.1f/s", metrics.throughput))
                 }
                 .font(.caption2)
             }
@@ -772,7 +772,7 @@ private struct TestResultRowView: View {
     }
 }
 
-private struct MetricView: View {
+private struct TestMetricView: View {
     let title: String
     let value: String
     

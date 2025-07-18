@@ -19,8 +19,8 @@ public class WorkspaceDetectionService: ObservableObject {
     
     // MARK: - Detection Configuration
     
-    /// Minimum confidence threshold for workspace detection
-    private let minConfidenceThreshold: Double = 0.65
+    /// Minimum confidence threshold for workspace detection (adaptive based on available data)
+    private let minConfidenceThreshold: Double = 0.45
     
     /// Minimum screenshots required for a workspace
     private let minScreenshotsPerWorkspace: Int = 2
@@ -110,8 +110,32 @@ public class WorkspaceDetectionService: ObservableObject {
     private func analyzeScreenshot(_ screenshot: Screenshot) async -> ScreenshotAnalysis {
         let extractedText = screenshot.extractedText ?? ""
         
-        // Extract entities using existing service
-        let entityResult = await entityExtractor.extractEntities(from: extractedText)
+        // Try to extract entities, but fall back to semantic analysis if service fails
+        var entityResult: EntityExtractionResult
+        do {
+            if !extractedText.isEmpty {
+                entityResult = await entityExtractor.extractEntities(from: extractedText)
+            } else {
+                entityResult = EntityExtractionResult(
+                    entities: [], 
+                    originalText: extractedText, 
+                    processingTimeMs: 0, 
+                    detectedLanguage: .english, 
+                    overallConfidence: .low, 
+                    isSuccessful: true
+                )
+            }
+        } catch {
+            print("WorkspaceDetectionService: Entity extraction failed, using semantic tags only: \(error)")
+            entityResult = EntityExtractionResult(
+                entities: [], 
+                originalText: extractedText, 
+                processingTimeMs: 0, 
+                detectedLanguage: .english, 
+                overallConfidence: .low, 
+                isSuccessful: false
+            )
+        }
         
         // Analyze content patterns
         let contentPatterns = analyzeContentPatterns(extractedText)
@@ -119,7 +143,7 @@ public class WorkspaceDetectionService: ObservableObject {
         // Analyze semantic tags
         let semanticSignals = analyzeSemanticSignals(screenshot)
         
-        // Determine workspace type signals
+        // Determine workspace type signals (enhanced to work with semantic tags)
         let workspaceSignals = detectWorkspaceSignals(
             text: extractedText,
             entities: entityResult.entities,
@@ -231,51 +255,120 @@ public class WorkspaceDetectionService: ObservableObject {
     /// Calculate confidence for travel workspace detection
     private func calculateTravelConfidence(_ entities: [ExtractedEntity], _ patterns: ContentPatterns, _ semantic: SemanticSignals) -> Double {
         var confidence: Double = 0.0
+        var debugInfo: [String] = []
         
-        // Entity-based signals
+        // Entity-based signals (if available) - higher weight when entities are present
         let dateEntities = entities.filter { $0.type == .date }
         let locationEntities = entities.filter { $0.type == .place }
         let organizationEntities = entities.filter { $0.type == .organization }
         
-        if !dateEntities.isEmpty { confidence += 0.2 }
-        if !locationEntities.isEmpty { confidence += 0.3 }
-        if !organizationEntities.isEmpty { confidence += 0.2 }
-        
-        // Pattern-based signals
-        let travelPatternStrength = min(Double(patterns.travelSignals.count) / 3.0, 1.0)
-        confidence += travelPatternStrength * 0.3
-        
-        // Semantic signals
-        if !semantic.locationTags.isEmpty { confidence += 0.1 }
-        if semantic.brandTags.contains(where: { ["airline", "hotel", "booking", "expedia", "kayak"].contains($0.name.lowercased()) }) {
-            confidence += 0.2
+        if !dateEntities.isEmpty { 
+            confidence += 0.25 // Increased from 0.2
+            debugInfo.append("Date entities: \(dateEntities.count)")
+        }
+        if !locationEntities.isEmpty { 
+            confidence += 0.35 // Increased from 0.3
+            debugInfo.append("Location entities: \(locationEntities.count)")
+        }
+        if !organizationEntities.isEmpty { 
+            confidence += 0.25 // Increased from 0.2
+            debugInfo.append("Organization entities: \(organizationEntities.count)")
         }
         
-        return min(confidence, 1.0)
+        // Pattern-based signals (enhanced weight when entities are limited)
+        let travelPatternStrength = min(Double(patterns.travelSignals.count) / 3.0, 1.0)
+        let patternWeight = entities.isEmpty ? 0.5 : 0.3 // Higher weight when no entities
+        let patternContribution = travelPatternStrength * patternWeight
+        confidence += patternContribution
+        if patternContribution > 0 {
+            debugInfo.append("Travel patterns: \(patterns.travelSignals.count) (\(String(format: "%.2f", patternContribution)))")
+        }
+        
+        // Semantic signals (enhanced to work as primary signal)
+        if !semantic.locationTags.isEmpty { 
+            confidence += 0.2 // Increased from 0.1
+            debugInfo.append("Location tags: \(semantic.locationTags.count)")
+        }
+        if semantic.brandTags.contains(where: { ["airline", "hotel", "booking", "expedia", "kayak"].contains($0.name.lowercased()) }) {
+            confidence += 0.3 // Increased from 0.2
+            debugInfo.append("Travel brand tags found")
+        }
+        
+        // Semantic tag analysis - check for travel-related semantic tags
+        let travelSemanticTags = semantic.brandTags.filter { tag in
+            ["travel", "trip", "vacation", "flight", "hotel", "booking"].contains(tag.name.lowercased())
+        }
+        if !travelSemanticTags.isEmpty {
+            confidence += 0.4 // Strong travel indicator
+            debugInfo.append("Travel semantic tags: \(travelSemanticTags.count)")
+        }
+        
+        let finalConfidence = min(confidence, 1.0)
+        if finalConfidence > 0.3 {
+            print("🧠 Travel confidence: \(String(format: "%.2f", finalConfidence)) - \(debugInfo.joined(separator: ", "))")
+        }
+        
+        return finalConfidence
     }
     
     /// Calculate confidence for project workspace detection
     private func calculateProjectConfidence(_ entities: [ExtractedEntity], _ patterns: ContentPatterns, _ semantic: SemanticSignals) -> Double {
         var confidence: Double = 0.0
+        var debugInfo: [String] = []
         
-        // Entity-based signals
+        // Entity-based signals (if available) - enhanced for project detection
         let dateEntities = entities.filter { $0.type == .date }
         let personEntities = entities.filter { $0.type == .person }
         let organizationEntities = entities.filter { $0.type == .organization }
         
-        if !dateEntities.isEmpty { confidence += 0.1 }
-        if !personEntities.isEmpty { confidence += 0.2 }
-        if !organizationEntities.isEmpty { confidence += 0.2 }
+        if !dateEntities.isEmpty { 
+            confidence += 0.15 // Increased from 0.1
+            debugInfo.append("Date entities: \(dateEntities.count)")
+        }
+        if !personEntities.isEmpty { 
+            confidence += 0.25 // Increased from 0.2
+            debugInfo.append("Person entities: \(personEntities.count)")
+        }
+        if !organizationEntities.isEmpty { 
+            confidence += 0.25 // Increased from 0.2
+            debugInfo.append("Organization entities: \(organizationEntities.count)")
+        }
         
-        // Pattern-based signals
+        // Pattern-based signals (enhanced weight when entities are limited)
         let projectPatternStrength = min(Double(patterns.projectSignals.count) / 3.0, 1.0)
-        confidence += projectPatternStrength * 0.4
+        let patternWeight = entities.isEmpty ? 0.6 : 0.4 // Higher weight when no entities
+        let patternContribution = projectPatternStrength * patternWeight
+        confidence += patternContribution
+        if patternContribution > 0 {
+            debugInfo.append("Project patterns: \(patterns.projectSignals.count) (\(String(format: "%.2f", patternContribution)))")
+        }
         
-        // Semantic signals
-        if semantic.isDocument { confidence += 0.2 }
-        if semantic.hasSignificantText { confidence += 0.1 }
+        // Semantic signals (enhanced)
+        if semantic.isDocument { 
+            confidence += 0.2 
+            debugInfo.append("Document detected")
+        }
+        if semantic.hasSignificantText { 
+            confidence += 0.1 
+            debugInfo.append("Significant text")
+        }
         
-        return min(confidence, 1.0)
+        // Semantic tag analysis - check for work-related semantic tags
+        let allSemanticTags = semantic.brandTags + semantic.organizationTags
+        let workSemanticTags = allSemanticTags.filter { tag in
+            ["work", "project", "task", "meeting", "business", "office", "tech", "work_hours"].contains(tag.name.lowercased())
+        }
+        if !workSemanticTags.isEmpty {
+            confidence += 0.4 // Strong work/project indicator
+            debugInfo.append("Work semantic tags: \(workSemanticTags.count)")
+        }
+        
+        let finalConfidence = min(confidence, 1.0)
+        if finalConfidence > 0.3 {
+            print("🧠 Project confidence: \(String(format: "%.2f", finalConfidence)) - \(debugInfo.joined(separator: ", "))")
+        }
+        
+        return finalConfidence
     }
     
     /// Calculate confidence for event workspace detection
@@ -319,17 +412,27 @@ public class WorkspaceDetectionService: ObservableObject {
     private func calculateShoppingConfidence(_ entities: [ExtractedEntity], _ patterns: ContentPatterns, _ semantic: SemanticSignals) -> Double {
         var confidence: Double = 0.0
         
-        // Entity-based signals
+        // Entity-based signals (if available)
         let moneyEntities = entities.filter { $0.type == .currency }
         if !moneyEntities.isEmpty { confidence += 0.3 }
         
-        // Pattern-based signals
+        // Pattern-based signals (enhanced weight when entities are limited)
         let shoppingPatternStrength = min(Double(patterns.shoppingSignals.count) / 3.0, 1.0)
-        confidence += shoppingPatternStrength * 0.5
+        let patternWeight = entities.isEmpty ? 0.6 : 0.5 // Higher weight when no entities
+        confidence += shoppingPatternStrength * patternWeight
         
-        // Semantic signals
+        // Semantic signals (enhanced)
         if semantic.brandTags.contains(where: { ["amazon", "ebay", "walmart", "target", "shop"].contains($0.name.lowercased()) }) {
-            confidence += 0.2
+            confidence += 0.3 // Increased from 0.2
+        }
+        
+        // Semantic tag analysis - check for shopping-related semantic tags
+        let allSemanticTags = semantic.brandTags + semantic.organizationTags
+        let shoppingSemanticTags = allSemanticTags.filter { tag in
+            ["purchase", "buy", "shop", "shopping", "order", "financial", "payment"].contains(tag.name.lowercased())
+        }
+        if !shoppingSemanticTags.isEmpty {
+            confidence += 0.4 // Strong shopping indicator
         }
         
         return min(confidence, 1.0)

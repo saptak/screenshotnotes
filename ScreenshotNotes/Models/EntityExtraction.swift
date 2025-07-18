@@ -2,7 +2,7 @@ import Foundation
 import NaturalLanguage
 
 /// Represents different types of entities that can be extracted from queries
-public enum EntityType: String, CaseIterable {
+public enum EntityType: String, CaseIterable, Codable {
     // Standard Named Entities (NLTagger)
     case person = "person"
     case place = "place"
@@ -125,7 +125,7 @@ public enum EntityType: String, CaseIterable {
 }
 
 /// Confidence level for entity extraction
-public enum EntityConfidence: Double, CaseIterable {
+public enum EntityConfidence: Double, CaseIterable, Codable {
     case veryHigh = 0.95
     case high = 0.85
     case medium = 0.70
@@ -154,7 +154,7 @@ public enum EntityConfidence: Double, CaseIterable {
 }
 
 /// Represents an extracted entity from a natural language query
-public struct ExtractedEntity {
+public struct ExtractedEntity: Codable {
     
     // MARK: - Core Properties
     
@@ -256,8 +256,52 @@ public struct ExtractedEntity {
     }
 }
 
+// MARK: - ExtractedEntity Codable Implementation
+
+extension ExtractedEntity {
+    private enum CodingKeys: String, CodingKey {
+        case type, text, normalizedValue, confidence, language, range, timestamp
+        case alternatives, isMLDerived
+    }
+    
+    private struct RangeData: Codable {
+        let location: Int
+        let length: Int
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(type, forKey: .type)
+        try container.encode(text, forKey: .text)
+        try container.encode(normalizedValue, forKey: .normalizedValue)
+        try container.encode(confidence, forKey: .confidence)
+        try container.encode(language.rawValue, forKey: .language)
+        try container.encode(RangeData(location: range.location, length: range.length), forKey: .range)
+        try container.encode(timestamp, forKey: .timestamp)
+        try container.encode(alternatives, forKey: .alternatives)
+        try container.encode(isMLDerived, forKey: .isMLDerived)
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        type = try container.decode(EntityType.self, forKey: .type)
+        text = try container.decode(String.self, forKey: .text)
+        normalizedValue = try container.decode(String.self, forKey: .normalizedValue)
+        confidence = try container.decode(EntityConfidence.self, forKey: .confidence)
+        let languageRawValue = try container.decode(String.self, forKey: .language)
+        language = NLLanguage(rawValue: languageRawValue)
+        let rangeData = try container.decode(RangeData.self, forKey: .range)
+        range = NSRange(location: rangeData.location, length: rangeData.length)
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
+        // Skip context as it contains Any type
+        context = [:]
+        alternatives = try container.decode([EntityAlternative].self, forKey: .alternatives)
+        isMLDerived = try container.decode(Bool.self, forKey: .isMLDerived)
+    }
+}
+
 /// Alternative interpretation of an extracted entity
-public struct EntityAlternative {
+public struct EntityAlternative: Codable {
     public let type: EntityType
     public let normalizedValue: String
     public let confidence: EntityConfidence

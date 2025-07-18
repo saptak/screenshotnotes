@@ -172,6 +172,17 @@ public final class TaskManager: ObservableObject {
         operation: @escaping () async throws -> T
     ) async -> T? {
         
+        // Simplified execution for semantic processing to avoid deadlocks
+        if category == .semantic || category == .mindMap {
+            print("TaskManager: Direct execution for \(category.rawValue): \(description)")
+            do {
+                return try await operation()
+            } catch {
+                print("TaskManager: Direct execution failed for \(description): \(error)")
+                return nil
+            }
+        }
+        
         // Check resource limits before creating task
         guard canExecuteTask(priority: priority) else {
             print("TaskManager: Resource limit reached, deferring task: \(description)")

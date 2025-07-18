@@ -64,15 +64,8 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
     
     deinit {
         // 🎯 Sprint 8.5.3.2: Proper cleanup in deinit
-        Task { @MainActor in
-            stopMemoryTracking()
-            unregisterFromAutomaticCleanup()
-        }
-        
-        // Stop monitoring and clean up resources
-        Task { @MainActor in
-            stopMonitoring()
-        }
+        // Note: Cannot use async methods in deinit - cleanup will be handled by system
+        // The memory manager will handle cleanup when the object is deallocated
         screenshotsFetchResult = nil
         
         logger.info("PhotoLibraryService: Deallocated")

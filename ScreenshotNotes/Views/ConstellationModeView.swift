@@ -45,11 +45,16 @@ struct ConstellationModeView: View {
                         }
                     }
                     .padding()
+                    .frame(minHeight: 500) // Ensure minimum height for pull-to-refresh
                 }
-                .refreshable {
-                    print("📸 ConstellationModeView: Pull-to-refresh triggered")
-                    await importPhotosAndDetectWorkspaces()
+            }
+            .refreshable {
+                print("📸 ConstellationModeView: Pull-to-refresh triggered")
+                guard !isImporting && !isLoading else { 
+                    print("📸 ConstellationModeView: Skipping refresh - already importing or loading")
+                    return 
                 }
+                await importPhotosAndDetectWorkspaces()
             }
             .navigationTitle("Constellation")
             .navigationBarTitleDisplayMode(.large)
@@ -188,10 +193,17 @@ struct ConstellationModeView: View {
                     .font(.title2)
                     .fontWeight(.semibold)
                 
-                Text("Add more screenshots to enable intelligent workspace detection")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
+                if screenshots.isEmpty {
+                    Text("Pull down to import screenshots from your photo library")
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
+                        .multilineTextAlignment(.center)
+                } else {
+                    Text("You have \(screenshots.count) screenshot(s). Pull down to import more or create a manual workspace.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             }
             
             Button("Create Manual Workspace") {
@@ -217,8 +229,14 @@ struct ConstellationModeView: View {
     // MARK: - Helper Methods
     
     private func detectWorkspaces() async {
-        print("📸 ConstellationModeView: detectWorkspaces called")
+        print("📸 ConstellationModeView: detectWorkspaces called with \(screenshots.count) screenshots")
         isLoading = true
+        
+        // Debug: Check if screenshots have the necessary data for workspace detection
+        let screenshotsWithText = screenshots.filter { !($0.extractedText?.isEmpty ?? true) }
+        let screenshotsWithSemanticTags = screenshots.filter { !($0.semanticTags?.tags.isEmpty ?? true) }
+        print("📸 ConstellationModeView: \(screenshotsWithText.count) screenshots have extracted text")
+        print("📸 ConstellationModeView: \(screenshotsWithSemanticTags.count) screenshots have semantic tags")
         
         let detectedWorkspaces = await detectionService.detectWorkspaces(from: screenshots)
         
@@ -226,6 +244,11 @@ struct ConstellationModeView: View {
             workspaces = ContentWorkspace.sortWorkspaces(detectedWorkspaces, by: sortCriteria)
             isLoading = false
             print("📸 ConstellationModeView: detectWorkspaces completed, found \(workspaces.count) workspaces")
+            
+            // Debug: Log workspace details
+            for (index, workspace) in workspaces.enumerated() {
+                print("📸 ConstellationModeView: Workspace \(index): \(workspace.type.displayName) with \(workspace.screenshots.count) screenshots (confidence: \(workspace.detectionConfidence))")
+            }
         }
     }
     
@@ -246,28 +269,29 @@ struct ConstellationModeView: View {
     private func importNewPhotos() async {
         print("📸 ConstellationModeView: importNewPhotos called")
         
-        // Check photo library permission
-        let currentStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        // Use the existing PhotoLibraryService for consistency
+        let photoLibraryService = PhotoLibraryService()
+        photoLibraryService.setModelContext(modelContext)
+        
+        // Check and request photo permission if needed
+        let currentStatus = photoLibraryService.authorizationStatus
         print("📸 ConstellationModeView: Photo permission status: \(currentStatus)")
         
-        if currentStatus != .authorized {
+        if currentStatus != PHAuthorizationStatus.authorized {
             print("📸 ConstellationModeView: Photo permission not granted, requesting...")
-            let newStatus = await withCheckedContinuation { continuation in
-                PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
-                    continuation.resume(returning: status)
-                }
-            }
+            let newStatus = await photoLibraryService.requestPhotoLibraryPermission()
             print("📸 ConstellationModeView: New photo permission status: \(newStatus)")
-            guard newStatus == .authorized else {
+            
+            if newStatus != PHAuthorizationStatus.authorized {
                 print("📸 ConstellationModeView: Photo permission denied, cannot import")
                 return
             }
         }
         
         isImporting = true
-        print("📸 ConstellationModeView: Starting photo import")
+        print("📸 ConstellationModeView: Starting photo import using PhotoLibraryService")
         
-        // Import photos similar to the GalleryModeRenderer approach
+        // Import photos using the same method as GalleryModeRenderer
         let batchSize = 10
         let maxImportLimit = 20
         var totalImported = 0
@@ -275,96 +299,47 @@ struct ConstellationModeView: View {
         var hasMore = true
         var batchIndex = 0
         
-        // Get screenshot assets from photo library
-        let fetchOptions = PHFetchOptions()
-        fetchOptions.predicate = NSPredicate(format: "mediaSubtype & %d != 0", PHAssetMediaSubtype.photoScreenshot.rawValue)
-        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-        let allScreenshots = PHAsset.fetchAssets(with: .image, options: fetchOptions)
-        
-        print("📸 ConstellationModeView: Found \(allScreenshots.count) screenshots in photo library")
-        
         while hasMore && totalImported < maxImportLimit {
-            let start = batchIndex * batchSize
-            let end = min(start + batchSize, allScreenshots.count)
+            print("📸 ConstellationModeView: Processing batch \(batchIndex + 1) (batchSize: \(batchSize))")
+            let result = await photoLibraryService.importPastScreenshotsBatch(batch: batchIndex, batchSize: batchSize)
+            print("📸 ConstellationModeView: Batch \(batchIndex + 1) result: imported=\(result.imported), skipped=\(result.skipped), hasMore=\(result.hasMore)")
             
-            if start >= end {
-                hasMore = false
-                break
-            }
-            
-            print("📸 ConstellationModeView: Processing batch \(batchIndex + 1), range \(start)..<\(end)")
-            
-            for i in start..<end {
-                let asset = allScreenshots.object(at: i)
-                let assetId = asset.localIdentifier
-                
-                // Check if already imported
-                let existingScreenshots = try? modelContext.fetch(
-                    FetchDescriptor<Screenshot>(
-                        predicate: #Predicate<Screenshot> { screenshot in
-                            screenshot.assetIdentifier == assetId
-                        }
-                    )
-                )
-                
-                if existingScreenshots?.isEmpty == false {
-                    totalSkipped += 1
-                    continue
-                }
-                
-                // Import the screenshot
-                do {
-                    let imageManager = PHImageManager.default()
-                    let requestOptions = PHImageRequestOptions()
-                    requestOptions.isSynchronous = true
-                    requestOptions.deliveryMode = .highQualityFormat
-                    requestOptions.isNetworkAccessAllowed = true
-                    
-                    let image = await withCheckedContinuation { continuation in
-                        imageManager.requestImage(
-                            for: asset,
-                            targetSize: PHImageManagerMaximumSize,
-                            contentMode: .aspectFit,
-                            options: requestOptions
-                        ) { image, _ in
-                            continuation.resume(returning: image)
-                        }
-                    }
-                    
-                    guard let image = image,
-                          let imageData = image.jpegData(compressionQuality: 0.8) else {
-                        totalSkipped += 1
-                        continue
-                    }
-                    
-                    let screenshot = Screenshot(
-                        imageData: imageData,
-                        filename: "screenshot_\(asset.creationDate?.timeIntervalSince1970 ?? Date().timeIntervalSince1970)",
-                        timestamp: asset.creationDate ?? Date(),
-                        assetIdentifier: asset.localIdentifier
-                    )
-                    
-                    modelContext.insert(screenshot)
-                    try modelContext.save()
-                    totalImported += 1
-                    
-                    print("📸 ConstellationModeView: Imported screenshot \(totalImported): \(asset.localIdentifier)")
-                    
-                } catch {
-                    print("📸 ConstellationModeView: Failed to import screenshot: \(error)")
-                    totalSkipped += 1
-                }
-            }
-            
+            totalImported += result.imported
+            totalSkipped += result.skipped
             batchIndex += 1
-            importProgress = (current: totalImported, total: min(totalImported + totalSkipped, maxImportLimit))
+            hasMore = result.hasMore
             
+            // Stop if we've reached the import limit
             if totalImported >= maxImportLimit {
                 hasMore = false
+                print("📸 ConstellationModeView: Reached import limit of \(maxImportLimit), stopping")
             }
+            
+            // Update progress for UI feedback
+            importProgress = (current: totalImported, total: min(totalImported + totalSkipped, maxImportLimit))
+            print("📸 ConstellationModeView: Progress: \(importProgress.current)/\(importProgress.total)")
+            
+            // Shorter yield for more responsive UI updates
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s between batches
         }
         
-        print("📸 ConstellationModeView: Import completed - imported: \(totalImported), skipped: \(totalSkipped)")
+        // Trigger background processing ONCE after all imports are complete
+        if totalImported > 0 {
+            print("📸 ConstellationModeView: All imports complete (\(totalImported) screenshots), starting background processing")
+            
+            // Start OCR processing
+            let backgroundOCRProcessor = BackgroundOCRProcessor()
+            backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
+            
+            // Start semantic processing using shared instance
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+            await BackgroundSemanticProcessor.shared.processScreenshotsNeedingAnalysis(in: modelContext)
+            
+            print("📸 ConstellationModeView: Background processing completed for all imported screenshots")
+        }
+        
+        print("📸 ConstellationModeView: Import complete: \(totalImported) imported, \(totalSkipped) skipped")
+        
         isImporting = false
         importProgress = (0, 0)
     }
@@ -391,121 +366,232 @@ struct StatView: View {
 
 struct WorkspaceCardView: View {
     let workspace: ContentWorkspace
+    @State private var showingDetails = false
+    @State private var showingTimeline = false
+    @StateObject private var insightsEngine = WorkspaceInsightsEngine()
+    
     private let glassDesign = GlassDesignSystem.shared
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack {
-                Image(systemName: workspace.iconName)
-                    .font(.title2)
-                    .foregroundColor(colorForWorkspace(workspace))
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(workspace.title)
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                    
-                    Text(workspace.type.displayName)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                // Activity Level Badge
-                ActivityBadge(level: workspace.activityLevel)
+        VStack(alignment: .leading, spacing: 16) {
+            // Header Section
+            headerSection
+            
+            // Analytics & Insights Section
+            analyticsSection
+            
+            // Timeline Preview Section
+            if showingTimeline {
+                timelineSection
             }
             
-            // Progress Section
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Progress")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    
-                    Spacer()
-                    
-                    Text("\(Int(workspace.progress.percentage))%")
-                        .font(.subheadline)
-                        .fontWeight(.bold)
-                        .foregroundColor(colorForWorkspace(workspace))
-                }
-                
-                ProgressView(value: workspace.progress.percentage / 100.0)
-                    .progressViewStyle(LinearProgressViewStyle(tint: colorForWorkspace(workspace)))
-            }
-            
-            // Screenshots and Missing Components
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(workspace.screenshots.count)")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                    
-                    Text("Screenshots")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                if !workspace.progress.missingComponents.isEmpty {
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("\(workspace.progress.missingComponents.count)")
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .foregroundColor(.orange)
-                        
-                        Text("Missing")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            
-            // Missing Components List
-            if !workspace.progress.missingComponents.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Missing Components:")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.secondary)
-                    
-                    ForEach(workspace.progress.missingComponents.prefix(3), id: \.self) { component in
-                        Text("• \(component)")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                    }
-                    
-                    if workspace.progress.missingComponents.count > 3 {
-                        Text("and \(workspace.progress.missingComponents.count - 3) more...")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            
-            // Confidence Indicator
-            if workspace.needsUserReview {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundColor(.orange)
-                    
-                    Text("Needs Review")
-                        .font(.caption)
-                        .foregroundColor(.orange)
-                    
-                    Spacer()
-                    
-                    Text("\(Int(workspace.detectionConfidence * 100))% confidence")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
+            // Action Buttons Section
+            actionButtonsSection
         }
         .padding()
         .glassBackground(material: .regular, cornerRadius: 12, shadow: true)
+        .sheet(isPresented: $showingDetails) {
+            WorkspaceDetailSheetView(workspace: workspace)
+        }
+    }
+    
+    // MARK: - View Components
+    
+    private var headerSection: some View {
+        HStack {
+            Image(systemName: workspace.iconName)
+                .font(.title2)
+                .foregroundColor(colorForWorkspace(workspace))
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(workspace.title)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Text(workspace.type.displayName)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            // Activity Level Badge
+            ActivityBadge(level: workspace.activityLevel)
+        }
+    }
+    
+    private var analyticsSection: some View {
+        let analytics = WorkspaceAnalyticsService.shared.generateAnalytics(for: workspace)
+        let insights = insightsEngine.generateInsights(for: workspace)
+        
+        return VStack(alignment: .leading, spacing: 12) {
+            // Progress with enhanced analytics
+            HStack {
+                Text("Progress")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(Int(analytics.completionAnalytics.overallCompletion * 100))%")
+                        .font(.subheadline)
+                        .fontWeight(.bold)
+                        .foregroundColor(colorForWorkspace(workspace))
+                    
+                    Text(analytics.completionAnalytics.completionLevel.displayName)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            ProgressView(value: analytics.completionAnalytics.overallCompletion)
+                .progressViewStyle(LinearProgressViewStyle(tint: colorForWorkspace(workspace)))
+                .scaleEffect(y: 1.2)
+            
+            // Enhanced metrics grid
+            HStack(spacing: 20) {
+                MetricView(
+                    title: "Screenshots",
+                    value: "\(workspace.screenshots.count)",
+                    icon: "camera.fill",
+                    color: .blue
+                )
+                
+                MetricView(
+                    title: "Completion",
+                    value: "\(analytics.progressTrends.estimatedDaysToCompletion)d",
+                    icon: "clock.fill",
+                    color: analytics.progressTrends.momentum.color
+                )
+                
+                if analytics.missingComponentAnalysis.criticalMissing.count > 0 {
+                    MetricView(
+                        title: "Critical",
+                        value: "\(analytics.missingComponentAnalysis.criticalMissing.count)",
+                        icon: "exclamationmark.triangle.fill",
+                        color: .red
+                    )
+                }
+            }
+            
+            // AI-Generated Insights
+            if !insights.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Insights")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+                    
+                    ForEach(insights.prefix(2), id: \.self) { insight in
+                        Text(insight)
+                            .font(.caption)
+                            .foregroundColor(.primary)
+                            .lineLimit(2)
+                    }
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(.quaternary.opacity(0.5))
+                )
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var timelineSection: some View {
+        let analytics = WorkspaceAnalyticsService.shared.generateAnalytics(for: workspace)
+        let advancedInsights = insightsEngine.generateAdvancedInsights(for: workspace)
+        
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Timeline")
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.secondary)
+            
+            WorkspaceTimelineView(
+                workspace: workspace,
+                analytics: analytics,
+                timelineInsights: advancedInsights.timelineInsights
+            )
+            .frame(maxHeight: 200)
+        }
+    }
+    
+    private var actionButtonsSection: some View {
+        HStack(spacing: 12) {
+            // Timeline Toggle Button
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showingTimeline.toggle()
+                }
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: showingTimeline ? "timeline.selection" : "chart.line.uptrend.xyaxis")
+                        .font(.system(size: 12, weight: .medium))
+                    Text(showingTimeline ? "Hide Timeline" : "Show Timeline")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
+                .foregroundColor(.blue)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(.blue.opacity(0.1))
+                        .overlay(
+                            Capsule()
+                                .stroke(.blue.opacity(0.3), lineWidth: 1)
+                        )
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            Spacer()
+            
+            // Details Button
+            Button(action: {
+                showingDetails = true
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle.fill")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("Details")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(colorForWorkspace(workspace))
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            // Confidence indicator (if needs review)
+            if workspace.needsUserReview {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.orange)
+                    
+                    Text("\(Int(workspace.detectionConfidence * 100))%")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .foregroundColor(.orange)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(.orange.opacity(0.1))
+                )
+            }
+        }
     }
     
     private func colorForWorkspace(_ workspace: ContentWorkspace) -> Color {
@@ -517,6 +603,328 @@ struct WorkspaceCardView: View {
         case "pink": return .pink
         case "red": return .red
         default: return .gray
+        }
+    }
+}
+
+// MARK: - Supporting Views
+
+struct MetricView: View {
+    let title: String
+    let value: String
+    let icon: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(color)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.subheadline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                
+                Text(title)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
+struct WorkspaceDetailSheetView: View {
+    let workspace: ContentWorkspace
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var insightsEngine = WorkspaceInsightsEngine()
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Workspace Header
+                    workspaceHeaderSection
+                    
+                    // Comprehensive Analytics
+                    analyticsOverviewSection
+                    
+                    // Advanced Insights
+                    insightsSection
+                    
+                    // Full Timeline
+                    timelineSection
+                    
+                    // Action Recommendations
+                    actionsSection
+                }
+                .padding()
+            }
+            .navigationTitle(workspace.title)
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var workspaceHeaderSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: workspace.iconName)
+                    .font(.largeTitle)
+                    .foregroundColor(colorForWorkspace)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(workspace.title)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    Text(workspace.type.displayName)
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("Created \(workspace.createdAt, style: .date)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+    }
+    
+    @ViewBuilder
+    private var analyticsOverviewSection: some View {
+        let analytics = WorkspaceAnalyticsService.shared.generateAnalytics(for: workspace)
+        
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Analytics Overview")
+                .font(.title3)
+                .fontWeight(.semibold)
+            
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 16) {
+                AnalyticsCard(
+                    title: "Completion",
+                    value: "\(Int(analytics.completionAnalytics.overallCompletion * 100))%",
+                    subtitle: analytics.completionAnalytics.completionLevel.displayName,
+                    icon: "checkmark.circle.fill",
+                    color: .green
+                )
+                
+                AnalyticsCard(
+                    title: "Momentum",
+                    value: analytics.progressTrends.momentum.displayName,
+                    subtitle: "Trend analysis",
+                    icon: "arrow.up.right.circle.fill",
+                    color: analytics.progressTrends.momentum.color
+                )
+                
+                AnalyticsCard(
+                    title: "Timeline",
+                    value: "\(Int(analytics.timelineAnalysis.workspaceDuration / 86400))d",
+                    subtitle: "Duration",
+                    icon: "clock.fill",
+                    color: .blue
+                )
+                
+                AnalyticsCard(
+                    title: "Missing",
+                    value: "\(analytics.missingComponentAnalysis.criticalMissing.count)",
+                    subtitle: "Critical items",
+                    icon: "exclamationmark.triangle.fill",
+                    color: .red
+                )
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var insightsSection: some View {
+        let insights = insightsEngine.generateInsights(for: workspace)
+        
+        if !insights.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("AI Insights")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                
+                ForEach(insights, id: \.self) { insight in
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.yellow)
+                            .frame(width: 20, height: 20)
+                        
+                        Text(insight)
+                            .font(.subheadline)
+                            .foregroundColor(.primary)
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(.quaternary.opacity(0.5))
+                    )
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var timelineSection: some View {
+        let analytics = WorkspaceAnalyticsService.shared.generateAnalytics(for: workspace)
+        let advancedInsights = insightsEngine.generateAdvancedInsights(for: workspace)
+        
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Timeline")
+                .font(.title3)
+                .fontWeight(.semibold)
+            
+            WorkspaceTimelineView(
+                workspace: workspace,
+                analytics: analytics,
+                timelineInsights: advancedInsights.timelineInsights
+            )
+        }
+    }
+    
+    @ViewBuilder
+    private var actionsSection: some View {
+        let analytics = WorkspaceAnalyticsService.shared.generateAnalytics(for: workspace)
+        
+        if !analytics.actionRecommendations.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Recommended Actions")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                
+                ForEach(analytics.actionRecommendations.prefix(5), id: \.id) { recommendation in
+                    ActionRecommendationView(recommendation: recommendation)
+                }
+            }
+        }
+    }
+    
+    private var colorForWorkspace: Color {
+        switch workspace.colorScheme {
+        case "blue": return .blue
+        case "purple": return .purple
+        case "green": return .green
+        case "orange": return .orange
+        case "pink": return .pink
+        case "red": return .red
+        default: return .gray
+        }
+    }
+}
+
+struct AnalyticsCard: View {
+    let title: String
+    let value: String
+    let subtitle: String
+    let icon: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 24, weight: .medium))
+                .foregroundColor(color)
+            
+            VStack(spacing: 4) {
+                Text(value)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(color.opacity(0.3), lineWidth: 1)
+                )
+        )
+    }
+}
+
+struct ActionRecommendationView: View {
+    let recommendation: WorkspaceAnalyticsService.ActionRecommendation
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: recommendation.action.iconName)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(priorityColor)
+                .frame(width: 24, height: 24)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(recommendation.action.displayName)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text(recommendation.reason)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(recommendation.priority.displayName)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .foregroundColor(priorityColor)
+                
+                Text(recommendation.estimatedEffort.displayName)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(.thickMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(priorityColor.opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+    
+    private var priorityColor: Color {
+        switch recommendation.priority {
+        case .critical: return .red
+        case .high: return .orange
+        case .medium: return .blue
+        case .low: return .green
         }
     }
 }
