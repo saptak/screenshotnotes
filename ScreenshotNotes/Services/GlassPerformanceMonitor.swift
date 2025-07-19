@@ -46,6 +46,7 @@ class GlassPerformanceMonitor: ObservableObject {
         setupThermalStateMonitoring()
         detectProMotionCapability()
         measureMemoryBaseline()
+        // Note: startMonitoring() must be called manually - no auto-start timers
     }
     
     // MARK: - Monitoring Control

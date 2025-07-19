@@ -536,7 +536,12 @@ struct SettingsView: View {
             .onAppear {
                 // Start monitoring when Enhanced Interface is active
                 if interfaceSettings.isUsingEnhancedInterface {
-                    liquidGlassMonitor.startMonitoring()
+                    let thermalState = ProcessInfo.processInfo.thermalState
+                    if thermalState != .critical && thermalState != .serious {
+                        liquidGlassMonitor.startMonitoring()
+                    } else {
+                        print("🌡️ High thermal state detected, skipping liquid glass monitoring startup")
+                    }
                     
                     // Run Sprint 8.1.3 performance validation
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -553,7 +558,12 @@ struct SettingsView: View {
             .onChange(of: interfaceSettings.isUsingEnhancedInterface) { _, isUsing in
                 // Track interface state changes
                 if isUsing {
-                    liquidGlassMonitor.startMonitoring()
+                    let thermalState = ProcessInfo.processInfo.thermalState
+                    if thermalState != .critical && thermalState != .serious {
+                        liquidGlassMonitor.startMonitoring()
+                    } else {
+                        print("🌡️ High thermal state detected, skipping liquid glass monitoring startup on interface change")
+                    }
                 } else {
                     liquidGlassMonitor.stopMonitoring()
                 }

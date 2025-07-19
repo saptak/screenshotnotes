@@ -79,6 +79,7 @@ class GalleryModeViewModel: ObservableObject, MemoryTrackable, ResourceCleanupPr
 
     func refreshScreenshots() async {
         print("📸 GalleryModeViewModel: refreshScreenshots called")
+        print("📸 GalleryModeViewModel: Current state - isRefreshing: \(isRefreshing), isBulkImportInProgress: \(isBulkImportInProgress)")
         
         // 🎯 Sprint 8.5.3.1: Prevent race conditions with coordinated task management
         if isBulkImportInProgress { 
@@ -88,11 +89,16 @@ class GalleryModeViewModel: ObservableObject, MemoryTrackable, ResourceCleanupPr
         
         print("📸 GalleryModeViewModel: Starting refresh process")
         
+        // Set state first to prevent race conditions
+        isBulkImportInProgress = true
+        isRefreshing = true
+        
         // Cancel any existing background processing workflows to prevent conflicts
         taskManager.cancelTasks(in: .backgroundProcessing)
         
-        isBulkImportInProgress = true
-        isRefreshing = true
+        // Add haptic feedback for user interaction
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
 
         // Step 1: Check permissions with coordinated task management
         print("📸 GalleryModeViewModel: Checking photo library permissions")
@@ -118,6 +124,8 @@ class GalleryModeViewModel: ObservableObject, MemoryTrackable, ResourceCleanupPr
         
         guard permissionGranted == true else {
             print("📸 GalleryModeViewModel: Permission not granted, stopping refresh")
+            let notificationFeedback = UINotificationFeedbackGenerator()
+            notificationFeedback.notificationOccurred(.error)
             isRefreshing = false
             isBulkImportInProgress = false
             return
@@ -125,7 +133,7 @@ class GalleryModeViewModel: ObservableObject, MemoryTrackable, ResourceCleanupPr
         
         print("📸 GalleryModeViewModel: Permission granted, starting batch import")
 
-        // Step 2: Execute coordinated import workflow
+        // Step 2: Execute coordinated import workflow with 20-screenshot limit
         let batchSize = 10
         let maxImportLimit = 20
         var totalImported = 0
@@ -134,6 +142,8 @@ class GalleryModeViewModel: ObservableObject, MemoryTrackable, ResourceCleanupPr
         var batchIndex = 0
 
         while hasMore && totalImported < maxImportLimit {
+            print("📸 GalleryModeViewModel: Processing batch \(batchIndex + 1) (batchSize: \(batchSize))")
+            
             // Import batch with coordinated task management
             let result = await taskManager.execute(
                 category: .dataImport,
@@ -148,33 +158,61 @@ class GalleryModeViewModel: ObservableObject, MemoryTrackable, ResourceCleanupPr
             
             guard let importResult = result else { break }
             
+            print("📸 GalleryModeViewModel: Batch \(batchIndex + 1) result: imported=\(importResult.imported), skipped=\(importResult.skipped), hasMore=\(importResult.hasMore)")
+            
             totalImported += importResult.imported
             totalSkipped += importResult.skipped
             batchIndex += 1
             hasMore = importResult.hasMore
             
+            // Stop if we've reached the import limit
             if totalImported >= maxImportLimit {
                 hasMore = false
+                print("📸 GalleryModeViewModel: Reached import limit of \(maxImportLimit), stopping")
             }
             
+            // Update progress for UI feedback
             bulkImportProgress = (current: totalImported, total: min(totalImported + totalSkipped, maxImportLimit))
+            print("📸 GalleryModeViewModel: Progress: \(bulkImportProgress.current)/\(bulkImportProgress.total)")
 
-            // Step 3: Coordinate background processing for imported images
-            if importResult.imported > 0 {
-                _ = await taskManager.execute(
-                    category: .backgroundProcessing,
-                    priority: .normal,
-                    description: "Process imported screenshots"
-                ) {
-                    // Process screenshots in background
-                    return ()
-                }
-            }
-            
-            // Controlled delay to prevent overwhelming the system
-            try? await Task.sleep(nanoseconds: 100_000_000)
+            // Shorter yield for more responsive UI updates
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s between batches
         }
         
+        // Trigger background processing ONCE after all imports are complete
+        if totalImported > 0 {
+            print("📸 GalleryModeViewModel: All imports complete (\(totalImported) screenshots), starting background processing")
+            
+            guard let context = modelContext,
+                  let semanticProcessor = backgroundSemanticProcessor else {
+                print("📸 GalleryModeViewModel: Missing context or semantic processor")
+                isRefreshing = false
+                isBulkImportInProgress = false
+                bulkImportProgress = (0, 0)
+                return
+            }
+            
+            // Wait briefly for imports to settle
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+            
+            // Use shared instance to avoid conflicts
+            await BackgroundSemanticProcessor.shared.processScreenshotsNeedingAnalysis(in: context)
+            await BackgroundSemanticProcessor.shared.triggerMindMapRegeneration(in: context)
+            
+            print("📸 GalleryModeViewModel: Background processing completed for all imported screenshots")
+        }
+        
+        // Provide user feedback
+        let notificationFeedback = UINotificationFeedbackGenerator()
+        if totalImported > 0 {
+            notificationFeedback.notificationOccurred(.success)
+            print("📸 ✅ GalleryModeViewModel: Import SUCCESS: \(totalImported) imported, \(totalSkipped) skipped (limit: \(maxImportLimit))")
+        } else {
+            notificationFeedback.notificationOccurred(.warning)
+            print("📸 ⚠️ GalleryModeViewModel: Import WARNING: \(totalImported) imported, \(totalSkipped) skipped (limit: \(maxImportLimit))")
+        }
+        
+        print("📸 GalleryModeViewModel: Resetting import state")
         isRefreshing = false
         isBulkImportInProgress = false
         bulkImportProgress = (0, 0)

@@ -92,10 +92,11 @@ struct VirtualizedGridView<Item: Identifiable, Content: View>: View {
                 }
             }
             .refreshable {
-                print("📸 VirtualizedGridView: Pull-to-refresh triggered")
+                print("📸 VirtualizedGridView: Pull-to-refresh triggered (items: \(items.count), isRefreshing: \(isRefreshing), isBulkImportInProgress: \(isBulkImportInProgress))")
                 if let onRefresh = onRefresh {
                     print("📸 VirtualizedGridView: Calling onRefresh callback")
                     await onRefresh()
+                    print("📸 VirtualizedGridView: onRefresh callback completed")
                 } else {
                     print("📸 VirtualizedGridView: No onRefresh callback available")
                 }

@@ -160,21 +160,15 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
                     assetIdentifier: asset.localIdentifier
                 )
                 
+                // Process screenshot during import - OCR and semantic analysis ONCE
+                await processScreenshotDuringImport(screenshot, imageData: imageData)
+                
                 await MainActor.run {
                     modelContext.insert(screenshot)
                     // Save immediately for progressive UI updates
                     try? modelContext.save()
                     importedCount += 1
-                    print("📸 Batch imported screenshot \(importedCount): \(asset.localIdentifier)")
-                    
-                    // Proactively generate thumbnail for better UX
-                    Task.detached { [screenshot] in
-                        _ = await ThumbnailService.shared.getThumbnail(
-                            for: screenshot.id,
-                            from: screenshot.imageData,
-                            size: ThumbnailService.listThumbnailSize
-                        )
-                    }
+                    print("📸 Batch imported screenshot with processing \(importedCount): \(asset.localIdentifier)")
                 }
                 
                 // Add small delay between imports to prevent resource starvation
@@ -294,6 +288,14 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
         automaticImportEnabled = enabled
         UserDefaults.standard.set(enabled, forKey: "automaticImportEnabled")
         
+        // Temporarily disable automatic monitoring to reduce thermal load
+        let thermalState = ProcessInfo.processInfo.thermalState
+        if thermalState == .critical || thermalState == .serious {
+            print("📸 High thermal state detected, disabling monitoring")
+            stopMonitoring()
+            return
+        }
+        
         if enabled && authorizationStatus == .authorized {
             print("📸 Starting monitoring due to enabled setting")
             startMonitoring()
@@ -405,14 +407,8 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
                 assetIdentifier: asset.localIdentifier
             )
             
-            // Proactively generate thumbnail for better UX
-            Task.detached { [screenshot] in
-                _ = await ThumbnailService.shared.getThumbnail(
-                    for: screenshot.id,
-                    from: screenshot.imageData,
-                    size: ThumbnailService.listThumbnailSize
-                )
-            }
+            // Process screenshot during import - OCR and semantic analysis ONCE
+            await processScreenshotDuringImport(screenshot, imageData: imageData)
             
             return screenshot.id
         }
@@ -523,19 +519,13 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
                         assetIdentifier: asset.localIdentifier
                     )
                     
+                    // Process screenshot during import - OCR and semantic analysis ONCE
+                    await processScreenshotDuringImport(screenshot, imageData: imageData)
+                    
                     await MainActor.run {
                         modelContext.insert(screenshot)
                         importedCount += 1
-                        print("📸 Imported screenshot \(importedCount): \(asset.localIdentifier)")
-                        
-                        // Proactively generate thumbnail for better UX
-                        Task.detached { [screenshot] in
-                            _ = await ThumbnailService.shared.getThumbnail(
-                                for: screenshot.id,
-                                from: screenshot.imageData,
-                                size: ThumbnailService.listThumbnailSize
-                            )
-                        }
+                        print("📸 Imported screenshot with processing \(importedCount): \(asset.localIdentifier)")
                     }
                 } catch {
                     print("❌ Failed to import screenshot with retry: \(error)")
@@ -603,20 +593,16 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
                     assetIdentifier: asset.localIdentifier
                 )
                 
+                // Perform OCR and semantic processing ONCE during import
+                await processScreenshotDuringImport(screenshot, imageData: imageData)
+                
                 await MainActor.run {
                     modelContext.insert(screenshot)
                     try? modelContext.save()
                     
                     // Provide haptic feedback for successful import
                     hapticService?.triggerHaptic(.successFeedback)
-                    print("📸 Auto-imported screenshot: \(asset.localIdentifier)")
-                }
-                
-                // Trigger background OCR and AI processing for the newly imported screenshot
-                Task.detached { @MainActor in
-                    // Small delay to ensure the screenshot is fully saved
-                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-                    await BackgroundSemanticProcessor.shared.processScreenshotsNeedingAnalysis(in: modelContext)
+                    print("📸 Auto-imported screenshot with OCR and semantic processing: \(asset.localIdentifier)")
                 }
             } catch {
                 print("❌ Failed to auto-import screenshot with retry: \(error)")
@@ -625,6 +611,42 @@ public class PhotoLibraryService: NSObject, PhotoLibraryServiceProtocol, Observa
                 }
             }
         }
+    }
+    
+    /// Process screenshot during import - OCR and semantic analysis ONCE
+    private func processScreenshotDuringImport(_ screenshot: Screenshot, imageData: Data) async {
+        print("📸 Processing screenshot during import: \(screenshot.id)")
+        
+        // 1. OCR Processing
+        do {
+            let ocrService = OCRService()
+            let extractedText = try await ocrService.extractText(from: imageData)
+            screenshot.markOCRCompleted(with: extractedText)
+            print("📸 OCR completed: \(extractedText.count) characters extracted")
+        } catch {
+            print("❌ OCR failed during import: \(error)")
+            screenshot.markOCRCompleted(with: nil) // Mark as attempted
+        }
+        
+        // 2. Semantic Processing
+        let semanticService = SemanticTaggingService()
+        let semanticTags = await semanticService.generateSemanticTags(
+            for: screenshot,
+            extractedText: screenshot.extractedText,
+            visualAttributes: nil
+        )
+        screenshot.semanticTags = semanticTags
+        print("📸 Semantic processing completed: \(semanticTags.tags.count) tags generated")
+        
+        // 3. Entity Extraction
+        if let extractedText = screenshot.extractedText, !extractedText.isEmpty {
+            let entityService = EntityExtractionService()
+            let entityResult = await entityService.extractEntities(from: extractedText)
+            screenshot.entities = entityResult.entities
+            print("📸 Entity extraction completed: \(entityResult.entities.count) entities extracted")
+        }
+        
+        print("📸 Import processing completed for screenshot: \(screenshot.id)")
     }
 }
 

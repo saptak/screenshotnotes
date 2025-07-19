@@ -28,7 +28,9 @@ public final class BackgroundOCRProcessor: ObservableObject {
         }
         let descriptor = FetchDescriptor<Screenshot>(
             predicate: #Predicate<Screenshot> { screenshot in
-                screenshot.extractedText == nil || screenshot.extractedText?.isEmpty == true
+                // Only process screenshots that actually need OCR and haven't been processed during import
+                (screenshot.extractedText == nil || screenshot.extractedText?.isEmpty == true) && 
+                screenshot.lastOCRProcessing == nil
             }
         )
         
@@ -88,7 +90,7 @@ public final class BackgroundOCRProcessor: ObservableObject {
             let extractedText = try await ocrService.extractText(from: image)
             
             await MainActor.run {
-                screenshot.extractedText = extractedText
+                screenshot.markOCRCompleted(with: extractedText)
                 self.processedCount += 1
                 
                 do {
@@ -101,6 +103,8 @@ public final class BackgroundOCRProcessor: ObservableObject {
             
         } catch {
             await MainActor.run {
+                // Mark as attempted even if failed to avoid infinite retries
+                screenshot.markOCRCompleted(with: nil)
                 self.processedCount += 1
                 print("OCR failed for screenshot \(screenshot.id): \(error.localizedDescription)")
             }

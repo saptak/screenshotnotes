@@ -363,8 +363,8 @@ struct EmptyStateView: View {
         if totalImported > 0 {
             print("📸 GalleryModeRenderer: All imports complete (\(totalImported) screenshots), starting background processing")
             
-            // Start OCR processing
-            backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
+            // Note: Disabled automatic OCR to prevent thermal issues
+            // backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
             
             // Wait briefly for OCR to initialize  
             try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
@@ -456,7 +456,13 @@ struct ScreenshotGridView: View {
             )
         }
         .onAppear {
-            performanceMonitor.startMonitoring()
+            // Add thermal state checking before starting performance monitoring
+            let thermalState = ProcessInfo.processInfo.thermalState
+            if thermalState != .critical && thermalState != .serious {
+                performanceMonitor.startMonitoring()
+            } else {
+                print("🌡️ High thermal state detected, skipping performance monitoring startup")
+            }
             
             // Phase 2: Update collection size for adaptive optimization
             qualityManager.updateCollectionSize(screenshots.count)

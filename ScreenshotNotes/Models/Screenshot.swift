@@ -39,6 +39,9 @@ public final class Screenshot {
     public var entitiesData: Data?
     public var lastEntityExtraction: Date?
     
+    // OCR Processing State
+    public var lastOCRProcessing: Date?
+    
     // Sprint 7.1.2: Smart Categorization
     public var categoryResultData: Data?
     public var lastCategorization: Date?
@@ -61,9 +64,35 @@ public final class Screenshot {
         self.lastSemanticAnalysis = nil
         self.entitiesData = nil
         self.lastEntityExtraction = nil
+        self.lastOCRProcessing = nil
         self.categoryResultData = nil
         self.lastCategorization = nil
         self.manualCategoryOverride = nil
+    }
+}
+
+// MARK: - OCR Processing Support
+
+extension Screenshot {
+    
+    /// Check if OCR processing is needed
+    public var needsOCRProcessing: Bool {
+        // If we already have extracted text and it was processed recently, no need to reprocess
+        if let extractedText = extractedText, !extractedText.isEmpty,
+           let lastOCR = lastOCRProcessing {
+            // Consider OCR fresh for 365 days (essentially permanent unless manually triggered)
+            let oneYearAgo = Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date.distantPast
+            return lastOCR < oneYearAgo
+        }
+        
+        // If no extracted text or no processing date, needs OCR
+        return extractedText?.isEmpty ?? true
+    }
+    
+    /// Mark OCR as completed
+    public func markOCRCompleted(with text: String?) {
+        self.extractedText = text
+        self.lastOCRProcessing = Date()
     }
 }
 

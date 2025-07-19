@@ -190,12 +190,12 @@ class LiquidGlassRenderer: NSObject, ObservableObject {
         // Update thermal state immediately
         thermalState = ProcessInfo.processInfo.thermalState
         
-        // Start thermal monitoring timer
-        thermalMonitor = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.updateThermalMetrics()
-            }
-        }
+        // Note: Thermal monitoring timer disabled to reduce background threads
+        // thermalMonitor = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        //     Task { @MainActor in
+        //         self?.updateThermalMetrics()
+        //     }
+        // }
     }
     
     @objc private func thermalStateDidChange() {
@@ -251,11 +251,12 @@ class LiquidGlassRenderer: NSObject, ObservableObject {
     // MARK: - Performance Monitoring
     
     private func setupPerformanceMonitoring() {
-        performanceTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.updatePerformanceMetrics()
-            }
-        }
+        // Note: Performance monitoring timer disabled to reduce background threads
+        // performanceTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        //     Task { @MainActor in
+        //         self?.updatePerformanceMetrics()
+        //     }
+        // }
     }
     
     private func updatePerformanceMetrics() {

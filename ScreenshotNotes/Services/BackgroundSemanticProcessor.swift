@@ -85,6 +85,12 @@ public final class BackgroundSemanticProcessor: ObservableObject, MemoryTrackabl
             return
         }
         
+        // Check thermal state before starting any processing
+        if await shouldPauseProcessing() {
+            print("🌡️ Thermal state too high, aborting semantic processing")
+            return
+        }
+        
         // Set bulk import state during background processing
         await MainActor.run {
             GalleryPerformanceMonitor.shared.setBulkImportState(true)
@@ -134,6 +140,8 @@ public final class BackgroundSemanticProcessor: ObservableObject, MemoryTrackabl
         
         let descriptor = FetchDescriptor<Screenshot>(
             predicate: #Predicate<Screenshot> { screenshot in
+                // Only process screenshots that actually need semantic analysis
+                // This respects screenshots that were already processed during import
                 screenshot.lastSemanticAnalysis == nil
             }
         )

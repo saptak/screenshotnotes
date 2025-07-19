@@ -269,8 +269,13 @@ struct ContentView: View {
                 MindMapView()
             }
             .onAppear {
-                // 🎯 Sprint 8.5.3.2: Initialize Memory Management System
-                memoryManager.startMonitoring()
+                // 🎯 Sprint 8.5.3.2: Initialize Memory Management System with thermal checking
+                let thermalState = ProcessInfo.processInfo.thermalState
+                if thermalState != .critical && thermalState != .serious {
+                    memoryManager.startMonitoring()
+                } else {
+                    print("🌡️ High thermal state detected, skipping memory monitoring startup")
+                }
                 
                 // Register all services for automatic cleanup
                 backgroundSemanticProcessor.registerForAutomaticCleanup()

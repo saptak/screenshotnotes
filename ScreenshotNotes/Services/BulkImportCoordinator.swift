@@ -309,11 +309,8 @@ class BulkImportCoordinator: ObservableObject {
         
         logger.info("🤖 Starting AI processing for \(screenshotsNeedingProcessing.count) screenshots")
         
-        // Start OCR processing and wait for completion
-        backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
-        
-        // Wait for OCR to initialize
-        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+        // Process OCR directly without starting persistent background processing
+        await backgroundOCRProcessor.processExistingScreenshots(in: modelContext)
         
         // Process semantic analysis and wait for completion
         await backgroundSemanticProcessor.processScreenshotsNeedingAnalysis(in: modelContext)

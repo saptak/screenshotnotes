@@ -143,6 +143,7 @@ public final class MemoryManager: ObservableObject {
         
         setupMemoryPressureMonitoring()
         setupNotificationObservers()
+        // Note: startMonitoring() must be called manually - no auto-start timers
     }
     
     deinit {

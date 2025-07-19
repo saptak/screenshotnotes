@@ -12,6 +12,8 @@ struct ConstellationModeView: View {
     @State private var isLoading = false
     @State private var sortCriteria: ContentWorkspace.SortCriteria = .lastUpdated
     @State private var showingCreateWorkspace = false
+    @State private var isProcessingSemantics = false
+    @State private var lastProcessingTime: Date = Date.distantPast
     
     // Photo import state
     @State private var isImporting = false
@@ -35,7 +37,7 @@ struct ConstellationModeView: View {
                         // Import State
                         if isImporting {
                             importingSection
-                        } else if isLoading {
+                        } else if isLoading || isProcessingSemantics {
                             loadingSection
                         } else if workspaces.isEmpty {
                             emptyStateSection
@@ -50,8 +52,8 @@ struct ConstellationModeView: View {
             }
             .refreshable {
                 print("📸 ConstellationModeView: Pull-to-refresh triggered")
-                guard !isImporting && !isLoading else { 
-                    print("📸 ConstellationModeView: Skipping refresh - already importing or loading")
+                guard !isImporting && !isLoading && !isProcessingSemantics else { 
+                    print("📸 ConstellationModeView: Skipping refresh - already importing, loading, or processing")
                     return 
                 }
                 await importPhotosAndDetectWorkspaces()
@@ -90,10 +92,8 @@ struct ConstellationModeView: View {
             }
         }
         .onAppear {
-            if workspaces.isEmpty {
-                Task {
-                    await detectWorkspaces()
-                }
+            Task {
+                await handleViewAppear()
             }
         }
     }
@@ -173,10 +173,17 @@ struct ConstellationModeView: View {
                 .progressViewStyle(LinearProgressViewStyle())
                 .frame(height: 8)
             
-            Text("Analyzing \(screenshots.count) screenshots...")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+            if isProcessingSemantics {
+                Text("Processing semantic analysis...")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            } else {
+                Text("Analyzing \(screenshots.count) screenshots...")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
         }
         .padding()
         .glassBackground(material: .regular, cornerRadius: 12, shadow: false)
@@ -228,9 +235,88 @@ struct ConstellationModeView: View {
     
     // MARK: - Helper Methods
     
+    private func handleViewAppear() async {
+        print("📸 ConstellationModeView: handleViewAppear called")
+        
+        // Check thermal state first
+        let processInfo = ProcessInfo.processInfo
+        if processInfo.thermalState == .critical || processInfo.thermalState == .serious {
+            print("🌡️ ConstellationModeView: High thermal state detected, skipping processing")
+            return
+        }
+        
+        // Check if we have screenshots with semantic tags
+        let screenshotsWithSemanticTags = screenshots.filter { !($0.semanticTags?.tags.isEmpty ?? true) }
+        print("📸 ConstellationModeView: \(screenshotsWithSemanticTags.count) screenshots have semantic tags")
+        
+        if screenshotsWithSemanticTags.count >= 3 {
+            // We have enough screenshots with semantic tags, detect workspaces immediately
+            print("📸 ConstellationModeView: Sufficient semantic data available, detecting workspaces")
+            await detectWorkspaces()
+        } else {
+            // Not enough semantic data, trigger processing first (but respect thermal limits)
+            print("📸 ConstellationModeView: Insufficient semantic data, triggering background processing")
+            await triggerSemanticProcessingAndDetectWorkspaces()
+        }
+    }
+    
+    private func triggerSemanticProcessingAndDetectWorkspaces() async {
+        print("📸 ConstellationModeView: Starting semantic processing for workspace detection")
+        
+        // Prevent duplicate processing
+        guard !isProcessingSemantics else {
+            print("📸 ConstellationModeView: Semantic processing already in progress, skipping")
+            return
+        }
+        
+        // Cooldown period to prevent excessive processing
+        let now = Date()
+        let timeSinceLastProcessing = now.timeIntervalSince(lastProcessingTime)
+        if timeSinceLastProcessing < 60.0 { // 60 second cooldown
+            print("📸 ConstellationModeView: Processing cooldown active (last: \(Int(timeSinceLastProcessing))s ago)")
+            return
+        }
+        
+        lastProcessingTime = now
+        
+        // Only process if we have screenshots that need semantic analysis
+        let screenshotsNeedingSemanticProcessing = screenshots.filter { $0.lastSemanticAnalysis == nil }
+        
+        if !screenshotsNeedingSemanticProcessing.isEmpty {
+            print("📸 ConstellationModeView: Processing \(screenshotsNeedingSemanticProcessing.count) screenshots for semantic analysis")
+            
+            // Show loading state during processing
+            await MainActor.run {
+                isLoading = true
+                isProcessingSemantics = true
+            }
+            
+            // Trigger semantic processing
+            await BackgroundSemanticProcessor.shared.processScreenshotsNeedingAnalysis(in: modelContext)
+            
+            // Small delay to ensure data is saved
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            
+            await MainActor.run {
+                isProcessingSemantics = false
+            }
+            
+            // Now detect workspaces with the updated semantic data
+            print("📸 ConstellationModeView: Semantic processing complete, detecting workspaces")
+            await detectWorkspaces()
+        } else {
+            // Screenshots are already processed, just detect workspaces
+            print("📸 ConstellationModeView: Screenshots already processed, detecting workspaces")
+            await detectWorkspaces()
+        }
+    }
+    
     private func detectWorkspaces() async {
         print("📸 ConstellationModeView: detectWorkspaces called with \(screenshots.count) screenshots")
-        isLoading = true
+        
+        await MainActor.run {
+            isLoading = true
+        }
         
         // Debug: Check if screenshots have the necessary data for workspace detection
         let screenshotsWithText = screenshots.filter { !($0.extractedText?.isEmpty ?? true) }
@@ -238,7 +324,22 @@ struct ConstellationModeView: View {
         print("📸 ConstellationModeView: \(screenshotsWithText.count) screenshots have extracted text")
         print("📸 ConstellationModeView: \(screenshotsWithSemanticTags.count) screenshots have semantic tags")
         
+        // Debug: Show sample semantic tags
+        if let firstScreenshotWithTags = screenshotsWithSemanticTags.first {
+            let tags = firstScreenshotWithTags.semanticTags?.tags ?? []
+            print("📸 ConstellationModeView: Sample semantic tags from first screenshot: \(tags.map { $0.name }.joined(separator: ", "))")
+        }
+        
+        print("📸 ConstellationModeView: Starting workspace detection...")
         let detectedWorkspaces = await detectionService.detectWorkspaces(from: screenshots)
+        print("📸 ConstellationModeView: Workspace detection completed, received \(detectedWorkspaces.count) workspaces")
+        
+        // Debug: Show what happened during detection
+        if detectedWorkspaces.isEmpty {
+            print("📸 ConstellationModeView: ❌ NO WORKSPACES DETECTED - investigating...")
+            print("📸 ConstellationModeView: Detection service processing: \(detectionService.isProcessing)")
+            print("📸 ConstellationModeView: Detection service progress: \(detectionService.detectionProgress)")
+        }
         
         await MainActor.run {
             workspaces = ContentWorkspace.sortWorkspaces(detectedWorkspaces, by: sortCriteria)
@@ -262,8 +363,8 @@ struct ConstellationModeView: View {
         // First, try to import new photos
         await importNewPhotos()
         
-        // Then detect workspaces with updated screenshot list
-        await detectWorkspaces()
+        // Then intelligently detect workspaces (will trigger semantic processing if needed)
+        await handleViewAppear()
     }
     
     private func importNewPhotos() async {
@@ -327,9 +428,10 @@ struct ConstellationModeView: View {
         if totalImported > 0 {
             print("📸 ConstellationModeView: All imports complete (\(totalImported) screenshots), starting background processing")
             
-            // Start OCR processing
-            let backgroundOCRProcessor = BackgroundOCRProcessor()
-            backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
+            // Note: Disabled automatic OCR to prevent thermal issues
+            // OCR will be processed on-demand when users view content
+            // let backgroundOCRProcessor = BackgroundOCRProcessor()
+            // backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: modelContext)
             
             // Start semantic processing using shared instance
             try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s

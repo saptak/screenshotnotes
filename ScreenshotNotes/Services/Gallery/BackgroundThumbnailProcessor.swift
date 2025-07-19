@@ -42,8 +42,8 @@ class BackgroundThumbnailProcessor: ObservableObject {
         // Set up resource monitoring
         setupResourceMonitoring()
         
-        // Start processing timer
-        startProcessingTimer()
+        // Note: Processing timer disabled to reduce background threads
+        // startProcessingTimer()
     }
     
     deinit {
@@ -194,7 +194,7 @@ class BackgroundThumbnailProcessor: ObservableObject {
     }
     
     private func processTask(_ task: ThumbnailTask) {
-        let processingTask = Task.detached { [weak self] in
+        let processingTask = Task { [weak self] in
             let startTime = CFAbsoluteTimeGetCurrent()
             
             // Check if thumbnail is already cached
@@ -294,8 +294,11 @@ class BackgroundThumbnailProcessor: ObservableObject {
             return false
         }
         
-        // Check thermal state
-        if ProcessInfo.processInfo.thermalState == .critical {
+        // Enhanced thermal management - stop at serious or critical
+        let thermalState = ProcessInfo.processInfo.thermalState
+        if thermalState == .critical || thermalState == .serious {
+            print("🌡️ BackgroundThumbnailProcessor: Thermal state \(thermalState.rawValue), stopping processing")
+            completeProcessing()
             return false
         }
         
@@ -411,6 +414,13 @@ class BackgroundThumbnailProcessor: ObservableObject {
     }
     
     private func updateProgress() {
+        // Add thermal checking to prevent processing during high thermal states
+        let thermalState = ProcessInfo.processInfo.thermalState
+        if thermalState == .critical || thermalState == .serious {
+            print("🌡️ BackgroundThumbnailProcessor: High thermal state detected, skipping progress update")
+            return
+        }
+        
         updateQueueMetrics()
         
         if totalTaskCount > 0 {

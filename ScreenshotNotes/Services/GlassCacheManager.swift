@@ -103,7 +103,8 @@ class GlassCacheManager: ObservableObject {
     
     private init() {
         setupCacheMonitoring()
-        scheduleCleanup()
+        // Note: scheduleCleanup() disabled to eliminate background timer
+        // scheduleCleanup()
         logger.info("🗄️ Glass Cache Manager initialized with \(self.maxCacheSize / 1024 / 1024)MB limit")
     }
     

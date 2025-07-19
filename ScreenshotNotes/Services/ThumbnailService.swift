@@ -298,7 +298,7 @@ public class ThumbnailService: ObservableObject, MemoryTrackable, ResourceCleanu
     
     /// Phase 2: Enhanced image resizing with adaptive quality
     nonisolated private func resizeImageWithQuality(_ image: UIImage, to size: CGSize, compressionQuality: CGFloat) async -> UIImage {
-        return await Task.detached {
+        return await Task {
             let renderer = UIGraphicsImageRenderer(size: size, format: UIGraphicsImageRendererFormat())
             let resizedImage = renderer.image { _ in
                 image.draw(in: CGRect(origin: .zero, size: size))

@@ -20,7 +20,7 @@ public class WorkspaceDetectionService: ObservableObject {
     // MARK: - Detection Configuration
     
     /// Minimum confidence threshold for workspace detection (adaptive based on available data)
-    private let minConfidenceThreshold: Double = 0.45
+    private let minConfidenceThreshold: Double = 0.35  // Lowered to better support semantic-tag-only detection
     
     /// Minimum screenshots required for a workspace
     private let minScreenshotsPerWorkspace: Int = 2
@@ -34,7 +34,12 @@ public class WorkspaceDetectionService: ObservableObject {
     /// - Parameter screenshots: Array of screenshots to analyze
     /// - Returns: Array of detected workspaces with confidence scores
     public func detectWorkspaces(from screenshots: [Screenshot]) async -> [ContentWorkspace] {
-        guard !screenshots.isEmpty else { return [] }
+        guard !screenshots.isEmpty else { 
+            print("🧠 WorkspaceDetectionService: No screenshots provided")
+            return [] 
+        }
+        
+        print("🧠 WorkspaceDetectionService: Starting workspace detection for \(screenshots.count) screenshots")
         
         await MainActor.run {
             isProcessing = true
@@ -49,20 +54,28 @@ public class WorkspaceDetectionService: ObservableObject {
         }
         
         // Phase 1: Extract entities and content analysis (30% of progress)
+        print("🧠 WorkspaceDetectionService: Phase 1 - Analyzing screenshots")
         let analysisResults = await analyzeScreenshots(screenshots)
         await updateProgress(0.3)
+        print("🧠 WorkspaceDetectionService: Phase 1 complete - analyzed \(analysisResults.count) screenshots")
         
         // Phase 2: Detect potential workspace groups (50% of progress)
+        print("🧠 WorkspaceDetectionService: Phase 2 - Detecting potential workspaces")
         let potentialWorkspaces = await detectPotentialWorkspaces(analysisResults)
         await updateProgress(0.5)
+        print("🧠 WorkspaceDetectionService: Phase 2 complete - found \(potentialWorkspaces.count) potential workspaces")
         
         // Phase 3: Validate and refine workspaces (80% of progress)
+        print("🧠 WorkspaceDetectionService: Phase 3 - Validating workspaces")
         let validatedWorkspaces = await validateWorkspaces(potentialWorkspaces)
         await updateProgress(0.8)
+        print("🧠 WorkspaceDetectionService: Phase 3 complete - validated \(validatedWorkspaces.count) workspaces")
         
         // Phase 4: Create final workspace objects (100% of progress)
+        print("🧠 WorkspaceDetectionService: Phase 4 - Creating workspace objects")
         let finalWorkspaces = await createWorkspaces(validatedWorkspaces)
         await updateProgress(1.0)
+        print("🧠 WorkspaceDetectionService: Phase 4 complete - created \(finalWorkspaces.count) final workspaces")
         
         return finalWorkspaces
     }
@@ -295,12 +308,15 @@ public class WorkspaceDetectionService: ObservableObject {
         }
         
         // Semantic tag analysis - check for travel-related semantic tags
-        let travelSemanticTags = semantic.brandTags.filter { tag in
-            ["travel", "trip", "vacation", "flight", "hotel", "booking"].contains(tag.name.lowercased())
+        let allSemanticTags = semantic.brandTags + semantic.organizationTags + semantic.locationTags
+        let travelSemanticTags = allSemanticTags.filter { tag in
+            ["travel", "trip", "vacation", "flight", "hotel", "booking", "airport", "airline", "destination"].contains(tag.name.lowercased())
         }
         if !travelSemanticTags.isEmpty {
-            confidence += 0.4 // Strong travel indicator
-            debugInfo.append("Travel semantic tags: \(travelSemanticTags.count)")
+            // Give much higher weight when entities are not available
+            let semanticWeight = entities.isEmpty ? 0.6 : 0.4
+            confidence += semanticWeight
+            debugInfo.append("Travel semantic tags: \(travelSemanticTags.count) (weight: \(semanticWeight))")
         }
         
         let finalConfidence = min(confidence, 1.0)
@@ -354,13 +370,15 @@ public class WorkspaceDetectionService: ObservableObject {
         }
         
         // Semantic tag analysis - check for work-related semantic tags
-        let allSemanticTags = semantic.brandTags + semantic.organizationTags
+        let allSemanticTags = semantic.brandTags + semantic.organizationTags + semantic.personTags + semantic.locationTags
         let workSemanticTags = allSemanticTags.filter { tag in
-            ["work", "project", "task", "meeting", "business", "office", "tech", "work_hours"].contains(tag.name.lowercased())
+            ["work", "project", "task", "meeting", "business", "office", "tech", "work_hours", "weekday", "professional"].contains(tag.name.lowercased())
         }
         if !workSemanticTags.isEmpty {
-            confidence += 0.4 // Strong work/project indicator
-            debugInfo.append("Work semantic tags: \(workSemanticTags.count)")
+            // Give much higher weight when entities are not available
+            let semanticWeight = entities.isEmpty ? 0.6 : 0.4
+            confidence += semanticWeight
+            debugInfo.append("Work semantic tags: \(workSemanticTags.count) (weight: \(semanticWeight))")
         }
         
         let finalConfidence = min(confidence, 1.0)
@@ -429,10 +447,12 @@ public class WorkspaceDetectionService: ObservableObject {
         // Semantic tag analysis - check for shopping-related semantic tags
         let allSemanticTags = semantic.brandTags + semantic.organizationTags
         let shoppingSemanticTags = allSemanticTags.filter { tag in
-            ["purchase", "buy", "shop", "shopping", "order", "financial", "payment"].contains(tag.name.lowercased())
+            ["purchase", "buy", "shop", "shopping", "order", "financial", "payment", "ecommerce", "retail"].contains(tag.name.lowercased())
         }
         if !shoppingSemanticTags.isEmpty {
-            confidence += 0.4 // Strong shopping indicator
+            // Give much higher weight when entities are not available
+            let semanticWeight = entities.isEmpty ? 0.6 : 0.4
+            confidence += semanticWeight
         }
         
         return min(confidence, 1.0)
@@ -483,13 +503,21 @@ public class WorkspaceDetectionService: ObservableObject {
         var potentialWorkspaces: [PotentialWorkspace] = []
         
         // Group analyses by workspace type confidence
+        print("🧠 WorkspaceDetectionService: Grouping \(analyses.count) analyses by workspace type")
         let workspaceGroups = groupAnalysesByWorkspaceType(analyses)
+        print("🧠 WorkspaceDetectionService: Found \(workspaceGroups.count) workspace groups")
         
         // Create potential workspaces for each group
         for (workspaceType, groupedAnalyses) in workspaceGroups {
+            print("🧠 WorkspaceDetectionService: Creating workspace for type \(workspaceType.displayName) with \(groupedAnalyses.count) screenshots")
             let workspace = createPotentialWorkspace(type: workspaceType, analyses: groupedAnalyses)
+            print("🧠 WorkspaceDetectionService: Workspace confidence: \(String(format: "%.2f", workspace.confidence)) (threshold: \(String(format: "%.2f", minConfidenceThreshold)))")
+            
             if workspace.confidence >= minConfidenceThreshold {
                 potentialWorkspaces.append(workspace)
+                print("🧠 WorkspaceDetectionService: ✅ Workspace accepted: \(workspaceType.displayName)")
+            } else {
+                print("🧠 WorkspaceDetectionService: ❌ Workspace rejected: \(workspaceType.displayName) - confidence too low")
             }
         }
         
@@ -499,18 +527,37 @@ public class WorkspaceDetectionService: ObservableObject {
     /// Group analyses by dominant workspace type
     private func groupAnalysesByWorkspaceType(_ analyses: [ScreenshotAnalysis]) -> [ContentWorkspace.WorkspaceType: [ScreenshotAnalysis]] {
         var groups: [ContentWorkspace.WorkspaceType: [ScreenshotAnalysis]] = [:]
+        var unclassifiedCount = 0
         
-        for analysis in analyses {
+        print("🧠 WorkspaceDetectionService: Analyzing \(analyses.count) screenshots for workspace types")
+        
+        for (index, analysis) in analyses.enumerated() {
             let signals = analysis.workspaceSignals
+            
+            // Debug: Show confidence scores for each screenshot
+            print("🧠 Screenshot \(index + 1): travel=\(String(format: "%.2f", signals.travelConfidence)), project=\(String(format: "%.2f", signals.projectConfidence)), event=\(String(format: "%.2f", signals.eventConfidence)), learning=\(String(format: "%.2f", signals.learningConfidence)), shopping=\(String(format: "%.2f", signals.shoppingConfidence)), health=\(String(format: "%.2f", signals.healthConfidence))")
+            
             let dominantType = findDominantWorkspaceType(signals)
             
             if let type = dominantType {
                 groups[type, default: []].append(analysis)
+                print("🧠 Screenshot \(index + 1): assigned to \(type.displayName)")
+            } else {
+                unclassifiedCount += 1
+                print("🧠 Screenshot \(index + 1): unclassified")
             }
         }
         
+        print("🧠 WorkspaceDetectionService: Grouping results - \(unclassifiedCount) unclassified screenshots")
+        for (type, analyses) in groups {
+            print("🧠 WorkspaceDetectionService: Group \(type.displayName): \(analyses.count) screenshots")
+        }
+        
         // Filter groups by minimum screenshot count
-        return Dictionary(uniqueKeysWithValues: groups.filter { $0.value.count >= minScreenshotsPerWorkspace })
+        let filteredGroups = groups.filter { $0.value.count >= minScreenshotsPerWorkspace }
+        print("🧠 WorkspaceDetectionService: After filtering (min \(minScreenshotsPerWorkspace) screenshots): \(filteredGroups.count) groups remain")
+        
+        return Dictionary(uniqueKeysWithValues: filteredGroups.map { ($0.key, $0.value) })
     }
     
     /// Find dominant workspace type from signals
@@ -526,7 +573,10 @@ public class WorkspaceDetectionService: ObservableObject {
         
         let maxConfidence = confidences.max { $0.0 < $1.0 }
         
-        guard let max = maxConfidence, max.0 >= minConfidenceThreshold else { return nil }
+        guard let max = maxConfidence, max.0 >= minConfidenceThreshold else { 
+            print("🧠 WorkspaceDetectionService: No workspace type meets threshold - max confidence: \(maxConfidence?.0 ?? 0.0), threshold: \(minConfidenceThreshold)")
+            return nil 
+        }
         
         switch max.1 {
         case "travel":

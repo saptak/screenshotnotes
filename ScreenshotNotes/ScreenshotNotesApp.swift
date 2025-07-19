@@ -122,8 +122,9 @@ struct ScreenshotNotesApp: App {
                         photoLibraryService.startMonitoring()
                     }
                     
-                    // Start background OCR processing for existing screenshots
-                    backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: sharedModelContainer.mainContext)
+                    // Note: Temporarily disabled automatic background OCR to prevent thermal issues
+                    // OCR will be processed on-demand when users actually view content
+                    // backgroundOCRProcessor.startBackgroundProcessingIfNeeded(in: sharedModelContainer.mainContext)
                     
                     // Schedule background refresh
                     BackgroundTaskService.shared.scheduleAppRefresh()
